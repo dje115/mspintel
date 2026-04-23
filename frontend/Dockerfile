@@ -9,4 +9,6 @@ COPY . .
 
 EXPOSE 5173
 
-CMD ["npm", "run", "dev"]
+# With Compose bind-mounting ./frontend over /app, /app/node_modules often lives in a
+# separate volume; run install on start so new deps (e.g. qrcode.react) are always present.
+CMD ["sh", "-c", "npm install && npm run dev"]
