@@ -84,7 +84,7 @@ If the browser still shows an **old layout** (e.g. flat “Customers / Members�
 2. **Restart the frontend container** after pulling: `docker compose restart frontend` (or `docker compose up --build -d`).
 3. **Hard refresh** the browser (`Ctrl+Shift+R`) or use a private window.
 
-Compose sets **`CHOKIDAR_USEPOLLING=true`** for the frontend service so Vite **polls** the bind-mounted `./frontend` tree (needed on many **Windows + Docker Desktop** setups where file events do not reach the container). Local `npm run dev` without Docker does not need this unless you see the same symptom.
+Compose sets **`CHOKIDAR_USEPOLLING=true`** for the frontend service so Vite **polls** the bind-mounted `./frontend` tree (mounted at **`/src`** in the container — not `/app`, so the SPA route **`/app`** does not collide with the filesystem). Polling is needed on many **Windows + Docker Desktop** setups where file events do not reach the container. Local `npm run dev` without Docker does not need this unless you see the same symptom.
 
 ---
 

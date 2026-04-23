@@ -60,7 +60,7 @@ Standing rules for Docker, versioning, env vars, validation, docs, GitHub workfl
 
 The backend image runs **`alembic upgrade head` on container start**, so new migrations (e.g. session metadata columns) apply automatically after `docker compose up --build`. You can still run `docker compose exec backend alembic upgrade head` manually if needed.
 
-**Browser → API in Compose:** the frontend dev server proxies `/api/*` to the `backend` service (`API_PROXY_TARGET`), and Compose sets `VITE_API_BASE_URL` to empty so the SPA calls **same-origin** `http://localhost:5173/api/...` (no cross-origin/CORS from the browser to `:8001`).
+**Browser → API in Compose:** the frontend dev server proxies `/api/*` to the `backend` service (`API_PROXY_TARGET`), and Compose sets `VITE_API_BASE_URL` to empty so the SPA calls **same-origin** `http://localhost:5173/api/...` (no cross-origin/CORS from the browser to `:8001`). The frontend container uses **`WORKDIR /src`** and bind-mounts **`./frontend:/src`** so the tenant route **`/app`** never collides with the filesystem path `/app` (which previously caused Vite **500** / `EISDIR` on `GET /app`).
 
 ## Local URLs
 

@@ -250,7 +250,7 @@ export function RecommendationsPage() {
       </section>
 
       {totalPages > 1 ? (
-        <div className="tenant-pagination">
+        <div className="tenant-pagination tenant-page-tail">
           <button type="button" className="tenant-btn-ghost" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
             Previous
           </button>

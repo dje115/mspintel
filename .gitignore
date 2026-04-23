@@ -15,6 +15,7 @@ worker/.venv/
 # Build and cache artifacts
 .vite/
 *.tsbuildinfo
+frontend/tsconfig.tsbuildinfo
 dist/
 coverage/
 .pytest_cache/
