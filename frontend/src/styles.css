@@ -21,7 +21,7 @@ body {
 }
 
 .app-card {
-  width: min(720px, 100%);
+  width: min(760px, 100%);
   background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 12px;
@@ -38,4 +38,14 @@ p {
   margin: 0;
   line-height: 1.6;
   color: #334155;
+}
+
+.route-outline {
+  margin: 1rem 0 0;
+  padding-left: 1.2rem;
+  color: #475569;
+}
+
+.route-outline li {
+  margin: 0.35rem 0;
 }

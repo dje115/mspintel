@@ -12,6 +12,8 @@ class WorkerSettings(BaseSettings):
     database_url: str = "postgresql+psycopg://mspintel:mspintel@postgres:5432/mspintel"
     worker_poll_seconds: int = 5
 
+    billing_provider: str = "stripe"
+
 
 @lru_cache
 def get_settings() -> WorkerSettings:

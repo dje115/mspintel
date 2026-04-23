@@ -22,6 +22,7 @@ services:
     env_file:
       - .env
     ports:
+      # Host 8001 avoids common local 8000 conflicts.
       - "8001:8000"
     volumes:
       - ./backend:/app
@@ -53,6 +54,7 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./backend/app/db/init:/docker-entrypoint-initdb.d:ro
 
   redis:
     container_name: mspintel-redis

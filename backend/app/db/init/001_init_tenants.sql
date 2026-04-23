@@ -1,0 +1,12 @@
+CREATE TABLE IF NOT EXISTS tenants (
+  id BIGSERIAL PRIMARY KEY,
+  slug TEXT NOT NULL UNIQUE,
+  name TEXT NOT NULL,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+INSERT INTO tenants (slug, name, is_active)
+VALUES ('default-msp', 'Default MSP', TRUE)
+ON CONFLICT (slug) DO NOTHING;

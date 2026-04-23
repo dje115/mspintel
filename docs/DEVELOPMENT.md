@@ -3,25 +3,31 @@
 ## Prerequisites
 
 - Docker Desktop (or Docker Engine + Compose plugin)
-- Node.js 20+ (for local frontend development)
-- Python 3.11+ (for local backend/worker development)
+- Node.js 20+ (for local frontend-only runs)
+- Python 3.12+ (for local backend/worker-only runs)
 
-## Recommended Workflow
+## First Run
 
 1. Copy env template:
    - `cp .env.example .env`
-2. Start everything:
+2. Start stack:
    - `docker compose up --build`
-3. Iterate in code with mounted volumes (containers reload as configured).
+3. Verify:
+   - Frontend: `http://localhost:5173`
+   - Backend health: `http://localhost:8001/health`
+   - API health: `http://localhost:8001/api/v1/health`
+   - Platform context: `http://localhost:8001/api/v1/platform/context`
 
-## Useful Commands
+## Docker Commands
 
-- Start stack: `docker compose up --build`
-- Stop stack: `docker compose down`
+- Start: `docker compose up --build`
+- Start detached: `docker compose up --build -d`
+- Stop: `docker compose down`
 - Remove volumes: `docker compose down -v`
-- View logs: `docker compose logs -f`
+- Logs: `docker compose logs -f`
+- Status: `docker compose ps`
 
-## Local Service Development
+## Run Services Individually
 
 ### Frontend
 
@@ -33,6 +39,7 @@
 
 - `cd backend`
 - `python -m venv .venv`
+- Activate virtualenv
 - `pip install -e .[dev]`
 - `uvicorn app.main:app --reload --host 0.0.0.0 --port 8000`
 
@@ -40,13 +47,11 @@
 
 - `cd worker`
 - `python -m venv .venv`
+- Activate virtualenv
 - `pip install -e .[dev]`
 - `python -m app.main`
 
-## Next Recommended Milestones
+## Notes
 
-- Add Alembic and first database migrations
-- Add auth + RBAC primitives
-- Introduce queue framework and first real async jobs
-- Add API versioned routers for each domain area
-- Add CI (lint, type-check, tests, image build)
+- Postgres bootstrap SQL runs only on first initialization of the database volume.
+- If schema bootstrap changes later, use migrations (recommended) rather than repeatedly recreating volumes.

@@ -1,47 +1,55 @@
-# mspintel Architecture (Initial Scaffold)
+# mspintel Architecture (SaaS Multi-tenant Scaffold)
 
-## Services
+## Initial Service Layout
 
 - **frontend** (`React + TypeScript + Vite`)
-  - User-facing web interface
-  - Prepared for responsive dashboard-oriented UI
-  - Talks to backend through configurable API base URL
+  - Contains base state/provider structure for:
+    - public pages
+    - authenticated app pages
+    - platform admin pages
+    - tenant admin pages
+    - onboarding pages
+    - future tenant switcher UX
 
 - **backend** (`FastAPI`)
-  - HTTP API layer
-  - Current endpoints:
-    - `/health`
-    - `/api/v1/health`
-  - Package layout anticipates future modules:
-    - auth, users, integrations, customers, tickets, recommendations, ai
+  - App factory setup with versioned routers
+  - API health routes and platform context probe route
+  - Modular package structure for SaaS domain growth
 
-- **worker** (`Python service`)
-  - Background task entrypoint
-  - Queue-agnostic structure for future Celery/RQ/Dramatiq integration
-  - Reads shared environment settings (Redis, Postgres, poll interval)
+- **worker** (`Python`)
+  - Independent background service
+  - Queue-framework-ready for Celery/RQ/Dramatiq expansion
 
-- **postgres** (`PostgreSQL`)
-  - Primary relational datastore
-  - Persistent local volume configured
+- **postgres** (`PostgreSQL 16`)
+  - Primary relational store
+  - Bootstrap SQL initializes SaaS core tables
 
-- **redis** (`Redis`)
-  - Queue/cache backbone for async workloads
-  - Persistent local volume configured
+- **redis** (`Redis 7`)
+  - Queue/cache support for async and transient state needs
 
-## Design Direction Support
+## Why Docker-first
 
-This scaffold intentionally supports future architecture goals:
+Docker Compose gives one-command startup, reproducible environments, and clean separation of services that mirrors production-oriented deployment style.
 
-- Adapter-based ingestion from multiple MSP systems
-- Canonical internal data model inside backend domain modules
-- API + worker split for synchronous and asynchronous operations
-- AI provider abstraction and privacy-first processing workflows
-- Secure login/RBAC layers to be added in dedicated modules
+## SaaS Multi-tenant Concept Model
 
-## Runtime Topology
+Initial conceptual model baked into schema and module layout:
 
-- Frontend exposed on `:5173`
-- Backend exposed on `:8000`
-- Postgres exposed on `:5432`
-- Redis exposed on `:6379`
-- Docker Compose orchestrates full stack startup
+- `users` = global identities
+- `tenants` = MSP organizations/workspaces
+- `tenant_memberships` = user-tenant role assignments
+- `plans` = available subscription tiers
+- `subscriptions` = tenant billing/subscription state
+- platform admins are distinct from tenant admins
+
+The scaffold shapes architecture around strict tenant-isolation checks and membership checks, while deferring full implementation detail to future iterations.
+
+## Planned Backend / Frontend / Worker Split
+
+- **Backend API**: identity, access, tenant context, orchestration, integration surfaces
+- **Worker**: background ingestion, enrichment, notifications, and AI/batch jobs
+- **Frontend**: public + authenticated SaaS UX layers and role-aware admin surfaces
+
+## Future Adapter-based Model
+
+Architecture supports future adapters for Autotask, ConnectWise, ITQuoter, Veeam, and additional systems by separating source adapter concerns from canonical internal models.
