@@ -27,8 +27,8 @@ mspintel is a secure, AI-assisted MSP intelligence platform. This repository pro
    - `docker compose up --build`
 3. Access services:
    - Frontend: <http://localhost:5173>
-   - Backend health: <http://localhost:8000/health>
-   - Backend API health: <http://localhost:8000/api/v1/health>
+   - Backend health: <http://localhost:8001/health>
+   - Backend API health: <http://localhost:8001/api/v1/health>
 
 ## Run Services Individually (without Docker)
 
