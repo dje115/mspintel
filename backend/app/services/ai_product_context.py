@@ -12,7 +12,7 @@ from app.repositories.workspace import WorkspaceRepository
 from app.services.workspace import WorkspaceService
 
 
-def build_account_summary_variables(db: Session, tenant_id: UUID, customer_id: UUID) -> dict:
+def _customer_ai_context_variables(db: Session, tenant_id: UUID, customer_id: UUID) -> dict:
     repo = CustomerRepository(db)
     customer = repo.get_customer(tenant_id, customer_id)
     if not customer:
@@ -24,7 +24,6 @@ def build_account_summary_variables(db: Session, tenant_id: UUID, customer_id: U
     ws = WorkspaceService(db)
     rec_rows, opp_rows, quote_rows = ws.customer_workspace_slices(tenant_id, customer_id)
     return {
-        "task": "account_summary",
         "customer": {
             "id": str(customer.id),
             "name": customer.name,
@@ -45,16 +44,16 @@ def build_account_summary_variables(db: Session, tenant_id: UUID, customer_id: U
     }
 
 
+def build_account_summary_variables(db: Session, tenant_id: UUID, customer_id: UUID) -> dict:
+    return {"task": "account_summary", **_customer_ai_context_variables(db, tenant_id, customer_id)}
+
+
 def build_risk_summary_variables(db: Session, tenant_id: UUID, customer_id: UUID) -> dict:
-    base = build_account_summary_variables(db, tenant_id, customer_id)
-    base["task"] = "risk_summary"
-    return base
+    return {"task": "risk_summary", **_customer_ai_context_variables(db, tenant_id, customer_id)}
 
 
 def build_churn_explanation_variables(db: Session, tenant_id: UUID, customer_id: UUID) -> dict:
-    base = build_account_summary_variables(db, tenant_id, customer_id)
-    base["task"] = "churn_explanation"
-    return base
+    return {"task": "churn_explanation", **_customer_ai_context_variables(db, tenant_id, customer_id)}
 
 
 def build_recommendation_explanation_variables(db: Session, tenant_id: UUID, recommendation_id: UUID) -> dict:

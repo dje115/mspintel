@@ -28,6 +28,7 @@ from app.services.ai_providers.base import ProviderNotConfiguredError, ProviderT
 from app.services.ai_providers.registry import execute_chat_completion, is_family_runnable
 from app.services.ai_runtime_resolver import AIRuntimeResolver, ResolvedAITask
 from app.core.ai_settings_crypto import decrypt_settings_payload
+from app.services.ai_runtime_resolver import apply_prompt_and_provider_lineage
 
 
 def _effective_model(provider_family: str | None, model: str | None) -> str:
@@ -68,12 +69,7 @@ def _finalize_run(
     run.output_summary = output_summary
     run.fallback_used = fallback_used
     run.completed_at = now
-    run.provider_family = resolved.provider_family
-    run.deployment_mode = resolved.deployment_mode
-    run.model_used = resolved.model
-    run.ai_provider_id = resolved.ai_provider_id
-    run.prompt_definition_id = resolved.prompt_definition_id
-    run.prompt_version_id = resolved.prompt_version_id
+    apply_prompt_and_provider_lineage(run, resolved)
     run.run_metadata = run_metadata
     db.flush()
 

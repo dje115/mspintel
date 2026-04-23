@@ -8,7 +8,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.entities import AIProvider, PromptVersion, TenantAiSettings
+from app.models.entities import AIProvider, AITaskRun, PromptVersion
 from app.repositories.prompt_registry import PromptRegistryRepository
 from app.repositories.tenant_ai_config import TenantAiConfigRepository
 
@@ -32,11 +32,29 @@ class ResolvedAITask:
     fallback_model: str | None = None
 
 
+def apply_prompt_and_provider_lineage(run: AITaskRun, resolved: ResolvedAITask) -> None:
+    """Copy provider/model and prompt ids from a ``ResolvedAITask`` onto a run row (single source)."""
+    run.provider_family = resolved.provider_family
+    run.deployment_mode = resolved.deployment_mode
+    run.model_used = resolved.model
+    run.ai_provider_id = resolved.ai_provider_id
+    run.prompt_definition_id = resolved.prompt_definition_id
+    run.prompt_version_id = resolved.prompt_version_id
+
+
 class AIRuntimeResolver:
     def __init__(self, db: Session):
         self.db = db
         self.tenant_repo = TenantAiConfigRepository(db)
         self.prompt_repo = PromptRegistryRepository(db)
+
+    def _provider_for_tenant(self, provider_id: UUID | None, tenant_id: UUID) -> AIProvider | None:
+        if not provider_id:
+            return None
+        prov = self.db.get(AIProvider, provider_id)
+        if prov and prov.tenant_id != tenant_id:
+            return None
+        return prov
 
     def _active_version_for_definition(self, definition_id: UUID) -> PromptVersion | None:
         stmt = (
@@ -78,27 +96,15 @@ class AIRuntimeResolver:
             )
 
         settings = self.tenant_repo.get_settings(tenant_id)
-        prov: AIProvider | None = None
-        if route.ai_provider_id:
-            prov = self.db.get(AIProvider, route.ai_provider_id)
-            if prov and prov.tenant_id != tenant_id:
-                prov = None
+        prov = self._provider_for_tenant(route.ai_provider_id, tenant_id)
         if not prov and settings and settings.default_ai_provider_id:
-            prov = self.db.get(AIProvider, settings.default_ai_provider_id)
-            if prov and prov.tenant_id != tenant_id:
-                prov = None
+            prov = self._provider_for_tenant(settings.default_ai_provider_id, tenant_id)
 
         model = route.model or (settings.default_model if settings else None)
 
-        fb_prov: AIProvider | None = None
-        if route.fallback_ai_provider_id:
-            fb_prov = self.db.get(AIProvider, route.fallback_ai_provider_id)
-            if fb_prov and fb_prov.tenant_id != tenant_id:
-                fb_prov = None
+        fb_prov = self._provider_for_tenant(route.fallback_ai_provider_id, tenant_id)
         if not fb_prov and settings and settings.fallback_ai_provider_id:
-            fb_prov = self.db.get(AIProvider, settings.fallback_ai_provider_id)
-            if fb_prov and fb_prov.tenant_id != tenant_id:
-                fb_prov = None
+            fb_prov = self._provider_for_tenant(settings.fallback_ai_provider_id, tenant_id)
         fb_model = route.fallback_model or (settings.fallback_model if settings else None)
 
         tenant_def = self.prompt_repo.get_tenant_override_definition(tenant_id, route.prompt_key)
@@ -136,17 +142,10 @@ class AIRuntimeResolver:
         duration_ms: int | None = None,
         run_metadata: dict | None = None,
     ) -> None:
-        from app.models.entities import AITaskRun
-
         row = self.db.get(AITaskRun, run_id)
         if not row:
             return
-        row.provider_family = resolved.provider_family
-        row.deployment_mode = resolved.deployment_mode
-        row.model_used = resolved.model
-        row.ai_provider_id = resolved.ai_provider_id
-        row.prompt_definition_id = resolved.prompt_definition_id
-        row.prompt_version_id = resolved.prompt_version_id
+        apply_prompt_and_provider_lineage(row, resolved)
         row.status = status
         row.duration_ms = duration_ms
         row.run_metadata = run_metadata

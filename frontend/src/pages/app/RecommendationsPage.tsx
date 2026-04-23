@@ -79,8 +79,25 @@ export function RecommendationsPage() {
       const out = await api.postRecommendationExplanationAi(accessToken, currentTenantId, recId);
       if (out.status === "succeeded" && out.text) {
         setAiExplainText((m) => ({ ...m, [recId]: out.text ?? "" }));
+        setAiExplainErr((m) => ({ ...m, [recId]: undefined }));
       } else {
-        setAiExplainErr((m) => ({ ...m, [recId]: out.message ?? out.status }));
+        const fallback =
+          out.message ??
+          (out.status === "unsupported"
+            ? "This provider family is not executable in this release."
+            : out.status === "unavailable"
+              ? "AI is not fully configured for this task (provider, model, or active prompt)."
+              : out.status === "skipped"
+                ? "This AI task is disabled for your tenant."
+                : out.status === "failed"
+                  ? "Generation failed — check tenant AI settings and provider credentials."
+                  : `AI returned status: ${out.status}`);
+        setAiExplainErr((m) => ({ ...m, [recId]: fallback }));
+        setAiExplainText((m) => {
+          const next = { ...m };
+          delete next[recId];
+          return next;
+        });
       }
     } catch (e: unknown) {
       setAiExplainErr((m) => ({ ...m, [recId]: e instanceof Error ? e.message : "AI request failed" }));
@@ -248,11 +265,6 @@ export function RecommendationsPage() {
                         >
                           {aiExplainBusy[r.id] ? "…" : "Explain"}
                         </button>
-                        {aiExplainErr[r.id] ? (
-                          <div className="tenant-error" style={{ fontSize: "0.78rem", marginTop: "0.25rem" }}>
-                            {aiExplainErr[r.id]}
-                          </div>
-                        ) : null}
                       </td>
                       <td>
                         <div style={{ display: "flex", flexWrap: "wrap", gap: "0.35rem", justifyContent: "flex-end" }}>
@@ -279,15 +291,21 @@ export function RecommendationsPage() {
                         </div>
                       </td>
                     </tr>
-                    {aiExplainText[r.id] ? (
+                    {aiExplainText[r.id] || aiExplainErr[r.id] ? (
                       <tr className="tenant-table-subrow">
                         <td colSpan={10} style={{ paddingTop: 0, borderTop: "none", background: "rgba(15, 118, 110, 0.04)" }}>
                           <div className="muted" style={{ fontSize: "0.72rem", marginBottom: "0.25rem" }}>
                             AI explanation (from configured provider + prompt version)
                           </div>
-                          <div className="tenant-rec-card" style={{ fontSize: "0.88rem", whiteSpace: "pre-wrap" }}>
-                            {aiExplainText[r.id]}
-                          </div>
+                          {aiExplainText[r.id] ? (
+                            <div className="tenant-rec-card" style={{ fontSize: "0.88rem", whiteSpace: "pre-wrap" }}>
+                              {aiExplainText[r.id]}
+                            </div>
+                          ) : (
+                            <p className="tenant-error" style={{ fontSize: "0.88rem", margin: 0 }}>
+                              {aiExplainErr[r.id]}
+                            </p>
+                          )}
                         </td>
                       </tr>
                     ) : null}

@@ -80,6 +80,7 @@ function AiBlock(props: { customerId: string; task: TaskKey; emphasize?: boolean
         await api.postCustomerChurnExplanationAi(accessToken, currentTenantId, customerId);
       }
       await load();
+      setRunError(null);
     } catch (e) {
       setRunError(e instanceof Error ? e.message : "Request failed");
     } finally {
@@ -89,6 +90,7 @@ function AiBlock(props: { customerId: string; task: TaskKey; emphasize?: boolean
 
   const meta = LABELS[task];
   const displayText = state?.status === "succeeded" ? state.text : null;
+  const loadingInitial = state === null;
 
   return (
     <article
@@ -105,10 +107,21 @@ function AiBlock(props: { customerId: string; task: TaskKey; emphasize?: boolean
             {meta.hint}
           </p>
         </div>
-        <button type="button" className="tenant-btn-primary" style={{ alignSelf: "flex-start" }} disabled={busy} onClick={() => void onGenerate()}>
+        <button
+          type="button"
+          className="tenant-btn-primary"
+          style={{ alignSelf: "flex-start" }}
+          disabled={busy || loadingInitial}
+          onClick={() => void onGenerate()}
+        >
           {busy ? "Running…" : displayText ? "Refresh" : "Generate"}
         </button>
       </div>
+      {loadingInitial ? (
+        <p className="tenant-skeleton" style={{ marginTop: "0.65rem", marginBottom: 0 }}>
+          Loading AI state…
+        </p>
+      ) : null}
       {state?.last_completed_at ? (
         <p className="muted" style={{ fontSize: "0.78rem", marginTop: "0.5rem" }}>
           Last completed: {new Date(state.last_completed_at).toLocaleString()}

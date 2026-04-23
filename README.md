@@ -62,6 +62,8 @@ Standing rules for Docker, versioning, env vars, validation, docs, GitHub workfl
 
 The backend image runs **`alembic upgrade head` on container start**, so new migrations (e.g. session metadata columns) apply automatically after `docker compose up --build`. You can still run `docker compose exec backend alembic upgrade head` manually if needed.
 
+**Migrations without relying on container startup:** from the repo root, with Compose up, run `docker compose exec backend alembic upgrade head`. For a **local** backend venv, `cd backend`, set `DATABASE_URL` to your Postgres DSN (for the default Compose DB: `postgresql+psycopg://mspintel:mspintel@127.0.0.1:5432/mspintel`), then `python -m alembic upgrade head`.
+
 **Browser → API in Compose:** the frontend dev server proxies `/api/*` to the `backend` service (`API_PROXY_TARGET`), and Compose sets `VITE_API_BASE_URL` to empty so the SPA calls **same-origin** `http://localhost:5173/api/...` (no cross-origin/CORS from the browser to `:8001`). The frontend container uses **`WORKDIR /src`** and bind-mounts **`./frontend:/src`** so the tenant route **`/app`** never collides with the filesystem path `/app` (which previously caused Vite **500** / `EISDIR` on `GET /app`).
 
 ## Local URLs
@@ -79,7 +81,7 @@ The backend image runs **`alembic upgrade head` on container start**, so new mig
 | Tenant AI settings | [http://localhost:5173/app/ai-settings](http://localhost:5173/app/ai-settings) |
 | Tenant prompts | [http://localhost:5173/app/prompts](http://localhost:5173/app/prompts) |
 | Tenant customers | [http://localhost:5173/app/customers](http://localhost:5173/app/customers) |
-| Customer 360 | From [customers](http://localhost:5173/app/customers), open any account row (seed: Northwind Health, Contoso Logistics, Fabrikam Retail) |
+| Customer 360 | From [customers](http://localhost:5173/app/customers), open any account row (seed: Northwind Health, Contoso Logistics, Fabrikam Retail). Example deep link: `http://localhost:5173/app/customers/<customer-uuid>?ai=risk` (highlights risk AI on the 360 overview). |
 | **Platform console login** | [http://localhost:5173/platform/login](http://localhost:5173/platform/login) |
 | **Platform console** | [http://localhost:5173/platform](http://localhost:5173/platform) |
 | **Platform AI provider catalog** | [http://localhost:5173/platform/ai-providers](http://localhost:5173/platform/ai-providers) |
