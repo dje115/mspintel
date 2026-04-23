@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from uuid import UUID
 
-from app.api.deps.access import AccessContext, get_access_context, require_permission
+from app.api.deps.access import AccessContext, require_permission
 from app.api.deps.db import get_db
 from app.schemas.customer import CustomerDetailResponse, CustomerListResponse
 from app.services.customer import CustomerService

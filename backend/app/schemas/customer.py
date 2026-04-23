@@ -1,6 +1,8 @@
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+from app.schemas.workspace import OpportunityRow, QuoteRow, RecommendationRow
 
 
 class CustomerListItem(BaseModel):
@@ -32,3 +34,6 @@ class CustomerDetailResponse(BaseModel):
     open_quotes_count: int
     recommendation_summary: list[str]
     recent_actions: list[str]
+    recommendations: list[RecommendationRow] = Field(default_factory=list)
+    opportunities: list[OpportunityRow] = Field(default_factory=list)
+    quotes: list[QuoteRow] = Field(default_factory=list)

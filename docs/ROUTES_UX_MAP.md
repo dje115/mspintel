@@ -31,9 +31,14 @@ All require tenant JWT and tenant context (`X-Tenant-Id` from session).
 
 | Path | Page | Notes |
 |------|------|-------|
-| `/app` | `DashboardPage` | Default post-login landing; executive KPIs + priority lists. |
+| `/app` | `DashboardPage` | Default post-login landing; executive KPIs (click-through) + priority lists + workspace links. |
+| `/app/recommendations` | `RecommendationsPage` | Cross-account recommendation queue. |
+| `/app/opportunities` | `OpportunitiesPage` | Commercial hub; optional `?tab=opportunities`, `pipeline`, or `lost`. |
+| `/app/at-risk` | `AtRiskAccountsPage` | At-risk account operating list. |
+| `/app/attention` | `NeedsAttentionAccountsPage` | Needs-attention (watch) operating list. |
+| `/app/service-risk` | `ServiceRiskPage` | Backup + service delivery risk overview. |
 | `/app/customers` | `CustomersPage` | Account directory. |
-| `/app/customers/:id` | `CustomerDetailPage` | Customer 360. |
+| `/app/customers/:id` | `CustomerDetailPage` | Customer 360; `#workspace` opens the recommendations tab. |
 | `/app/onboarding` | `OnboardingPage` | Workspace checklist. |
 | `/app/integrations` | `IntegrationsPage` | Connections list. |
 | `/app/members` | `MembersPage` | Team + invitations. |
@@ -75,6 +80,10 @@ All require tenant JWT and tenant context (`X-Tenant-Id` from session).
 
 ---
 
-## Deep links (future / marketing)
+## Deep links
 
-Wireframes in [TENANT_PRODUCT_WIREFRAMES.md](TENANT_PRODUCT_WIREFRAMES.md) describe additional tenant areas (recommendations queue, service risk). When implemented, extend this table and `App.tsx` in the same **AppLayout** family.
+- `/app/recommendations?customer_id=<uuid>` — queue filtered to one account.
+- `/app/opportunities?tab=lost` — lost-quote revisit list.
+- `/app/customers/<uuid>#workspace` — customer 360 with recommendations tab.
+
+See [TENANT_PRODUCT_WIREFRAMES.md](TENANT_PRODUCT_WIREFRAMES.md) for IA detail; routes are registered in `App.tsx` under **AppLayout**.

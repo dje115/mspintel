@@ -16,7 +16,7 @@ Audience: **MSP owner / service manager** — needs signal, prioritisation, and 
 
 | Region | Content |
 |--------|---------|
-| **Left sidebar** | Brand, grouped nav (Overview → Intelligence → Workspace → Administration), optional “Help” footer link (future). |
+| **Left sidebar** | Brand, grouped nav (Overview → Operations → Accounts → Workspace → Administration), optional “Help” footer link (future). |
 | **Top bar** | Breadcrumb or page title, tenant selector (pill), notifications placeholder (future), user menu (logout / logout all). |
 | **Main canvas** | Page content with consistent max-width (~1280px), card rhythm, section headings. |
 
@@ -32,9 +32,9 @@ Audience: **MSP owner / service manager** — needs signal, prioritisation, and 
 
 **Above the fold (MSP owner/manager):**
 
-1. **Executive KPI row** — total accounts, high-risk count, open recommendations, lost quotes to revisit (wired to `GET /api/v1/dashboards/executive` today).
-2. **Two priority columns** — “At-risk accounts” and “Needs attention” (short lists from customer API with `status` filters + deep links).
-3. **Single row placeholder** — “Backup & service risk” summary card (placeholder until integration-backed metrics exist).
+1. **Executive KPI row** — total accounts, high-risk count, open recommendations, lost quotes to revisit (`GET /api/v1/dashboards/executive`). **Each KPI is a link** into the relevant workspace (`/app/customers`, `/app/at-risk`, `/app/recommendations`, `/app/opportunities?tab=lost`).
+2. **Two priority columns** — “At-risk accounts” and “Needs attention” (short lists from customer API with `status` filters + **Open workspace** → `/app/at-risk` and `/app/attention`).
+3. **Backup & service risk row** — summary copy + **Open overview** → `/app/service-risk` (`GET /api/v1/workspace/service-risk`).
 
 **Key widgets/cards:**
 
@@ -43,7 +43,7 @@ Audience: **MSP owner / service manager** — needs signal, prioritisation, and 
 - List card: Attention / watch list.
 - Placeholder card: Backup & service risk — “Connect backup/RMM sources to populate” (empty state).
 
-**Primary actions:** “View all customers”, open a specific account, “Complete onboarding” if step incomplete (link to `/app/onboarding`).
+**Primary actions:** Click-through KPIs, **Open workspace** on each panel, row links to customer 360, onboarding link when incomplete (`/app/onboarding`).
 
 **Tables/lists:** Short lists (max ~8 rows each); not full data grids.
 
@@ -81,63 +81,66 @@ Audience: **MSP owner / service manager** — needs signal, prioritisation, and 
 
 1. **Score overview** — three metric cards with short interpretation text.
 2. **Operational snapshot** — open tickets, opportunities, quotes (existing counts).
-3. **Recommendations** — card list (not plain `<ul>`); each item actionable placeholder.
-4. **Recent activity** — timeline-style list (compact).
-5. **Future tabs (documented only):** Support trends | Opportunities & quotes | Backup/RMM risk — can ship as single scroll page first.
+3. **Segmented areas** — **Overview** (scores + operational snapshot counts), **Recommendations** (typed rows + link to tenant queue), **Pipeline** (opportunities + quotes tables), **Activity** (recent actions).
+4. Deep link **`#workspace`** selects the Recommendations tab for drill-through from queues.
 
-**Primary actions:** Back to customers, future: “Add note”, “Create opportunity”.
+**Primary actions:** Back to customers, open full recommendation queue filtered to account, open commercial hub.
 
-**Later:** Tabbed layout, embedded charts, document vault.
-
----
-
-## 4. Recommendations / Next best actions (future route: e.g. `/app/recommendations`)
-
-**Purpose:** Cross-account queue of open executive recommendations.
-
-**Above the fold:** Count of open items, sorted queue, filters by severity/owner.
-
-**Key widgets:** Filter bar, table of recommendation rows (account, summary, age, status).
-
-**Primary actions:** Open account, mark done (when API exists).
-
-**Today:** Surfaced on **Dashboard** and **Customer 360**; full queue page deferred.
+**Later:** Embedded charts, notes, support trends tab.
 
 ---
 
-## 5. Opportunities / Lost quotes (future: `/app/opportunities`)
+## 4. Recommendations queue (`/app/recommendations`)
 
-**Purpose:** Pipeline and lost-quote reactivation.
+**Purpose:** Cross-account operational queue — what the MSP should do next.
 
-**Above the fold:** Pipeline KPIs, list of lost quotes with “revisit” flag.
+**API:** `GET /api/v1/workspace/recommendations` (filters: `status`, `scope`, `customer_id`, `owner`, pagination). `PATCH /api/v1/workspace/recommendations/{id}` with `{ "status" }` for **tenant_admin** (`membership:write`).
 
-**Today:** `lost_quotes_revisit_count` on dashboard; detail placeholders on account page later.
+**Above the fold:** Filter toolbar + first rows of the table (account, category, priority, summary, next action, owner, status, age).
 
----
-
-## 6. At-risk customers (view mode on `/app/customers?status=at_risk` or future `/app/at-risk`)
-
-**Purpose:** Fast slice of worst health accounts.
-
-**Above the fold:** Pre-filtered list, explainer strip (“Accounts scoring above risk threshold”).
-
-**Today:** Filter on customers list + dashboard column.
+**Primary actions:** Open customer 360, accept / reject / complete (admins), link to full queue from account pages.
 
 ---
 
-## 7. Attention-needed customers (same pattern, `status=watch`)
+## 5. Opportunities & quotes hub (`/app/opportunities`)
 
-**Purpose:** Accounts needing follow-up without full “at risk” severity.
+**Purpose:** Commercial follow-up — pipeline, active quotes, and lost-quote revisits.
 
-**Today:** Dashboard column + customer filter.
+**API:** `GET /api/v1/workspace/commercial` returns `opportunities`, `lost_quotes`, `open_quotes`.
+
+**Above the fold:** Segmented control (New opportunities | Open & draft quotes | Lost — revisit) + table per segment.
+
+**Primary actions:** Drill to account / 360, align with dashboard lost-quote KPI (`?tab=lost`).
 
 ---
 
-## 8. Backup / service risk (future: `/app/service-risk` or tab on dashboard)
+## 6. At-risk accounts (`/app/at-risk`)
 
-**Purpose:** RMM/backup integration signals, SLA breach risk.
+**Purpose:** Working list of `status=at_risk` customers with risk score, owner, and next-best-action text.
 
-**Today:** Dashboard placeholder card + copy in wireframe; no new backend.
+**API:** `GET /api/v1/customers?status=at_risk` (existing customers list).
+
+**Primary actions:** Open customer 360, use dashboard KPI + panel links.
+
+---
+
+## 7. Needs-attention accounts (`/app/attention`)
+
+**Purpose:** Watch-list accounts (`status=watch`) needing proactive attention.
+
+**API:** `GET /api/v1/customers?status=watch`.
+
+**Primary actions:** Same as at-risk hub; dashboard “Needs attention” panel links here.
+
+---
+
+## 8. Backup & service risk (`/app/service-risk`)
+
+**Purpose:** Product area for backup coverage/jobs and service-delivery pressure.
+
+**API:** `GET /api/v1/workspace/service-risk` — backup section is a **placeholder** with copy; delivery section includes live **open ticket** and **at-risk account** counts.
+
+**Primary actions:** Links onward to at-risk / needs-attention workspaces; grows as integrations connect.
 
 ---
 
@@ -190,6 +193,11 @@ Audience: **MSP owner / service manager** — needs signal, prioritisation, and 
 | Area | Route (current) | Status |
 |------|-----------------|--------|
 | Dashboard | `/app` | **Implemented** |
+| Recommendations | `/app/recommendations` | **Implemented** |
+| Opportunities & quotes | `/app/opportunities` | **Implemented** |
+| At-risk workspace | `/app/at-risk` | **Implemented** |
+| Needs attention | `/app/attention` | **Implemented** |
+| Service risk | `/app/service-risk` | **Implemented** (backup placeholder + live delivery counts) |
 | Customers | `/app/customers` | **Implemented** |
 | Customer 360 | `/app/customers/:id` | **Implemented** |
 | Members | `/app/members` | **Implemented** |
@@ -197,10 +205,6 @@ Audience: **MSP owner / service manager** — needs signal, prioritisation, and 
 | Integrations | `/app/integrations` | **Implemented** |
 | Onboarding | `/app/onboarding` | **Implemented** |
 | System status | `/app/system-status` | **Implemented** |
-| Recommendations queue | — | Planned |
-| Opportunities / lost quotes | — | Planned (partial metrics on dashboard) |
-| At-risk / attention hubs | — | Use list filters + dashboard |
-| Backup / service risk | — | Planned |
 
 ---
 

@@ -1,4 +1,5 @@
 import type {
+  CommercialHubResponse,
   CustomerDetailResponse,
   CustomerListResponse,
   ExecutiveDashboardResponse,
@@ -10,6 +11,9 @@ import type {
   RecoveryCodesGenerateResponse,
   PlatformOverview,
   PlatformTenantList,
+  RecommendationListResponse,
+  RecommendationRow,
+  ServiceRiskResponse,
   SourceConnection,
   SubscriptionResponse,
   SystemStatus,
@@ -211,6 +215,43 @@ export const api = {
     }),
   executiveDashboard: (accessToken: string, tenantId: string) =>
     request<ExecutiveDashboardResponse>("/api/v1/dashboards/executive", {
+      headers: authHeaders(accessToken, tenantId)
+    }),
+  workspaceRecommendations: (
+    accessToken: string,
+    tenantId: string,
+    query: {
+      page: number;
+      page_size: number;
+      status?: string;
+      scope?: string;
+      customer_id?: string;
+      owner?: string;
+    }
+  ) => {
+    const qs = new URLSearchParams();
+    qs.set("page", String(query.page));
+    qs.set("page_size", String(query.page_size));
+    if (query.status) qs.set("status", query.status);
+    if (query.scope) qs.set("scope", query.scope);
+    if (query.customer_id) qs.set("customer_id", query.customer_id);
+    if (query.owner) qs.set("owner", query.owner);
+    return request<RecommendationListResponse>(`/api/v1/workspace/recommendations?${qs.toString()}`, {
+      headers: authHeaders(accessToken, tenantId)
+    });
+  },
+  patchRecommendation: (accessToken: string, tenantId: string, id: string, status: string) =>
+    request<RecommendationRow>(`/api/v1/workspace/recommendations/${id}`, {
+      method: "PATCH",
+      headers: authHeaders(accessToken, tenantId),
+      body: JSON.stringify({ status })
+    }),
+  workspaceCommercial: (accessToken: string, tenantId: string) =>
+    request<CommercialHubResponse>("/api/v1/workspace/commercial", {
+      headers: authHeaders(accessToken, tenantId)
+    }),
+  workspaceServiceRisk: (accessToken: string, tenantId: string) =>
+    request<ServiceRiskResponse>("/api/v1/workspace/service-risk", {
       headers: authHeaders(accessToken, tenantId)
     }),
   systemStatus: (accessToken: string, tenantId: string) =>

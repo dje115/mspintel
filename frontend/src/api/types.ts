@@ -96,6 +96,69 @@ export type CustomerListResponse = {
   total: number;
 };
 
+export type RecommendationRow = {
+  id: string;
+  customer_id: string | null;
+  customer_name: string | null;
+  owner_name: string | null;
+  scope: string;
+  status: string;
+  summary: string;
+  category: string;
+  priority: string;
+  suggested_next_action: string;
+  created_at: string | null;
+};
+
+export type RecommendationListResponse = {
+  items: RecommendationRow[];
+  page: number;
+  page_size: number;
+  total: number;
+};
+
+export type OpportunityRow = {
+  id: string;
+  customer_id: string;
+  customer_name: string | null;
+  title: string;
+  status: string;
+  value_cents: number | null;
+  revisit_reason: string | null;
+  suggested_next_action: string;
+  created_at: string | null;
+};
+
+export type QuoteRow = {
+  id: string;
+  customer_id: string;
+  customer_name: string | null;
+  title: string;
+  status: string;
+  value_cents: number | null;
+  revisit_reason: string | null;
+  suggested_next_action: string;
+  created_at: string | null;
+};
+
+export type CommercialHubResponse = {
+  opportunities: OpportunityRow[];
+  lost_quotes: QuoteRow[];
+  open_quotes: QuoteRow[];
+};
+
+export type ServiceRiskSection = {
+  title: string;
+  summary: string;
+  metrics: Record<string, number | string>;
+  placeholder: boolean;
+};
+
+export type ServiceRiskResponse = {
+  backup: ServiceRiskSection;
+  service_delivery: ServiceRiskSection;
+};
+
 export type CustomerDetailResponse = {
   id: string;
   name: string;
@@ -107,6 +170,9 @@ export type CustomerDetailResponse = {
   open_quotes_count: number;
   recommendation_summary: string[];
   recent_actions: string[];
+  recommendations: RecommendationRow[];
+  opportunities: OpportunityRow[];
+  quotes: QuoteRow[];
 };
 
 export type SystemStatus = {

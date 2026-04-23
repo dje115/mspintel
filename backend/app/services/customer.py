@@ -5,11 +5,13 @@ from sqlalchemy.orm import Session
 
 from app.repositories.customers import CustomerRepository
 from app.schemas.customer import CustomerDetailResponse, CustomerListItem, CustomerListResponse
+from app.services.workspace import WorkspaceService
 
 
 class CustomerService:
     def __init__(self, db: Session):
         self.repo = CustomerRepository(db)
+        self.workspace = WorkspaceService(db)
 
     def list_customers(self, tenant_id: UUID, search: str | None, status_filter: str | None, page: int, page_size: int):
         customers, total = self.repo.list_customers(tenant_id, search, status_filter, page, page_size)
@@ -41,6 +43,7 @@ class CustomerService:
         tickets, opps, quotes = self.repo.open_counts(tenant_id, customer_id)
         recs = self.repo.recommendation_summary(tenant_id, customer_id)
         actions = self.repo.recent_actions(tenant_id, customer_id)
+        rec_rows, opp_rows, quote_rows = self.workspace.customer_workspace_slices(tenant_id, customer_id)
 
         return CustomerDetailResponse(
             id=customer.id,
@@ -59,4 +62,7 @@ class CustomerService:
             open_quotes_count=quotes,
             recommendation_summary=recs,
             recent_actions=actions,
+            recommendations=rec_rows,
+            opportunities=opp_rows,
+            quotes=quote_rows,
         )

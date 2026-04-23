@@ -44,7 +44,7 @@
 
 ## Versioning
 
-- Current app release: **1.7** (see `MSPINTEL_APP_VERSION` / `VITE_APP_VERSION` in `.env.example` and `compose.yaml`).
+- Current app release: **1.8** (see `MSPINTEL_APP_VERSION` / `VITE_APP_VERSION` in `.env.example` and `compose.yaml`).
 - Keep **`MSPINTEL_APP_VERSION`** and **`VITE_APP_VERSION`** aligned for each release.
 
 ## Tenant product UX (local)

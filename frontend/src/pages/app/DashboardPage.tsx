@@ -50,40 +50,40 @@ export function DashboardPage() {
       <header className="tenant-page-head">
         <h1 className="tenant-page-title">Dashboard</h1>
         <p className="tenant-page-sub">
-          Prioritised view of account health, recommendations, and revenue follow-ups for your MSP. Deeper queues
-          for opportunities and service risk will appear here as integrations mature.
+          Front door to your operating queues: jump into recommendations, commercial follow-ups, account risk, and
+          service delivery signals. Each tile below is clickable.
         </p>
       </header>
 
       <section className="tenant-kpi-row" aria-label="Executive summary">
-        <article className="tenant-kpi">
+        <Link className="tenant-kpi tenant-kpi--link" to="/app/customers">
           <p className="tenant-kpi-label">Accounts</p>
           <p className="tenant-kpi-value">{exec.customers}</p>
-          <p className="tenant-kpi-hint">Managed customers</p>
-        </article>
-        <article className="tenant-kpi">
+          <p className="tenant-kpi-hint">Open directory →</p>
+        </Link>
+        <Link className="tenant-kpi tenant-kpi--link" to="/app/at-risk">
           <p className="tenant-kpi-label">High risk</p>
           <p className="tenant-kpi-value">{exec.high_risk_customers}</p>
-          <p className="tenant-kpi-hint">Needs leadership attention</p>
-        </article>
-        <article className="tenant-kpi">
+          <p className="tenant-kpi-hint">At-risk workspace →</p>
+        </Link>
+        <Link className="tenant-kpi tenant-kpi--link" to="/app/recommendations">
           <p className="tenant-kpi-label">Open recommendations</p>
           <p className="tenant-kpi-value">{exec.open_recommendations}</p>
-          <p className="tenant-kpi-hint">Executive scope</p>
-        </article>
-        <article className="tenant-kpi">
+          <p className="tenant-kpi-hint">Action queue →</p>
+        </Link>
+        <Link className="tenant-kpi tenant-kpi--link" to="/app/opportunities?tab=lost">
           <p className="tenant-kpi-label">Lost quotes</p>
           <p className="tenant-kpi-value">{exec.lost_quotes_revisit_count}</p>
-          <p className="tenant-kpi-hint">Worth revisiting</p>
-        </article>
+          <p className="tenant-kpi-hint">Commercial hub →</p>
+        </Link>
       </section>
 
       <div className="tenant-two-col">
         <section className="tenant-panel">
           <div className="tenant-panel-head">
             <h2 className="tenant-panel-title">At-risk accounts</h2>
-            <Link className="tenant-panel-link" to="/app/customers?status=at_risk">
-              View all
+            <Link className="tenant-panel-link" to="/app/at-risk">
+              Open workspace →
             </Link>
           </div>
           <div className="tenant-panel-body">
@@ -124,8 +124,8 @@ export function DashboardPage() {
         <section className="tenant-panel">
           <div className="tenant-panel-head">
             <h2 className="tenant-panel-title">Needs attention</h2>
-            <Link className="tenant-panel-link" to="/app/customers?status=watch">
-              View all
+            <Link className="tenant-panel-link" to="/app/attention">
+              Open workspace →
             </Link>
           </div>
           <div className="tenant-panel-body">
@@ -167,13 +167,16 @@ export function DashboardPage() {
       <section className="tenant-panel">
         <div className="tenant-panel-head">
           <h2 className="tenant-panel-title">Backup &amp; service risk</h2>
+          <Link className="tenant-panel-link" to="/app/service-risk">
+            Open overview →
+          </Link>
         </div>
         <div className="tenant-panel-body">
-          <div className="tenant-empty">
-            <p className="tenant-empty-title">Connect backup &amp; RMM signals</p>
+          <div className="tenant-empty" style={{ textAlign: "left", maxWidth: "40rem", margin: "0 auto" }}>
+            <p className="tenant-empty-title">Structured risk workspace</p>
             <p>
-              This panel will summarise backup coverage gaps, failed jobs, and SLA risk per account. See the
-              product wireframes in the repository (<code style={{ fontSize: "0.85rem" }}>docs/TENANT_PRODUCT_WIREFRAMES.md</code>).
+              Open the service risk area for backup placeholders and live delivery metrics (tickets, at-risk context).
+              Integrations will deepen this panel over time.
             </p>
           </div>
         </div>

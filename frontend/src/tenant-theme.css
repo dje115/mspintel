@@ -796,3 +796,207 @@
     padding-top: 0.5rem;
   }
 }
+
+/* Clickable dashboard KPIs */
+a.tenant-kpi--link {
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s,
+    transform 0.12s;
+}
+
+a.tenant-kpi--link:hover {
+  border-color: rgba(20, 184, 166, 0.55);
+  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.08);
+  transform: translateY(-1px);
+}
+
+a.tenant-kpi--link:focus-visible {
+  outline: 2px solid #14b8a6;
+  outline-offset: 2px;
+}
+
+a.tenant-kpi--link .tenant-kpi-hint {
+  color: #0d9488;
+  font-weight: 600;
+}
+
+/* Segmented control (commercial hub, customer tabs) */
+.tenant-segmented {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.1rem;
+}
+
+.tenant-segmented--detail {
+  margin-top: 0.25rem;
+}
+
+.tenant-segment {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.95rem;
+  border-radius: 999px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: #64748b;
+  cursor: pointer;
+  font-family: inherit;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+}
+
+.tenant-segment:hover {
+  border-color: #cbd5e1;
+  color: #334155;
+}
+
+.tenant-segment.is-active {
+  background: #f0fdfa;
+  border-color: #5eead4;
+  color: #0f766e;
+}
+
+.tenant-segment-count {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.tenant-segment.is-active .tenant-segment-count {
+  background: #ccfbf1;
+  color: #0f766e;
+}
+
+/* Inline table actions */
+.tenant-btn-inline {
+  display: inline-block;
+  padding: 0.28rem 0.55rem;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #0f766e;
+  text-decoration: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+button.tenant-btn-inline {
+  color: #0f766e;
+}
+
+.tenant-btn-inline:hover {
+  border-color: #14b8a6;
+  background: #f0fdfa;
+}
+
+.tenant-btn-inline--ghost {
+  color: #64748b;
+}
+
+.tenant-btn-inline--ghost:hover {
+  color: #334155;
+}
+
+/* Definition list for service risk metrics */
+.tenant-metric-dl {
+  margin: 0;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.tenant-metric-dl-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 0.88rem;
+}
+
+.tenant-metric-dl dt {
+  margin: 0;
+  color: #64748b;
+  text-transform: capitalize;
+}
+
+.tenant-metric-dl dd {
+  margin: 0;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+/* Customer 360 queue cards */
+.tenant-queue-cards {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.tenant-queue-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+  background: #fafbfc;
+}
+
+.tenant-queue-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.45rem;
+}
+
+.tenant-queue-card-title {
+  margin: 0;
+  font-weight: 600;
+  color: #0f172a;
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.tenant-queue-card-meta {
+  margin: 0.25rem 0 0;
+}
+
+.tenant-queue-card-actions {
+  margin-top: 0.65rem;
+}
+
+.tenant-op-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  padding: 1rem 1.1rem;
+}
+
+@media (max-width: 900px) {
+  .tenant-op-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.tenant-kpi-value--inline {
+  font-size: 1.35rem;
+}
+
+.tenant-stack-panels {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.tenant-panel--accent {
+  border-color: rgba(20, 184, 166, 0.25);
+  box-shadow: 0 4px 18px rgba(20, 184, 166, 0.06);
+}

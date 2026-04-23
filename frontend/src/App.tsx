@@ -7,12 +7,16 @@ import { AppLayout } from "./layout/AppLayout";
 import { PlatformLayout } from "./layout/PlatformLayout";
 import { PublicLayout } from "./layout/PublicLayout";
 import { SystemStatusPage } from "./pages/admin/SystemStatusPage";
+import { AtRiskAccountsPage, NeedsAttentionAccountsPage } from "./pages/app/AccountQueuePages";
 import { CustomerDetailPage } from "./pages/app/CustomerDetailPage";
 import { CustomersPage } from "./pages/app/CustomersPage";
 import { DashboardPage } from "./pages/app/DashboardPage";
 import { IntegrationsPage } from "./pages/app/IntegrationsPage";
 import { MembersPage } from "./pages/app/MembersPage";
+import { OpportunitiesPage } from "./pages/app/OpportunitiesPage";
+import { RecommendationsPage } from "./pages/app/RecommendationsPage";
 import { SecurityPage } from "./pages/app/SecurityPage";
+import { ServiceRiskPage } from "./pages/app/ServiceRiskPage";
 import { OnboardingPage } from "./pages/app/OnboardingPage";
 import { AcceptInvitationPage } from "./pages/auth/AcceptInvitationPage";
 import { LoginPage } from "./pages/auth/LoginPage";
@@ -45,6 +49,11 @@ function App() {
 
       <Route element={<TenantProtectedRoute />}>
         <Route path="/app" element={<AppLayout />}>
+          <Route path="recommendations" element={<RecommendationsPage />} />
+          <Route path="opportunities" element={<OpportunitiesPage />} />
+          <Route path="at-risk" element={<AtRiskAccountsPage />} />
+          <Route path="attention" element={<NeedsAttentionAccountsPage />} />
+          <Route path="service-risk" element={<ServiceRiskPage />} />
           <Route path="customers" element={<CustomersPage />} />
           <Route path="customers/:id" element={<CustomerDetailPage />} />
           <Route path="onboarding" element={<OnboardingPage />} />

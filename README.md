@@ -1,6 +1,6 @@
 # mspintel
 
-mspintel is a secure, AI-assisted MSP intelligence platform for MSPs. Release **`v1.7`** adds **platform-admin MFA recovery codes** (hashed at rest, one-time use, regeneration invalidates unused batches), **Redis-backed rate limiting** on platform password and MFA steps ([docs/PLATFORM_AUTH_HARDENING.md](docs/PLATFORM_AUTH_HARDENING.md)), and bumps deploy/UI defaults to **1.7**. **`v1.6`** hardened **platform-operator TOTP MFA** (validated **`MFA_TOTP_ENCRYPTION_KEY`**, non-sensitive MFA audit metadata, shared OTPAuth URI parsing in the SPA, **`get_totp_secret_crypto`** naming). **`v1.5`** introduced **`user_mfa_methods`** with Fernet-wrapped secrets, the two-step **`/platform/login`** flow (challenge JWT, then `POST /auth/platform/login/mfa`), optional **`PLATFORM_MFA_REQUIRED`**, QR enrolment on **`/platform/security`**, and platform-scoped MFA audits (see [docs/PLATFORM_MFA.md](docs/PLATFORM_MFA.md)). **`v1.4`** hardened **platform-operator** access: separate **tenant vs platform JWT/session TTLs**, `user_sessions.auth_mode`, scoped session list/revoke/logout-all, nullable **`audit_events.tenant_id`** for first-class platform audit rows, `/platform/security`, and a documented extension point for future MFA on platform login. **`v1.3`** introduced the separate platform console (`/platform/login`, JWT `am`, platform APIs). **`v1.2`** added tenant lifecycle controls on top of the v1.1 baseline (invitations, refresh rotation, audit, Mailpit).
+mspintel is a secure, AI-assisted MSP intelligence platform for MSPs. Release **`v1.8`** ships the **tenant operational workspace** (recommendations queue, commercial hub, at-risk / needs-attention views, service-risk overview, dashboard drill-through, richer customer 360) backed by **`/api/v1/workspace/*`** APIs, and bumps deploy/UI defaults to **1.8**. **`v1.7`** added **platform-admin MFA recovery codes** (hashed at rest, one-time use, regeneration invalidates unused batches), **Redis-backed rate limiting** on platform password and MFA steps ([docs/PLATFORM_AUTH_HARDENING.md](docs/PLATFORM_AUTH_HARDENING.md)), and bumps deploy/UI defaults to **1.7**. **`v1.6`** hardened **platform-operator TOTP MFA** (validated **`MFA_TOTP_ENCRYPTION_KEY`**, non-sensitive MFA audit metadata, shared OTPAuth URI parsing in the SPA, **`get_totp_secret_crypto`** naming). **`v1.5`** introduced **`user_mfa_methods`** with Fernet-wrapped secrets, the two-step **`/platform/login`** flow (challenge JWT, then `POST /auth/platform/login/mfa`), optional **`PLATFORM_MFA_REQUIRED`**, QR enrolment on **`/platform/security`**, and platform-scoped MFA audits (see [docs/PLATFORM_MFA.md](docs/PLATFORM_MFA.md)). **`v1.4`** hardened **platform-operator** access: separate **tenant vs platform JWT/session TTLs**, `user_sessions.auth_mode`, scoped session list/revoke/logout-all, nullable **`audit_events.tenant_id`** for first-class platform audit rows, `/platform/security`, and a documented extension point for future MFA on platform login. **`v1.3`** introduced the separate platform console (`/platform/login`, JWT `am`, platform APIs). **`v1.2`** added tenant lifecycle controls on top of the v1.1 baseline (invitations, refresh rotation, audit, Mailpit).
 
 ## Implementation guidance (Cursor / contributors)
 
@@ -19,7 +19,7 @@ Standing rules for Docker, versioning, env vars, validation, docs, GitHub workfl
 
 ## Versioning
 
-- Current app version: **`1.7`**
+- Current app version: **`1.8`**
 - Central runtime version variable: `MSPINTEL_APP_VERSION` (root `.env` and Compose → backend `MSPINTEL_APP_VERSION`)
 - Frontend display: `VITE_APP_VERSION` in `.env`, overridden in Compose from `MSPINTEL_APP_VERSION` as `VITE_APP_VERSION` for the dev container
 
@@ -50,6 +50,7 @@ Standing rules for Docker, versioning, env vars, validation, docs, GitHub workfl
 - **v1.5:** Platform **TOTP MFA** for operator accounts only; tenant `/auth/login` unchanged. Encrypted TOTP secrets, step tokens for login/enrolment, policy flag `PLATFORM_MFA_REQUIRED`. See [docs/PLATFORM_MFA.md](docs/PLATFORM_MFA.md).
 - **v1.6:** MFA **hardening** (Fernet key validation at settings load, failed-challenge audit `reason` codes, migration/docs clarity) and version **1.6** across Compose defaults and UI version tags (`VITE_APP_VERSION` / `MSPINTEL_APP_VERSION`).
 - **v1.7:** Platform **recovery codes** for MFA (pepper + HMAC storage, `/platform/security` UX), **`POST /platform/mfa/recovery-codes/generate`**, MFA step accepts **`recovery_code`** or **`totp_code`**, **Redis rate limits** on platform login/MFA with **429** + `platform.login.rate_limited` audit, operational docs in [docs/PLATFORM_AUTH_HARDENING.md](docs/PLATFORM_AUTH_HARDENING.md). Tenant `/auth/login` unchanged.
+- **v1.8:** Tenant **`/api/v1/workspace`** routes (recommendations list + admin patch, commercial hub, service-risk snapshot); customer detail includes typed **recommendations / opportunities / quotes**; SPA operational pages under `/app/recommendations`, `/app/opportunities`, `/app/at-risk`, `/app/attention`, `/app/service-risk`; dashboard KPIs link into these workspaces.
 
 ## Local Run (Docker-first)
 
@@ -68,7 +69,13 @@ The backend image runs **`alembic upgrade head` on container start**, so new mig
 | Tenant login | [http://localhost:5173/login](http://localhost:5173/login) |
 | Tenant signup | [http://localhost:5173/signup](http://localhost:5173/signup) |
 | Tenant dashboard (after login) | [http://localhost:5173/app](http://localhost:5173/app) |
+| Recommendations queue | [http://localhost:5173/app/recommendations](http://localhost:5173/app/recommendations) |
+| Opportunities & quotes | [http://localhost:5173/app/opportunities](http://localhost:5173/app/opportunities) |
+| At-risk accounts | [http://localhost:5173/app/at-risk](http://localhost:5173/app/at-risk) |
+| Needs attention | [http://localhost:5173/app/attention](http://localhost:5173/app/attention) |
+| Service risk | [http://localhost:5173/app/service-risk](http://localhost:5173/app/service-risk) |
 | Tenant customers | [http://localhost:5173/app/customers](http://localhost:5173/app/customers) |
+| Customer 360 | From [customers](http://localhost:5173/app/customers), open any account row (seed: Northwind Health, Contoso Logistics, Fabrikam Retail) |
 | **Platform console login** | [http://localhost:5173/platform/login](http://localhost:5173/platform/login) |
 | **Platform console** | [http://localhost:5173/platform](http://localhost:5173/platform) |
 | **Platform security / sessions** | [http://localhost:5173/platform/security](http://localhost:5173/platform/security) |
@@ -107,6 +114,11 @@ The backend image runs **`alembic upgrade head` on container start**, so new mig
   - `POST /api/v1/tenants/current/invitations`
   - `POST /api/v1/tenants/current/invitations/{invitation_id}/revoke`
   - `POST /api/v1/invitations/accept`
+- Tenant workspace (Bearer **tenant** JWT + `X-Tenant-Id`; `customer:read` unless noted):
+  - `GET /api/v1/workspace/recommendations` — query: `page`, `page_size`, optional `status`, `scope`, `customer_id`, `owner`
+  - `PATCH /api/v1/workspace/recommendations/{recommendation_id}` — body `{"status":"open"|"accepted"|"rejected"|"completed"}`; requires **`membership:write`** (typically `tenant_admin`)
+  - `GET /api/v1/workspace/commercial` — opportunities + lost + open/draft quotes for the commercial hub
+  - `GET /api/v1/workspace/service-risk` — backup placeholder section + live delivery metrics (e.g. open tickets, at-risk count)
 
 ## Tenant membership updates
 
@@ -167,6 +179,7 @@ Tenant and platform accounts use **separate** login URLs (tenant JWT cannot call
 - `tests/test_invitations.py` — extended edge cases (expired, revoked, duplicate accept, invalid token).
 - `tests/test_sessions_list_revoke.py`, `tests/test_auth_sessions.py` — session list, revoke, logout-all keep-current.
 - `tests/test_dashboard_tenant_scope.py`, `tests/test_repository_memberships.py` — tenant scoping and admin counting.
+- `tests/test_workspace_api.py` — workspace list tenant scope, commercial + service-risk reads, recommendation PATCH permission model.
 
 ## App routes (frontend)
 
@@ -175,10 +188,15 @@ Tenant and platform accounts use **separate** login URLs (tenant JWT cannot call
 | `/login` | Tenant MSP sign-in (distinct visual system from platform login) |
 | `/signup` | New tenant + owner signup |
 | `/accept-invitation` | Accept invite (query `?token=`) |
-| `/app` | **Dashboard** — executive KPIs + priority account lists (`GET /api/v1/dashboards/executive` + customer slices) |
+| `/app` | **Dashboard** — executive KPIs (linked) + priority lists + panel CTAs to operational workspaces |
+| `/app/recommendations` | Recommendations queue |
+| `/app/opportunities` | Opportunities & quotes hub (`?tab=`) |
+| `/app/at-risk` | At-risk account workspace |
+| `/app/attention` | Needs-attention (watch) workspace |
+| `/app/service-risk` | Backup & service risk overview |
 | `/app/onboarding` | Tenant onboarding |
 | `/app/customers` | Accounts & customers directory (`?status=` supported) |
-| `/app/customers/:id` | Customer 360 / account intelligence |
+| `/app/customers/:id` | Customer 360 / account intelligence (`#workspace` → recommendations tab) |
 | `/app/members` | Team & invitations |
 | `/app/integrations` | Integration connections |
 | `/app/security` | Sessions list / revoke / sign out others |

@@ -6,11 +6,21 @@ import { useSession } from "../state/session";
 
 const navGroups: { title: string; items: { to: string; label: string; end?: boolean }[] }[] = [
   { title: "Overview", items: [{ to: "/app", label: "Dashboard", end: true }] },
-  { title: "Intelligence", items: [{ to: "/app/customers", label: "Accounts & customers" }] },
+  {
+    title: "Operations",
+    items: [
+      { to: "/app/recommendations", label: "Recommendations" },
+      { to: "/app/opportunities", label: "Opportunities" },
+      { to: "/app/at-risk", label: "At-risk" },
+      { to: "/app/attention", label: "Needs attention" },
+      { to: "/app/service-risk", label: "Service risk" }
+    ]
+  },
+  { title: "Accounts", items: [{ to: "/app/customers", label: "Accounts & customers" }] },
   {
     title: "Workspace",
     items: [
-      { to: "/app/members", label: "Team & invites" },
+      { to: "/app/members", label: "Members" },
       { to: "/app/integrations", label: "Integrations" },
       { to: "/app/onboarding", label: "Onboarding" }
     ]
