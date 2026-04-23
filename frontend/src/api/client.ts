@@ -1,4 +1,8 @@
 import type {
+  AIExecutionOutcome,
+  AIProductBlockState,
+  AIProviderCatalogRow,
+  AITaskRunRow,
   CommercialHubResponse,
   CustomerDetailResponse,
   CustomerListResponse,
@@ -8,15 +12,20 @@ import type {
   OnboardingResponse,
   PlatformLoginResponse,
   PlatformMfaStatusResponse,
+  PromptDetailResponse,
+  PromptListItem,
   RecoveryCodesGenerateResponse,
   PlatformOverview,
   PlatformTenantList,
   RecommendationListResponse,
   RecommendationRow,
+  ResolvedAITaskResponse,
   ServiceRiskResponse,
   SourceConnection,
   SubscriptionResponse,
   SystemStatus,
+  TenantAiSettingsResponse,
+  TenantAiTaskRouteRow,
   TenantMember,
   TokenPairResponse,
   TotpEnrollmentStartResponse,
@@ -271,5 +280,108 @@ export const api = {
     });
   },
   platformSystemStatus: (accessToken: string) =>
-    request<SystemStatus>("/api/v1/platform/system-status", { headers: authHeaders(accessToken) })
+    request<SystemStatus>("/api/v1/platform/system-status", { headers: authHeaders(accessToken) }),
+  getAiSettings: (accessToken: string, tenantId: string) =>
+    request<TenantAiSettingsResponse>("/api/v1/ai/settings", { headers: authHeaders(accessToken, tenantId) }),
+  patchAiSettings: (accessToken: string, tenantId: string, body: Record<string, unknown>) =>
+    request<TenantAiSettingsResponse>("/api/v1/ai/settings", {
+      method: "PATCH",
+      headers: authHeaders(accessToken, tenantId),
+      body: JSON.stringify(body)
+    }),
+  getAiTaskRoutes: (accessToken: string, tenantId: string) =>
+    request<TenantAiTaskRouteRow[]>("/api/v1/ai/task-routes", { headers: authHeaders(accessToken, tenantId) }),
+  patchAiTaskRoutes: (accessToken: string, tenantId: string, body: { routes: Record<string, unknown>[] }) =>
+    request<TenantAiTaskRouteRow[]>("/api/v1/ai/task-routes", {
+      method: "PATCH",
+      headers: authHeaders(accessToken, tenantId),
+      body: JSON.stringify(body)
+    }),
+  resolveAiTask: (accessToken: string, tenantId: string, taskType: string) =>
+    request<ResolvedAITaskResponse>(`/api/v1/ai/resolve/${encodeURIComponent(taskType)}`, {
+      headers: authHeaders(accessToken, tenantId)
+    }),
+  listPrompts: (accessToken: string, tenantId: string) =>
+    request<PromptListItem[]>("/api/v1/prompts", { headers: authHeaders(accessToken, tenantId) }),
+  getPromptDetail: (accessToken: string, tenantId: string, definitionId: string) =>
+    request<PromptDetailResponse>(`/api/v1/prompts/${definitionId}`, { headers: authHeaders(accessToken, tenantId) }),
+  addPromptVersion: (
+    accessToken: string,
+    tenantId: string,
+    definitionId: string,
+    body: { prompt_text: string; change_note?: string | null }
+  ) =>
+    request<PromptDetailResponse>(`/api/v1/prompts/${definitionId}/versions`, {
+      method: "POST",
+      headers: authHeaders(accessToken, tenantId),
+      body: JSON.stringify(body)
+    }),
+  activatePromptVersion: (accessToken: string, tenantId: string, definitionId: string, versionId: string) =>
+    request<PromptDetailResponse>(`/api/v1/prompts/${definitionId}/activate/${versionId}`, {
+      method: "POST",
+      headers: authHeaders(accessToken, tenantId)
+    }),
+  revertPromptToDefault: (accessToken: string, tenantId: string, promptKey: string) =>
+    request<{ status: string }>("/api/v1/prompts/revert-to-default", {
+      method: "POST",
+      headers: authHeaders(accessToken, tenantId),
+      body: JSON.stringify({ prompt_key: promptKey })
+    }),
+  createTenantPromptOverride: (
+    accessToken: string,
+    tenantId: string,
+    body: {
+      prompt_key: string;
+      title: string;
+      task_type: string;
+      initial_version: { prompt_text: string; change_note?: string | null };
+    }
+  ) =>
+    request<PromptDetailResponse>("/api/v1/prompts/tenant-overrides", {
+      method: "POST",
+      headers: authHeaders(accessToken, tenantId),
+      body: JSON.stringify(body)
+    }),
+  platformAiProviderCatalog: (accessToken: string) =>
+    request<AIProviderCatalogRow[]>("/api/v1/platform/ai/providers/catalog", { headers: authHeaders(accessToken) }),
+  platformListPrompts: (accessToken: string) =>
+    request<PromptDetailResponse[]>("/api/v1/platform/prompts", { headers: authHeaders(accessToken) }),
+  platformAiTaskRuns: (accessToken: string, limit = 80) =>
+    request<AITaskRunRow[]>(`/api/v1/platform/ai/task-runs?limit=${limit}`, { headers: authHeaders(accessToken) }),
+  getCustomerAccountSummaryAi: (accessToken: string, tenantId: string, customerId: string) =>
+    request<AIProductBlockState>(`/api/v1/customers/${customerId}/ai/account-summary`, {
+      headers: authHeaders(accessToken, tenantId)
+    }),
+  postCustomerAccountSummaryAi: (accessToken: string, tenantId: string, customerId: string) =>
+    request<AIExecutionOutcome>(`/api/v1/customers/${customerId}/ai/account-summary`, {
+      method: "POST",
+      headers: authHeaders(accessToken, tenantId)
+    }),
+  getCustomerRiskSummaryAi: (accessToken: string, tenantId: string, customerId: string) =>
+    request<AIProductBlockState>(`/api/v1/customers/${customerId}/ai/risk-summary`, {
+      headers: authHeaders(accessToken, tenantId)
+    }),
+  postCustomerRiskSummaryAi: (accessToken: string, tenantId: string, customerId: string) =>
+    request<AIExecutionOutcome>(`/api/v1/customers/${customerId}/ai/risk-summary`, {
+      method: "POST",
+      headers: authHeaders(accessToken, tenantId)
+    }),
+  getCustomerChurnExplanationAi: (accessToken: string, tenantId: string, customerId: string) =>
+    request<AIProductBlockState>(`/api/v1/customers/${customerId}/ai/churn-explanation`, {
+      headers: authHeaders(accessToken, tenantId)
+    }),
+  postCustomerChurnExplanationAi: (accessToken: string, tenantId: string, customerId: string) =>
+    request<AIExecutionOutcome>(`/api/v1/customers/${customerId}/ai/churn-explanation`, {
+      method: "POST",
+      headers: authHeaders(accessToken, tenantId)
+    }),
+  getRecommendationExplanationAi: (accessToken: string, tenantId: string, recommendationId: string) =>
+    request<AIProductBlockState>(`/api/v1/workspace/recommendations/${recommendationId}/ai/explanation`, {
+      headers: authHeaders(accessToken, tenantId)
+    }),
+  postRecommendationExplanationAi: (accessToken: string, tenantId: string, recommendationId: string) =>
+    request<AIExecutionOutcome>(`/api/v1/workspace/recommendations/${recommendationId}/ai/explanation`, {
+      method: "POST",
+      headers: authHeaders(accessToken, tenantId)
+    })
 };

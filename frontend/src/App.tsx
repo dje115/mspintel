@@ -7,6 +7,7 @@ import { AppLayout } from "./layout/AppLayout";
 import { PlatformLayout } from "./layout/PlatformLayout";
 import { PublicLayout } from "./layout/PublicLayout";
 import { SystemStatusPage } from "./pages/admin/SystemStatusPage";
+import { AiSettingsPage } from "./pages/app/AiSettingsPage";
 import { AtRiskAccountsPage, NeedsAttentionAccountsPage } from "./pages/app/AccountQueuePages";
 import { CustomerDetailPage } from "./pages/app/CustomerDetailPage";
 import { CustomersPage } from "./pages/app/CustomersPage";
@@ -18,11 +19,15 @@ import { RecommendationsPage } from "./pages/app/RecommendationsPage";
 import { SecurityPage } from "./pages/app/SecurityPage";
 import { ServiceRiskPage } from "./pages/app/ServiceRiskPage";
 import { OnboardingPage } from "./pages/app/OnboardingPage";
+import { PromptsPage } from "./pages/app/PromptsPage";
 import { AcceptInvitationPage } from "./pages/auth/AcceptInvitationPage";
 import { LoginPage } from "./pages/auth/LoginPage";
 import { SignupPage } from "./pages/auth/SignupPage";
 import { PlatformLoginPage } from "./pages/platform/PlatformLoginPage";
+import { PlatformAiProvidersPage } from "./pages/platform/PlatformAiProvidersPage";
+import { PlatformAiTaskRunsPage } from "./pages/platform/PlatformAiTaskRunsPage";
 import { PlatformOverviewPage } from "./pages/platform/PlatformOverviewPage";
+import { PlatformPromptsPage } from "./pages/platform/PlatformPromptsPage";
 import { PlatformSecurityPage } from "./pages/platform/PlatformSecurityPage";
 import { PlatformSystemStatusPage } from "./pages/platform/PlatformSystemStatusPage";
 import { PlatformTenantsPage } from "./pages/platform/PlatformTenantsPage";
@@ -44,6 +49,9 @@ function App() {
           <Route path="tenants" element={<PlatformTenantsPage />} />
           <Route path="system-status" element={<PlatformSystemStatusPage />} />
           <Route path="security" element={<PlatformSecurityPage />} />
+          <Route path="ai-providers" element={<PlatformAiProvidersPage />} />
+          <Route path="ai-task-runs" element={<PlatformAiTaskRunsPage />} />
+          <Route path="prompts" element={<PlatformPromptsPage />} />
         </Route>
       </Route>
 
@@ -60,6 +68,8 @@ function App() {
           <Route path="integrations" element={<IntegrationsPage />} />
           <Route path="members" element={<MembersPage />} />
           <Route path="security" element={<SecurityPage />} />
+          <Route path="ai-settings" element={<AiSettingsPage />} />
+          <Route path="prompts" element={<PromptsPage />} />
           <Route path="system-status" element={<SystemStatusPage />} />
           <Route index element={<DashboardPage />} />
         </Route>

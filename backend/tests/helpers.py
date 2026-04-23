@@ -3,7 +3,7 @@ import uuid
 
 from sqlalchemy.orm import Session
 
-from app.core.security import create_access_token, get_password_hash
+from app.core.security import AUTH_MODE_PLATFORM, create_access_token, get_password_hash
 from app.models.entities import Role, Tenant, TenantMembership, User
 
 
@@ -42,3 +42,23 @@ def auth_headers(user: User, tenant_id: str | None = None, *, session_id: uuid.U
     if tenant_id:
         headers["X-Tenant-Id"] = tenant_id
     return headers
+
+
+def platform_auth_headers(user: User, *, session_id: uuid.UUID | None = None):
+    token = create_access_token(
+        str(user.id), timedelta(minutes=60), session_id=session_id, auth_mode=AUTH_MODE_PLATFORM
+    )
+    return {"Authorization": f"Bearer {token}"}
+
+
+def create_platform_admin(db: Session, email: str) -> User:
+    user = User(
+        id=uuid.uuid4(),
+        email=email,
+        full_name=email.split("@")[0],
+        password_hash=get_password_hash("ChangeMe123!"),
+        is_platform_admin=True,
+    )
+    db.add(user)
+    db.commit()
+    return user

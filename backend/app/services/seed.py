@@ -151,8 +151,31 @@ def seed_all(db: Session) -> None:
                 Recommendation(id=uuid.uuid4(), tenant_id=tenant.id, customer_id=c1.id, scope="executive", status="open", summary="Escalate quarterly service review."),
                 Recommendation(id=uuid.uuid4(), tenant_id=tenant.id, customer_id=c2.id, scope="sales", status="open", summary="Revisit lost backup modernization quote."),
                 Action(id=uuid.uuid4(), tenant_id=tenant.id, customer_id=c1.id, description="Assign service manager follow-up call."),
-                AIProvider(id=uuid.uuid4(), tenant_id=tenant.id, provider_name="openai", status="configured"),
+                AIProvider(
+                    id=uuid.uuid4(),
+                    tenant_id=tenant.id,
+                    provider_name="openai",
+                    status="configured",
+                    catalog_code="openai_hosted",
+                    provider_family="openai",
+                    deployment_mode="hosted",
+                    display_label="OpenAI (demo)",
+                    is_enabled=True,
+                ),
             ]
         )
+
+    from app.services.ai_foundation_seed import (
+        ensure_ai_provider_catalog,
+        ensure_demo_tenant_ai_provider,
+        ensure_legacy_prompt_aliases,
+        ensure_platform_default_prompts,
+    )
+
+    ensure_ai_provider_catalog(db)
+    ensure_platform_default_prompts(db)
+    ensure_legacy_prompt_aliases(db)
+    if tenant:
+        ensure_demo_tenant_ai_provider(db, tenant.id)
 
     db.commit()

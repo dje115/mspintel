@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { Link, useLocation, useParams } from "react-router-dom";
+import { Link, useLocation, useParams, useSearchParams } from "react-router-dom";
 
 import { api } from "../../api/client";
+import { CustomerAiInsights } from "../../components/CustomerAiInsights";
 import type { CustomerDetailResponse, OpportunityRow, QuoteRow, RecommendationRow } from "../../api/types";
 import { ScoreMeter } from "../../components/ScoreMeter";
 import { useSession } from "../../state/session";
@@ -133,7 +134,9 @@ function MiniTableQuotes({ rows }: { rows: QuoteRow[] }) {
 export function CustomerDetailPage() {
   const { id } = useParams();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const { accessToken, currentTenantId } = useSession();
+  const aiHighlight = searchParams.get("ai") === "risk" ? "risk" : null;
   const [data, setData] = useState<CustomerDetailResponse | null>(null);
   const [tab, setTab] = useState<DetailTab>("overview");
 
@@ -253,6 +256,8 @@ export function CustomerDetailPage() {
               </div>
             </div>
           </section>
+
+          <CustomerAiInsights customerId={data.id} highlight={aiHighlight} />
         </>
       ) : null}
 

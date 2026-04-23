@@ -86,7 +86,7 @@ function AccountQueuePage(props: { mode: QueueMode; title: string; subtitle: str
                   {data.items.map((c) => (
                     <tr key={c.id}>
                       <td>
-                        <Link to={`/app/customers/${c.id}`}>{c.name}</Link>
+                        <Link to={mode === "at_risk" ? `/app/customers/${c.id}?ai=risk` : `/app/customers/${c.id}`}>{c.name}</Link>
                       </td>
                       <td>
                         <span className={statusBadge(c.status)}>{c.status.replace("_", " ")}</span>

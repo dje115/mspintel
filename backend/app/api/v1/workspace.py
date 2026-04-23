@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps.access import AccessContext, require_permission
 from app.api.deps.db import get_db
+from app.schemas.ai_execution import AIExecutionOutcome, AIProductBlockState
 from app.schemas.workspace import (
     CommercialHubResponse,
     RecommendationListResponse,
@@ -12,6 +13,8 @@ from app.schemas.workspace import (
     RecommendationRow,
     ServiceRiskResponse,
 )
+from app.services.ai_execution_service import AIExecutionService
+from app.services.ai_product_context import build_recommendation_explanation_variables
 from app.services.workspace import WorkspaceService
 
 router = APIRouter(prefix="/api/v1/workspace", tags=["workspace"])
@@ -37,6 +40,33 @@ def list_recommendations(
         owner_search=owner,
         page=page,
         page_size=page_size,
+    )
+
+
+@router.get("/recommendations/{recommendation_id}/ai/explanation", response_model=AIProductBlockState)
+def get_recommendation_explanation_state(
+    recommendation_id: UUID,
+    ctx: AccessContext = Depends(require_permission("customer:read")),
+    db: Session = Depends(get_db),
+):
+    return AIExecutionService(db).read_block_state(
+        ctx.tenant.id, "recommendation_explanation", recommendation_id=recommendation_id
+    )
+
+
+@router.post("/recommendations/{recommendation_id}/ai/explanation", response_model=AIExecutionOutcome)
+def post_recommendation_explanation(
+    recommendation_id: UUID,
+    ctx: AccessContext = Depends(require_permission("customer:read")),
+    db: Session = Depends(get_db),
+):
+    variables = build_recommendation_explanation_variables(db, ctx.tenant.id, recommendation_id)
+    return AIExecutionService(db).execute(
+        tenant_id=ctx.tenant.id,
+        task_type="recommendation_explanation",
+        variables=variables,
+        actor_user_id=ctx.user.id,
+        recommendation_id=recommendation_id,
     )
 
 

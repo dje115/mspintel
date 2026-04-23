@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
 import { api } from "../../api/client";
@@ -22,6 +22,9 @@ export function RecommendationsPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
+  const [aiExplainBusy, setAiExplainBusy] = useState<Record<string, boolean>>({});
+  const [aiExplainText, setAiExplainText] = useState<Record<string, string>>({});
+  const [aiExplainErr, setAiExplainErr] = useState<Record<string, string | undefined>>({});
 
   const status = searchParams.get("status") ?? "";
   const scope = searchParams.get("scope") ?? "";
@@ -66,6 +69,24 @@ export function RecommendationsPage() {
     next.delete("page");
     setSearchParams(next, { replace: true });
     setPage(1);
+  };
+
+  const generateExplanation = async (recId: string) => {
+    if (!accessToken || !currentTenantId) return;
+    setAiExplainBusy((m) => ({ ...m, [recId]: true }));
+    setAiExplainErr((m) => ({ ...m, [recId]: undefined }));
+    try {
+      const out = await api.postRecommendationExplanationAi(accessToken, currentTenantId, recId);
+      if (out.status === "succeeded" && out.text) {
+        setAiExplainText((m) => ({ ...m, [recId]: out.text ?? "" }));
+      } else {
+        setAiExplainErr((m) => ({ ...m, [recId]: out.message ?? out.status }));
+      }
+    } catch (e: unknown) {
+      setAiExplainErr((m) => ({ ...m, [recId]: e instanceof Error ? e.message : "AI request failed" }));
+    } finally {
+      setAiExplainBusy((m) => ({ ...m, [recId]: false }));
+    }
   };
 
   const patchStatus = async (id: string, next: string) => {
@@ -186,12 +207,14 @@ export function RecommendationsPage() {
                     <th>Owner</th>
                     <th>Status</th>
                     <th>Age</th>
+                    <th>AI</th>
                     <th />
                   </tr>
                 </thead>
                 <tbody>
                   {data.items.map((r) => (
-                    <tr key={r.id}>
+                    <Fragment key={r.id}>
+                    <tr>
                       <td>
                         {r.customer_id ? (
                           <Link to={`/app/customers/${r.customer_id}`}>{r.customer_name ?? "Account"}</Link>
@@ -215,6 +238,21 @@ export function RecommendationsPage() {
                       </td>
                       <td>
                         <span title={formatShortDate(r.created_at ?? undefined)}>{formatAge(r.created_at)}</span>
+                      </td>
+                      <td style={{ maxWidth: "11rem", verticalAlign: "top" }}>
+                        <button
+                          type="button"
+                          className="tenant-btn-inline tenant-btn-inline--ghost"
+                          disabled={!!aiExplainBusy[r.id]}
+                          onClick={() => void generateExplanation(r.id)}
+                        >
+                          {aiExplainBusy[r.id] ? "…" : "Explain"}
+                        </button>
+                        {aiExplainErr[r.id] ? (
+                          <div className="tenant-error" style={{ fontSize: "0.78rem", marginTop: "0.25rem" }}>
+                            {aiExplainErr[r.id]}
+                          </div>
+                        ) : null}
                       </td>
                       <td>
                         <div style={{ display: "flex", flexWrap: "wrap", gap: "0.35rem", justifyContent: "flex-end" }}>
@@ -241,6 +279,19 @@ export function RecommendationsPage() {
                         </div>
                       </td>
                     </tr>
+                    {aiExplainText[r.id] ? (
+                      <tr className="tenant-table-subrow">
+                        <td colSpan={10} style={{ paddingTop: 0, borderTop: "none", background: "rgba(15, 118, 110, 0.04)" }}>
+                          <div className="muted" style={{ fontSize: "0.72rem", marginBottom: "0.25rem" }}>
+                            AI explanation (from configured provider + prompt version)
+                          </div>
+                          <div className="tenant-rec-card" style={{ fontSize: "0.88rem", whiteSpace: "pre-wrap" }}>
+                            {aiExplainText[r.id]}
+                          </div>
+                        </td>
+                      </tr>
+                    ) : null}
+                    </Fragment>
                   ))}
                 </tbody>
               </table>

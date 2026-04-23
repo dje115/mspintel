@@ -28,6 +28,8 @@ const navGroups: { title: string; items: { to: string; label: string; end?: bool
   {
     title: "Administration",
     items: [
+      { to: "/app/ai-settings", label: "AI engines" },
+      { to: "/app/prompts", label: "Prompts" },
       { to: "/app/security", label: "Security" },
       { to: "/app/system-status", label: "System status" }
     ]

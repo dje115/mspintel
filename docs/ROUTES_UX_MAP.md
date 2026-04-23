@@ -32,17 +32,19 @@ All require tenant JWT and tenant context (`X-Tenant-Id` from session).
 | Path | Page | Notes |
 |------|------|-------|
 | `/app` | `DashboardPage` | Default post-login landing; executive KPIs (click-through) + priority lists + workspace links. |
-| `/app/recommendations` | `RecommendationsPage` | Cross-account recommendation queue. |
+| `/app/recommendations` | `RecommendationsPage` | Cross-account recommendation queue; per-row **Explain** calls workspace AI explanation endpoint. |
 | `/app/opportunities` | `OpportunitiesPage` | Commercial hub; optional `?tab=opportunities`, `pipeline`, or `lost`. |
 | `/app/at-risk` | `AtRiskAccountsPage` | At-risk account operating list. |
 | `/app/attention` | `NeedsAttentionAccountsPage` | Needs-attention (watch) operating list. |
 | `/app/service-risk` | `ServiceRiskPage` | Backup + service delivery risk overview. |
 | `/app/customers` | `CustomersPage` | Account directory. |
-| `/app/customers/:id` | `CustomerDetailPage` | Customer 360; `#workspace` opens the recommendations tab. |
+| `/app/customers/:id` | `CustomerDetailPage` | Customer 360; `#workspace` opens the recommendations tab; **Overview** includes **AI insights** (account summary, risk, churn). `?ai=risk` highlights risk AI (linked from at-risk queue). |
 | `/app/onboarding` | `OnboardingPage` | Workspace checklist. |
 | `/app/integrations` | `IntegrationsPage` | Connections list. |
 | `/app/members` | `MembersPage` | Team + invitations. |
 | `/app/security` | `SecurityPage` | Sessions. |
+| `/app/ai-settings` | `AiSettingsPage` | Tenant AI defaults, task routing table, provider/deployment badges; warnings for behavioural impact. |
+| `/app/prompts` | `PromptsPage` | Prompt list, version history, tenant overrides (configure roles); warnings on edits/activation. |
 | `/app/system-status` | `SystemStatusPage` | Tenant-scoped API status (admin capability). |
 
 **Redirect:** `/` → `/login`.
@@ -60,6 +62,9 @@ All require tenant JWT and tenant context (`X-Tenant-Id` from session).
 | `/platform/tenants` | `PlatformTenantsPage` | same |
 | `/platform/system-status` | `PlatformSystemStatusPage` | same |
 | `/platform/security` | `PlatformSecurityPage` | same |
+| `/platform/ai-providers` | `PlatformAiProvidersPage` | Read-only provider catalog (family + deployment mode). |
+| `/platform/prompts` | `PlatformPromptsPage` | Global default prompts overview; high-impact warning copy. |
+| `/platform/ai-task-runs` | `PlatformAiTaskRunsPage` | Read-only cross-tenant `ai_task_runs` tail for observability. |
 
 ---
 

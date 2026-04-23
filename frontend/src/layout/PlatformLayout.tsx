@@ -6,6 +6,9 @@ import { useSession } from "../state/session";
 const nav = [
   { to: "/platform", label: "Overview", end: true },
   { to: "/platform/tenants", label: "Tenants" },
+  { to: "/platform/ai-providers", label: "AI providers" },
+  { to: "/platform/ai-task-runs", label: "AI runs" },
+  { to: "/platform/prompts", label: "Prompts" },
   { to: "/platform/system-status", label: "System status" },
   { to: "/platform/security", label: "Security" }
 ];

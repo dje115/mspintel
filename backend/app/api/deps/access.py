@@ -49,6 +49,8 @@ ROLE_PERMISSIONS = {
         "dashboard:executive",
         "dashboard:sales",
         "dashboard:service",
+        "ai:view",
+        "ai:configure",
     },
     "tenant_admin": {
         "tenant:read",
@@ -62,12 +64,14 @@ ROLE_PERMISSIONS = {
         "dashboard:sales",
         "dashboard:service",
         "system:read",
+        "ai:view",
+        "ai:configure",
     },
-    "director": {"customer:read", "dashboard:executive", "membership:read", "invitation:read"},
-    "sales_user": {"customer:read", "dashboard:sales"},
-    "account_manager": {"customer:read", "dashboard:executive"},
-    "service_manager": {"customer:read", "dashboard:service"},
-    "marketing_user": {"customer:read", "dashboard:executive"},
+    "director": {"customer:read", "dashboard:executive", "membership:read", "invitation:read", "ai:view"},
+    "sales_user": {"customer:read", "dashboard:sales", "ai:view"},
+    "account_manager": {"customer:read", "dashboard:executive", "ai:view"},
+    "service_manager": {"customer:read", "dashboard:service", "ai:view"},
+    "marketing_user": {"customer:read", "dashboard:executive", "ai:view"},
 }
 
 

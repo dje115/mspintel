@@ -243,3 +243,144 @@ export type TotpEnrollmentStartResponse = {
   method_id: string;
   otpauth_uri: string;
 };
+
+export type AIProviderSafe = {
+  id: string;
+  tenant_id: string | null;
+  provider_name: string;
+  status: string;
+  catalog_code: string | null;
+  provider_family: string | null;
+  deployment_mode: string | null;
+  display_label: string | null;
+  base_url: string | null;
+  has_encrypted_settings: boolean;
+  is_enabled: boolean;
+};
+
+export type TenantAiSettingsResponse = {
+  tenant_id: string;
+  default_ai_provider: AIProviderSafe | null;
+  default_model: string | null;
+  fallback_ai_provider: AIProviderSafe | null;
+  fallback_model: string | null;
+  extra: Record<string, unknown> | null;
+};
+
+export type TenantAiTaskRouteRow = {
+  id: string;
+  task_type: string;
+  ai_provider: AIProviderSafe | null;
+  model: string | null;
+  fallback_ai_provider: AIProviderSafe | null;
+  fallback_model: string | null;
+  prompt_key: string;
+  enabled: boolean;
+};
+
+export type PromptListItem = {
+  prompt_key: string;
+  task_type: string;
+  title: string;
+  source: "platform" | "tenant_override";
+  definition_id: string;
+  active_version_id: string | null;
+  active_version_number: number | null;
+};
+
+export type PromptVersionRow = {
+  id: string;
+  version_number: number;
+  change_note: string | null;
+  is_active: boolean;
+  created_at: string;
+  created_by_user_id: string | null;
+  version_metadata: Record<string, unknown> | null;
+};
+
+export type PromptDetailResponse = {
+  definition_id: string;
+  prompt_key: string;
+  task_type: string;
+  title: string;
+  description: string | null;
+  scope: string;
+  tenant_id: string | null;
+  active_version: PromptVersionRow | null;
+  versions: PromptVersionRow[];
+};
+
+export type ResolvedAITaskResponse = {
+  tenant_id: string;
+  task_type: string;
+  enabled: boolean;
+  provider_family: string | null;
+  deployment_mode: string | null;
+  model: string | null;
+  ai_provider_id: string | null;
+  prompt_key: string;
+  prompt_definition_id: string | null;
+  prompt_version_id: string | null;
+  prompt_text: string | null;
+  fallback_ai_provider_id?: string | null;
+  fallback_provider_family?: string | null;
+  fallback_deployment_mode?: string | null;
+  fallback_model?: string | null;
+};
+
+export type AIProductBlockState = {
+  status: string;
+  text?: string | null;
+  message?: string | null;
+  run_id?: string | null;
+  last_completed_at?: string | null;
+  provider_family?: string | null;
+  model_used?: string | null;
+  prompt_version_id?: string | null;
+};
+
+export type AIExecutionOutcome = {
+  run_id: string;
+  status: string;
+  task_type: string;
+  text?: string | null;
+  message?: string | null;
+  provider_family?: string | null;
+  deployment_mode?: string | null;
+  model_used?: string | null;
+  prompt_definition_id?: string | null;
+  prompt_version_id?: string | null;
+  fallback_used?: boolean;
+  duration_ms?: number | null;
+  completed_at?: string | null;
+};
+
+export type AITaskRunRow = {
+  id: string;
+  tenant_id: string;
+  task_type: string;
+  status: string;
+  customer_id: string | null;
+  recommendation_id: string | null;
+  provider_family: string | null;
+  deployment_mode: string | null;
+  model_used: string | null;
+  prompt_definition_id: string | null;
+  prompt_version_id: string | null;
+  fallback_used: boolean;
+  duration_ms: number | null;
+  error_summary: string | null;
+  output_summary: string | null;
+  created_at: string | null;
+  completed_at: string | null;
+};
+
+export type AIProviderCatalogRow = {
+  id: string;
+  code: string;
+  provider_family: string;
+  deployment_mode: string;
+  display_name: string;
+  description: string | null;
+  sort_order: number;
+};

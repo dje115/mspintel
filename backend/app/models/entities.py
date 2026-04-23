@@ -294,13 +294,39 @@ class Action(Base, TimestampMixin):
     description: Mapped[str] = mapped_column(String(280))
 
 
+class AIProviderCatalog(Base, TimestampMixin):
+    """Platform catalog row: stable ``code`` + ``provider_family`` + ``deployment_mode`` for UI and defaults."""
+
+    __tablename__ = "ai_provider_catalog"
+    __table_args__ = (
+        UniqueConstraint("code", name="uq_ai_provider_catalog_code"),
+        Index("ix_ai_provider_catalog_family_mode", "provider_family", "deployment_mode"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    code: Mapped[str] = mapped_column(String(80), nullable=False)
+    provider_family: Mapped[str] = mapped_column(String(80), nullable=False)
+    deployment_mode: Mapped[str] = mapped_column(String(40), nullable=False)
+    display_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+
+
 class AIProvider(Base, TimestampMixin):
     __tablename__ = "ai_providers"
+    __table_args__ = (Index("ix_ai_providers_family_mode", "provider_family", "deployment_mode"),)
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("tenants.id"), index=True)
     provider_name: Mapped[str] = mapped_column(String(60))
     status: Mapped[str] = mapped_column(String(20), default="configured")
+    catalog_code: Mapped[str | None] = mapped_column(String(80), nullable=True, index=True)
+    provider_family: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    deployment_mode: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    display_label: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    base_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    encrypted_settings: Mapped[str | None] = mapped_column(Text, nullable=True)
+    is_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
 
 
 class AIModelConfig(Base, TimestampMixin):
@@ -313,6 +339,98 @@ class AIModelConfig(Base, TimestampMixin):
     is_default: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
+class PromptDefinition(Base, TimestampMixin):
+    """scope=platform: global defaults; scope=tenant: tenant override for the same ``prompt_key``."""
+
+    __tablename__ = "prompt_definitions"
+    __table_args__ = (Index("ix_prompt_definitions_scope_tenant_key", "scope", "tenant_id", "prompt_key"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    scope: Mapped[str] = mapped_column(String(20), nullable=False)
+    tenant_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), index=True, nullable=True
+    )
+    prompt_key: Mapped[str] = mapped_column(String(160), nullable=False, index=True)
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    task_type: Mapped[str] = mapped_column(String(80), nullable=False)
+    created_by_user_id: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    updated_by_user_id: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
+
+class PromptVersion(Base, TimestampMixin):
+    __tablename__ = "prompt_versions"
+    __table_args__ = (Index("ix_prompt_versions_def_active", "prompt_definition_id", "is_active"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    prompt_definition_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("prompt_definitions.id", ondelete="CASCADE"), index=True
+    )
+    version_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    prompt_text: Mapped[str] = mapped_column(Text, nullable=False)
+    change_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_by_user_id: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=False)
+    version_metadata: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+
+
+class PromptActivationEvent(Base):
+    __tablename__ = "prompt_activation_events"
+    __table_args__ = (Index("ix_prompt_activation_def", "prompt_definition_id"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    prompt_definition_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("prompt_definitions.id", ondelete="CASCADE"), nullable=False
+    )
+    prompt_version_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("prompt_versions.id", ondelete="SET NULL"), nullable=True
+    )
+    tenant_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=True
+    )
+    actor_user_id: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    event_kind: Mapped[str] = mapped_column(String(40), nullable=False)
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class TenantAiSettings(Base, TimestampMixin):
+    __tablename__ = "tenant_ai_settings"
+
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), primary_key=True
+    )
+    default_ai_provider_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("ai_providers.id", ondelete="SET NULL"), nullable=True
+    )
+    default_model: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    fallback_ai_provider_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("ai_providers.id", ondelete="SET NULL"), nullable=True
+    )
+    fallback_model: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    extra: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    updated_by_user_id: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
+
+class TenantAiTaskRoute(Base, TimestampMixin):
+    __tablename__ = "tenant_ai_task_routes"
+    __table_args__ = (UniqueConstraint("tenant_id", "task_type", name="uq_tenant_ai_task_route"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), index=True)
+    task_type: Mapped[str] = mapped_column(String(80), nullable=False)
+    ai_provider_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("ai_providers.id", ondelete="SET NULL"), nullable=True
+    )
+    model: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    fallback_ai_provider_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("ai_providers.id", ondelete="SET NULL"), nullable=True
+    )
+    fallback_model: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    prompt_key: Mapped[str] = mapped_column(String(160), nullable=False)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
 class AITaskRun(Base, TimestampMixin):
     __tablename__ = "ai_task_runs"
 
@@ -320,6 +438,32 @@ class AITaskRun(Base, TimestampMixin):
     tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("tenants.id"), index=True)
     task_type: Mapped[str] = mapped_column(String(80))
     status: Mapped[str] = mapped_column(String(20), default="queued")
+    provider_family: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    deployment_mode: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    model_used: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    ai_provider_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("ai_providers.id", ondelete="SET NULL"), nullable=True
+    )
+    prompt_definition_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("prompt_definitions.id", ondelete="SET NULL"), nullable=True
+    )
+    prompt_version_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("prompt_versions.id", ondelete="SET NULL"), nullable=True
+    )
+    duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    run_metadata: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    error_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    output_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    fallback_used: Mapped[bool] = mapped_column(Boolean, default=False)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    actor_user_id: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    customer_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("customers.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    recommendation_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("recommendations.id", ondelete="SET NULL"), nullable=True, index=True
+    )
 
 
 class AuditEvent(Base, TimestampMixin):

@@ -1,6 +1,6 @@
 # mspintel
 
-mspintel is a secure, AI-assisted MSP intelligence platform for MSPs. Release **`v1.8`** ships the **tenant operational workspace** (recommendations queue, commercial hub, at-risk / needs-attention views, service-risk overview, dashboard drill-through, richer customer 360) backed by **`/api/v1/workspace/*`** APIs, and bumps deploy/UI defaults to **1.8**. **`v1.7`** added **platform-admin MFA recovery codes** (hashed at rest, one-time use, regeneration invalidates unused batches), **Redis-backed rate limiting** on platform password and MFA steps ([docs/PLATFORM_AUTH_HARDENING.md](docs/PLATFORM_AUTH_HARDENING.md)), and bumps deploy/UI defaults to **1.7**. **`v1.6`** hardened **platform-operator TOTP MFA** (validated **`MFA_TOTP_ENCRYPTION_KEY`**, non-sensitive MFA audit metadata, shared OTPAuth URI parsing in the SPA, **`get_totp_secret_crypto`** naming). **`v1.5`** introduced **`user_mfa_methods`** with Fernet-wrapped secrets, the two-step **`/platform/login`** flow (challenge JWT, then `POST /auth/platform/login/mfa`), optional **`PLATFORM_MFA_REQUIRED`**, QR enrolment on **`/platform/security`**, and platform-scoped MFA audits (see [docs/PLATFORM_MFA.md](docs/PLATFORM_MFA.md)). **`v1.4`** hardened **platform-operator** access: separate **tenant vs platform JWT/session TTLs**, `user_sessions.auth_mode`, scoped session list/revoke/logout-all, nullable **`audit_events.tenant_id`** for first-class platform audit rows, `/platform/security`, and a documented extension point for future MFA on platform login. **`v1.3`** introduced the separate platform console (`/platform/login`, JWT `am`, platform APIs). **`v1.2`** added tenant lifecycle controls on top of the v1.1 baseline (invitations, refresh rotation, audit, Mailpit).
+mspintel is a secure, AI-assisted MSP intelligence platform for MSPs. Release **`v2.0`** wires the **first real AI runtime** (resolve → render → provider adapter → `ai_task_runs` lifecycle) into **Customer 360 AI insights**, **recommendation explanations**, and **at-risk deep-links** to risk AI — plus a read-only **`/platform/ai-task-runs`** operator view. See [docs/AI_CONFIGURATION_AND_PROMPTS.md](docs/AI_CONFIGURATION_AND_PROMPTS.md). **`v1.9`** added **per-tenant AI engine configuration**, **versioned prompts**, **task routing**, and **`/app/ai-settings`** / **`/app/prompts`**. **`v1.8`** shipped the **tenant operational workspace** (recommendations queue, commercial hub, at-risk / needs-attention views, service-risk overview, dashboard drill-through, richer customer 360) backed by **`/api/v1/workspace/*`** APIs. **`v1.7`** added **platform-admin MFA recovery codes** (hashed at rest, one-time use, regeneration invalidates unused batches), **Redis-backed rate limiting** on platform password and MFA steps ([docs/PLATFORM_AUTH_HARDENING.md](docs/PLATFORM_AUTH_HARDENING.md)), and bumps deploy/UI defaults to **1.7**. **`v1.6`** hardened **platform-operator TOTP MFA** (validated **`MFA_TOTP_ENCRYPTION_KEY`**, non-sensitive MFA audit metadata, shared OTPAuth URI parsing in the SPA, **`get_totp_secret_crypto`** naming). **`v1.5`** introduced **`user_mfa_methods`** with Fernet-wrapped secrets, the two-step **`/platform/login`** flow (challenge JWT, then `POST /auth/platform/login/mfa`), optional **`PLATFORM_MFA_REQUIRED`**, QR enrolment on **`/platform/security`**, and platform-scoped MFA audits (see [docs/PLATFORM_MFA.md](docs/PLATFORM_MFA.md)). **`v1.4`** hardened **platform-operator** access: separate **tenant vs platform JWT/session TTLs**, `user_sessions.auth_mode`, scoped session list/revoke/logout-all, nullable **`audit_events.tenant_id`** for first-class platform audit rows, `/platform/security`, and a documented extension point for future MFA on platform login. **`v1.3`** introduced the separate platform console (`/platform/login`, JWT `am`, platform APIs). **`v1.2`** added tenant lifecycle controls on top of the v1.1 baseline (invitations, refresh rotation, audit, Mailpit).
 
 ## Implementation guidance (Cursor / contributors)
 
@@ -19,7 +19,7 @@ Standing rules for Docker, versioning, env vars, validation, docs, GitHub workfl
 
 ## Versioning
 
-- Current app version: **`1.8`**
+- Current app version: **`2.0`**
 - Central runtime version variable: `MSPINTEL_APP_VERSION` (root `.env` and Compose → backend `MSPINTEL_APP_VERSION`)
 - Frontend display: `VITE_APP_VERSION` in `.env`, overridden in Compose from `MSPINTEL_APP_VERSION` as `VITE_APP_VERSION` for the dev container
 
@@ -51,6 +51,8 @@ Standing rules for Docker, versioning, env vars, validation, docs, GitHub workfl
 - **v1.6:** MFA **hardening** (Fernet key validation at settings load, failed-challenge audit `reason` codes, migration/docs clarity) and version **1.6** across Compose defaults and UI version tags (`VITE_APP_VERSION` / `MSPINTEL_APP_VERSION`).
 - **v1.7:** Platform **recovery codes** for MFA (pepper + HMAC storage, `/platform/security` UX), **`POST /platform/mfa/recovery-codes/generate`**, MFA step accepts **`recovery_code`** or **`totp_code`**, **Redis rate limits** on platform login/MFA with **429** + `platform.login.rate_limited` audit, operational docs in [docs/PLATFORM_AUTH_HARDENING.md](docs/PLATFORM_AUTH_HARDENING.md). Tenant `/auth/login` unchanged.
 - **v1.8:** Tenant **`/api/v1/workspace`** routes (recommendations list + admin patch, commercial hub, service-risk snapshot); customer detail includes typed **recommendations / opportunities / quotes**; SPA operational pages under `/app/recommendations`, `/app/opportunities`, `/app/at-risk`, `/app/attention`, `/app/service-risk`; dashboard KPIs link into these workspaces.
+- **v1.9:** Tenant AI **`/api/v1/ai/*`**, prompts **`/api/v1/prompts/*`**, platform catalog/prompts **`/api/v1/platform/ai/*`** and **`/api/v1/platform/prompts/*`**; Alembic **`0009_ai_cfg_prompts`**; SPA **`/app/ai-settings`**, **`/app/prompts`**, **`/platform/ai-providers`**, **`/platform/prompts`**. See [docs/AI_CONFIGURATION_AND_PROMPTS.md](docs/AI_CONFIGURATION_AND_PROMPTS.md).
+- **v2.0:** **`AIExecutionService`** + OpenAI-compatible **HTTP adapter** (OpenAI, OpenRouter, Ollama, vLLM, LM Studio, generic `openai_compatible`); **stub/unsupported** path for Azure (until dedicated adapter), Anthropic, Google, Microsoft Copilot, custom; product APIs **`POST /api/v1/customers/{id}/ai/*`** and **`POST /api/v1/workspace/recommendations/{id}/ai/explanation`**; Alembic **`0010_ai_task_runs_exec`**; SPA Customer 360 **AI insights**, recommendations **Explain**, platform **`/platform/ai-task-runs`**.
 
 ## Local Run (Docker-first)
 
@@ -74,10 +76,15 @@ The backend image runs **`alembic upgrade head` on container start**, so new mig
 | At-risk accounts | [http://localhost:5173/app/at-risk](http://localhost:5173/app/at-risk) |
 | Needs attention | [http://localhost:5173/app/attention](http://localhost:5173/app/attention) |
 | Service risk | [http://localhost:5173/app/service-risk](http://localhost:5173/app/service-risk) |
+| Tenant AI settings | [http://localhost:5173/app/ai-settings](http://localhost:5173/app/ai-settings) |
+| Tenant prompts | [http://localhost:5173/app/prompts](http://localhost:5173/app/prompts) |
 | Tenant customers | [http://localhost:5173/app/customers](http://localhost:5173/app/customers) |
 | Customer 360 | From [customers](http://localhost:5173/app/customers), open any account row (seed: Northwind Health, Contoso Logistics, Fabrikam Retail) |
 | **Platform console login** | [http://localhost:5173/platform/login](http://localhost:5173/platform/login) |
 | **Platform console** | [http://localhost:5173/platform](http://localhost:5173/platform) |
+| **Platform AI provider catalog** | [http://localhost:5173/platform/ai-providers](http://localhost:5173/platform/ai-providers) |
+| **Platform default prompts** | [http://localhost:5173/platform/prompts](http://localhost:5173/platform/prompts) |
+| **Platform AI task runs** | [http://localhost:5173/platform/ai-task-runs](http://localhost:5173/platform/ai-task-runs) |
 | **Platform security / sessions** | [http://localhost:5173/platform/security](http://localhost:5173/platform/security) |
 
 - API health: [http://localhost:8001/health](http://localhost:8001/health)

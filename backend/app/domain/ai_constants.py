@@ -1,0 +1,75 @@
+"""Stable task types and provider taxonomy for AI routing and UI."""
+
+# Task types (code-friendly); align prompt_key prefixes where sensible.
+AI_TASK_TYPES: tuple[str, ...] = (
+    "recommendation_generation",
+    "recommendation_explanation",
+    "account_summary",
+    "churn_explanation",
+    "opportunity_detection",
+    "ticket_triage",
+    "ticket_rewrite",
+    "knowledge_draft",
+    "email_draft",
+    "risk_summary",
+)
+
+# provider_family: which vendor/protocol family
+PROVIDER_FAMILIES: tuple[str, ...] = (
+    "openai",
+    "azure_openai",
+    "anthropic",
+    "google",
+    "microsoft_copilot",
+    "openrouter",
+    "ollama",
+    "vllm",
+    "lm_studio",
+    "openai_compatible",
+    "custom",
+)
+
+# deployment_mode: how/where the model runs (UI + filtering)
+DEPLOYMENT_MODES: tuple[str, ...] = (
+    "hosted",
+    "self_hosted",
+    "local",
+    "microsoft",
+)
+
+PROMPT_SCOPE_PLATFORM = "platform"
+PROMPT_SCOPE_TENANT = "tenant"
+
+# Persisted on ai_task_runs.status
+AI_RUN_QUEUED = "queued"
+AI_RUN_RUNNING = "running"
+AI_RUN_SUCCEEDED = "succeeded"
+AI_RUN_FAILED = "failed"
+AI_RUN_UNAVAILABLE = "unavailable"
+AI_RUN_UNSUPPORTED = "unsupported"
+AI_RUN_SKIPPED = "skipped"
+
+# Provider families with a runnable OpenAI-compatible HTTP adapter in this release
+OPENAI_COMPATIBLE_FAMILIES: frozenset[str] = frozenset(
+    {
+        "openai",
+        "openrouter",
+        "ollama",
+        "vllm",
+        "lm_studio",
+        "openai_compatible",
+    }
+)
+
+# Default platform prompt keys (stable, code-friendly)
+DEFAULT_PLATFORM_PROMPT_KEYS: tuple[tuple[str, str, str], ...] = (
+    # (prompt_key, task_type, title)
+    ("recommendation_generation.system", "recommendation_generation", "Recommendation generation (system)"),
+    ("recommendation_explanation.system", "recommendation_explanation", "Recommendation explanation (system)"),
+    ("account_summary.system", "account_summary", "Account / Customer 360 summary"),
+    ("opportunity_detection.system", "opportunity_detection", "Opportunity detection (system)"),
+    ("ticket_triage.system", "ticket_triage", "Ticket triage (system)"),
+    ("churn_explanation.system", "churn_explanation", "Churn explanation (system)"),
+    ("email_draft.system", "email_draft", "Email draft (system)"),
+    ("risk_summary.system", "risk_summary", "Risk summary (system)"),
+)
