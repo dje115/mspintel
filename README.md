@@ -1,6 +1,6 @@
 # mspintel
 
-mspintel is a secure, AI-assisted MSP intelligence platform for MSPs. Release **`v1.2`** extends tenant lifecycle controls: membership role/status updates with guardrails, invitation expiry sweeper, session metadata and session management APIs/UI, and stronger API tests—while keeping the v1.1 access-control baseline (invitations, refresh rotation, audit, Mailpit).
+mspintel is a secure, AI-assisted MSP intelligence platform for MSPs. Release **`v1.3`** separates the **platform administration** experience from the tenant workspace: a dedicated platform login, `/platform/...` console routes, JWT session scope (`am` claim), and platform-only APIs—without splitting deployments. **`v1.2`** added tenant lifecycle controls (membership PATCH guardrails, invitation sweeper, session metadata, session APIs/UI) on top of the v1.1 access-control baseline (invitations, refresh rotation, audit, Mailpit).
 
 ## Stack
 
@@ -15,7 +15,7 @@ mspintel is a secure, AI-assisted MSP intelligence platform for MSPs. Release **
 
 ## Versioning
 
-- Current app version: **`1.2`**
+- Current app version: **`1.3`**
 - Central runtime version variable: `MSPINTEL_APP_VERSION` (root `.env` and Compose → backend `MSPINTEL_APP_VERSION`)
 - Frontend display: `VITE_APP_VERSION` in `.env`, overridden in Compose from `MSPINTEL_APP_VERSION` as `VITE_APP_VERSION` for the dev container
 
@@ -27,7 +27,7 @@ mspintel is a secure, AI-assisted MSP intelligence platform for MSPs. Release **
 - `tenant_invitations` manages invite lifecycle (`pending`, `accepted`, `expired`, `revoked`)
 - `user_sessions` stores refresh sessions for revocation/rotation
 - `plans` and `subscriptions` are tenant-owned billing foundations
-- Platform admin remains distinct from tenant roles
+- Platform admin (`users.is_platform_admin`) remains distinct from tenant roles; **v1.3** enforces separate sign-in and JWT scope for platform vs tenant sessions (see below).
 
 ## Security and Hardening (v1.1 baseline + v1.2 extensions)
 
@@ -41,6 +41,7 @@ mspintel is a secure, AI-assisted MSP intelligence platform for MSPs. Release **
 - **v1.2:** Membership PATCH validates roles/status, blocks last active `tenant_admin` removal, normalizes role codes, skips no-op updates (no audit noise).
 - **v1.2:** Session list/revoke is strictly user-scoped; revoking the **current** session is rejected (use `POST /auth/logout` with refresh token).
 - **v1.2:** `logout-all` JSON body is validated; invitation sweeper uses UTC-aware cutoff in the ORM path.
+- **v1.3:** Tenant `POST /auth/login` rejects platform-admin accounts (they must use `POST /auth/platform/login`). Access tokens carry claim `am` = `tenant` \| `platform`; tenant APIs reject `am=platform`. Platform APIs require `am=platform` and `is_platform_admin`.
 
 ## Local Run (Docker-first)
 
@@ -54,10 +55,14 @@ The backend image runs **`alembic upgrade head` on container start**, so new mig
 
 ## Local URLs
 
-- Frontend (app shell after login): [http://localhost:5173](http://localhost:5173)
-- Tenant login: [http://localhost:5173/login](http://localhost:5173/login)
-- Tenant signup: [http://localhost:5173/signup](http://localhost:5173/signup)
-- **Platform admins use the same `/login` page** as tenant users (global `users` table + `is_platform_admin`).
+| Surface | URL |
+| --- | --- |
+| Tenant login | [http://localhost:5173/login](http://localhost:5173/login) |
+| Tenant signup | [http://localhost:5173/signup](http://localhost:5173/signup) |
+| Tenant app (after login) | [http://localhost:5173/app/…](http://localhost:5173/app/customers) |
+| **Platform console login** | [http://localhost:5173/platform/login](http://localhost:5173/platform/login) |
+| **Platform console** | [http://localhost:5173/platform](http://localhost:5173/platform) |
+
 - API health: [http://localhost:8001/health](http://localhost:8001/health)
 - API v1 health: [http://localhost:8001/api/v1/health](http://localhost:8001/api/v1/health)
 - Mailpit UI: [http://localhost:8025](http://localhost:8025)
@@ -67,13 +72,18 @@ The backend image runs **`alembic upgrade head` on container start**, so new mig
 
 - Auth/session:
   - `POST /api/v1/auth/signup`
-  - `POST /api/v1/auth/login`
+  - `POST /api/v1/auth/login` (tenant users only; **403** if `is_platform_admin`)
+  - `POST /api/v1/auth/platform/login` (platform admins only; **401** if not authorized—same message for wrong password or non-admin)
   - `POST /api/v1/auth/refresh`
   - `POST /api/v1/auth/logout`
-  - `POST /api/v1/auth/logout-all` (optional JSON `{"keep_refresh_token": "<current refresh>"}` to revoke only other sessions)
-  - `GET /api/v1/auth/me`
+  - `POST /api/v1/auth/logout-all` (optional JSON `{"keep_refresh_token": "<current refresh>"}`; works with **tenant** or **platform** access token—no `X-Tenant-Id` required for platform sessions)
+  - `GET /api/v1/auth/me` (returns `auth_mode`: `tenant` \| `platform` from the JWT; does not require tenant membership)
   - `GET /api/v1/auth/sessions` (lists the caller’s refresh sessions with metadata; `is_current` uses the access token’s `sid` claim)
-  - `POST /api/v1/auth/sessions/{session_id}/revoke` (not allowed for the current session; use `logout`)
+  - `POST /api/v1/auth/sessions/{session_id}/revoke` (not allowed for the current session; use `logout`; optional `X-Tenant-Id` for audit when revoking from a tenant-scoped session)
+- Platform (Bearer token must be **platform** session; see `get_platform_admin` in `backend/app/api/deps/access.py`):
+  - `GET /api/v1/platform/overview`
+  - `GET /api/v1/platform/tenants?page=&page_size=`
+  - `GET /api/v1/platform/system-status`
 - Tenant members/invitations:
   - `GET /api/v1/tenants/current/members`
   - `PATCH /api/v1/tenants/current/members/{membership_id}` (tenant role and/or `active` / `suspended` status; see `backend/app/domain/membership_rules.py`)
@@ -98,6 +108,18 @@ The backend image runs **`alembic upgrade head` on container start**, so new mig
 
 - Alembic `0004_session_metadata` adds `ip_address`, `user_agent`, `device_label`, and `last_used_at` to `user_sessions`.
 - Access tokens include optional claim `sid` (session id) so the UI can highlight the current row.
+- **v1.3:** Access and refresh tokens include claim `am` (`tenant` \| `platform`) so tenant APIs cannot be used with a platform-console session and vice versa. Refresh preserves `am`. Legacy tokens without `am` are treated as tenant scope for compatibility.
+
+## Platform vs tenant (routing)
+
+- **Tenant SPA:** `/login`, `/signup`, `/accept-invitation`, `/app/...` — normal MSP workspace users.
+- **Platform SPA:** `/platform/login`, `/platform`, `/platform/tenants`, `/platform/system-status` — `is_platform_admin` users only, with platform-scoped JWTs.
+- Same deployment and user table; enforcement is **server-side** (JWT + flags) with **frontend route guards** for UX (`TenantProtectedRoute`, `PlatformProtectedRoute`).
+
+### Seed credentials (local)
+
+- Tenant demo: `tenant-admin@demo-msp.example.com` / `ChangeMe123!` (see `backend/app/services/seed.py`).
+- Platform demo: `admin@mspintel.example.com` / `ChangeMe123!` (`seed_platform_admin_email` / `seed_platform_admin_password` in settings).
 - Refresh records `last_used_at` on the session being rotated; login/signup/refresh capture client IP and User-Agent when available.
 
 ## Session UI

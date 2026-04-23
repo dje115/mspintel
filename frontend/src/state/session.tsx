@@ -9,6 +9,8 @@ type SessionState = {
   refreshToken: string | null;
   currentSessionId: string | null;
   me: MeResponse | null;
+  /** Derived from ``/auth/me`` after load; ``null`` before first successful ``me``. */
+  authMode: "tenant" | "platform" | null;
   currentTenantId: string | null;
   loading: boolean;
   login: (accessToken: string, refreshToken: string, sessionId?: string) => Promise<void>;
@@ -59,7 +61,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     try {
       const data = await api.me(accessToken, currentTenantId ?? undefined);
       setMe(data);
-      if (!currentTenantId && data.memberships[0]) {
+      if (data.auth_mode !== "platform" && !currentTenantId && data.memberships[0]) {
         setCurrentTenantIdState(data.memberships[0].tenant_id);
         localStorage.setItem(TENANT_KEY, data.memberships[0].tenant_id);
       }
@@ -80,6 +82,10 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         setCurrentSessionId(rotated.session_id);
         const data = await api.me(rotated.access_token, currentTenantId ?? undefined);
         setMe(data);
+        if (data.auth_mode !== "platform" && !currentTenantId && data.memberships[0]) {
+          setCurrentTenantIdState(data.memberships[0].tenant_id);
+          localStorage.setItem(TENANT_KEY, data.memberships[0].tenant_id);
+        }
       } catch {
         clearSession();
       }
@@ -120,15 +126,22 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   }, [refreshToken, clearSession]);
 
   const logoutAll = useCallback(async () => {
-    if (accessToken && currentTenantId) {
-      try {
+    if (!accessToken) {
+      clearSession();
+      return;
+    }
+    const mode = me?.auth_mode;
+    try {
+      if (mode === "platform") {
+        await api.logoutAll(accessToken);
+      } else if (currentTenantId) {
         await api.logoutAll(accessToken, currentTenantId);
-      } catch {
-        // local cleanup still happens
       }
+    } catch {
+      // local cleanup still happens
     }
     clearSession();
-  }, [accessToken, currentTenantId, clearSession]);
+  }, [accessToken, currentTenantId, me?.auth_mode, clearSession]);
 
   const logoutOtherSessions = useCallback(async () => {
     if (!accessToken || !currentTenantId || !refreshToken) return;
@@ -145,12 +158,15 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     setLoading(true);
   }, []);
 
+  const authMode = me?.auth_mode ?? null;
+
   const value = useMemo(
     () => ({
       accessToken,
       refreshToken,
       currentSessionId,
       me,
+      authMode,
       currentTenantId,
       loading,
       login,
@@ -165,6 +181,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       refreshToken,
       currentSessionId,
       me,
+      authMode,
       currentTenantId,
       loading,
       login,

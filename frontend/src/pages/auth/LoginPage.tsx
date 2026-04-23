@@ -1,5 +1,5 @@
 import { FormEvent, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 import { api } from "../../api/client";
 import { APP_VERSION } from "../../config/version";
@@ -38,6 +38,9 @@ export function LoginPage() {
         {error ? <p className="error">{error}</p> : null}
         <button type="submit">Sign in</button>
       </form>
+      <p className="tenant-auth-alt">
+        MSPintel platform staff? <Link to="/platform/login">Platform console sign-in</Link>
+      </p>
       <p className="version-tag">v{APP_VERSION}</p>
     </>
   );

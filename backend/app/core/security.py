@@ -12,6 +12,10 @@ from app.core.settings import get_settings
 
 settings = get_settings()
 
+# JWT ``am`` claim: tenant app vs platform console (same user store, scoped tokens).
+AUTH_MODE_TENANT = "tenant"
+AUTH_MODE_PLATFORM = "platform"
+
 
 def _pbkdf2_hash(password: str, salt: bytes, rounds: int = 310_000) -> bytes:
     return hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, rounds)
@@ -47,21 +51,28 @@ def create_access_token(
     expires_delta: timedelta | None = None,
     *,
     session_id: uuid.UUID | None = None,
+    auth_mode: str = AUTH_MODE_TENANT,
 ) -> str:
     expire = datetime.now(UTC) + (expires_delta or timedelta(minutes=settings.jwt_access_token_expire_minutes))
-    to_encode: dict[str, Any] = {"sub": subject, "exp": expire, "typ": "access"}
+    to_encode: dict[str, Any] = {"sub": subject, "exp": expire, "typ": "access", "am": auth_mode}
     if session_id is not None:
         to_encode["sid"] = str(session_id)
     return jwt.encode(to_encode, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
 
 
-def create_refresh_token(subject: str, expires_delta: timedelta | None = None) -> str:
+def create_refresh_token(
+    subject: str,
+    expires_delta: timedelta | None = None,
+    *,
+    auth_mode: str = AUTH_MODE_TENANT,
+) -> str:
     expire = datetime.now(UTC) + (expires_delta or timedelta(minutes=settings.jwt_refresh_token_expire_minutes))
     to_encode: dict[str, Any] = {
         "sub": subject,
         "exp": expire,
         "typ": "refresh",
         "jti": secrets.token_hex(12),
+        "am": auth_mode,
     }
     return jwt.encode(to_encode, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
 
@@ -85,6 +96,25 @@ def decode_access_token_payload(token: str) -> dict[str, Any] | None:
     if not payload or payload.get("typ") != "access":
         return None
     return payload
+
+
+def auth_mode_from_payload(payload: dict[str, Any] | None) -> str:
+    """Return ``tenant`` or ``platform`` from JWT payload; missing ``am`` defaults to tenant (legacy tokens)."""
+    if not payload:
+        return AUTH_MODE_TENANT
+    raw = payload.get("am")
+    if raw == AUTH_MODE_PLATFORM:
+        return AUTH_MODE_PLATFORM
+    return AUTH_MODE_TENANT
+
+
+def auth_mode_from_refresh_payload(payload: dict[str, Any] | None) -> str:
+    if not payload:
+        return AUTH_MODE_TENANT
+    raw = payload.get("am")
+    if raw == AUTH_MODE_PLATFORM:
+        return AUTH_MODE_PLATFORM
+    return AUTH_MODE_TENANT
 
 
 def hash_refresh_token(token: str) -> str:

@@ -4,6 +4,8 @@ import type {
   Invitation,
   MeResponse,
   OnboardingResponse,
+  PlatformOverview,
+  PlatformTenantList,
   SourceConnection,
   SubscriptionResponse,
   SystemStatus,
@@ -35,11 +37,28 @@ function authHeaders(accessToken?: string, tenantId?: string): HeadersInit {
   };
 }
 
+function formatErrorBody(status: number, body: string): string {
+  const trimmed = body.trim();
+  if (!trimmed) return `Request failed: ${status}`;
+  try {
+    const j = JSON.parse(trimmed) as { detail?: unknown };
+    if (typeof j.detail === "string") return j.detail;
+    if (Array.isArray(j.detail)) {
+      return j.detail
+        .map((x) => (typeof x === "object" && x && "msg" in x ? String((x as { msg: string }).msg) : String(x)))
+        .join(", ");
+    }
+  } catch {
+    /* not JSON */
+  }
+  return trimmed;
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, init);
   if (!res.ok) {
     const body = await res.text();
-    throw new Error(body || `Request failed: ${res.status}`);
+    throw new Error(formatErrorBody(res.status, body));
   }
   return (await res.json()) as T;
 }
@@ -57,6 +76,12 @@ export const api = {
       headers: authHeaders(),
       body: JSON.stringify(payload)
     }),
+  platformLogin: (payload: { email: string; password: string }) =>
+    request<TokenPairResponse>("/api/v1/auth/platform/login", {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify(payload)
+    }),
   refresh: (refreshToken: string) =>
     request<TokenPairResponse>("/api/v1/auth/refresh", {
       method: "POST",
@@ -69,7 +94,7 @@ export const api = {
       headers: authHeaders(),
       body: JSON.stringify({ refresh_token: refreshToken })
     }),
-  logoutAll: (accessToken: string, tenantId: string, body?: { keep_refresh_token?: string }) =>
+  logoutAll: (accessToken: string, tenantId?: string, body?: { keep_refresh_token?: string }) =>
     request<{ revoked_sessions: number }>("/api/v1/auth/logout-all", {
       method: "POST",
       headers: authHeaders(accessToken, tenantId),
@@ -153,5 +178,17 @@ export const api = {
   integrations: (accessToken: string, tenantId: string) =>
     request<SourceConnection[]>("/api/v1/integrations/connections", {
       headers: authHeaders(accessToken, tenantId)
-    })
+    }),
+  platformOverview: (accessToken: string) =>
+    request<PlatformOverview>("/api/v1/platform/overview", { headers: authHeaders(accessToken) }),
+  platformTenants: (accessToken: string, query: { page: number; page_size: number }) => {
+    const qs = new URLSearchParams();
+    qs.set("page", String(query.page));
+    qs.set("page_size", String(query.page_size));
+    return request<PlatformTenantList>(`/api/v1/platform/tenants?${qs.toString()}`, {
+      headers: authHeaders(accessToken)
+    });
+  },
+  platformSystemStatus: (accessToken: string) =>
+    request<SystemStatus>("/api/v1/platform/system-status", { headers: authHeaders(accessToken) })
 };

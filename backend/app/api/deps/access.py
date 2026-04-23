@@ -7,7 +7,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.deps.db import get_db
-from app.core.security import decode_access_token, decode_access_token_payload
+from app.core.security import (
+    AUTH_MODE_PLATFORM,
+    auth_mode_from_payload,
+    decode_access_token,
+    decode_access_token_payload,
+)
 from app.models.entities import Role, Tenant, TenantMembership, User
 
 security = HTTPBearer(auto_error=False)
@@ -21,6 +26,15 @@ class AccessContext:
     role_code: str
     is_platform_admin: bool
     current_session_id: UUID | None = None
+
+
+@dataclass
+class BearerIdentity:
+    """Authenticated user from JWT without requiring tenant membership."""
+
+    user: User
+    current_session_id: UUID | None
+    auth_mode: str
 
 
 ROLE_PERMISSIONS = {
@@ -69,6 +83,35 @@ def get_optional_user(
     return db.get(User, UUID(user_id))
 
 
+def get_bearer_identity(
+    credentials: HTTPAuthorizationCredentials | None = Depends(security),
+    db: Session = Depends(get_db),
+) -> BearerIdentity:
+    if credentials is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing auth token")
+
+    payload = decode_access_token_payload(credentials.credentials)
+    if not payload or not payload.get("sub"):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid auth token")
+
+    user_id = str(payload["sub"])
+    sid_raw = payload.get("sid")
+    try:
+        current_session_id: UUID | None = UUID(str(sid_raw)) if sid_raw else None
+    except ValueError:
+        current_session_id = None
+
+    user = db.get(User, UUID(user_id))
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+
+    return BearerIdentity(
+        user=user,
+        current_session_id=current_session_id,
+        auth_mode=auth_mode_from_payload(payload),
+    )
+
+
 def get_access_context(
     credentials: HTTPAuthorizationCredentials | None = Depends(security),
     x_tenant_id: UUID | None = Header(default=None),
@@ -80,6 +123,14 @@ def get_access_context(
     payload = decode_access_token_payload(credentials.credentials)
     if not payload or not payload.get("sub"):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid auth token")
+
+    if auth_mode_from_payload(payload) == AUTH_MODE_PLATFORM:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                "This session is scoped to platform administration and cannot access tenant APIs."
+            ),
+        )
 
     user_id = str(payload["sub"])
     sid_raw = payload.get("sid")
@@ -126,3 +177,16 @@ def require_permission(permission: str):
         return ctx
 
     return checker
+
+
+def get_platform_admin(
+    identity: BearerIdentity = Depends(get_bearer_identity),
+) -> BearerIdentity:
+    if identity.auth_mode != AUTH_MODE_PLATFORM:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Platform administration access requires a platform console session.",
+        )
+    if not identity.user.is_platform_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
+    return identity

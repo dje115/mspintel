@@ -1,6 +1,8 @@
 from datetime import datetime
 from uuid import UUID
 
+from typing import Literal
+
 from pydantic import BaseModel, EmailStr, Field
 
 
@@ -61,4 +63,5 @@ class UserMeResponse(BaseModel):
     email: EmailStr
     full_name: str
     is_platform_admin: bool
+    auth_mode: Literal["tenant", "platform"] = "tenant"
     memberships: list[MembershipSummary]

@@ -6,8 +6,10 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.security import (
+    AUTH_MODE_TENANT,
     create_access_token,
     create_refresh_token,
+    auth_mode_from_refresh_payload,
     decode_token,
     get_password_hash,
     hash_refresh_token,
@@ -75,10 +77,11 @@ class AuthService:
         ip_address: str | None = None,
         user_agent: str | None = None,
         device_label: str | None = None,
+        auth_mode: str = AUTH_MODE_TENANT,
     ) -> TokenPairResponse:
         session_id = uuid.uuid4()
-        access_token = create_access_token(str(user.id), session_id=session_id)
-        refresh_token = create_refresh_token(str(user.id))
+        access_token = create_access_token(str(user.id), session_id=session_id, auth_mode=auth_mode)
+        refresh_token = create_refresh_token(str(user.id), auth_mode=auth_mode)
 
         decoded = decode_token(refresh_token)
         if not decoded or "exp" not in decoded:
@@ -126,6 +129,8 @@ class AuthService:
         if not user or str(user.id) != str(decoded["sub"]):
             raise ValueError("User not found")
 
+        auth_mode = auth_mode_from_refresh_payload(decoded)
+
         self.sessions.touch(session)
         self.sessions.revoke(session)
         return self.issue_token_pair(
@@ -133,6 +138,7 @@ class AuthService:
             ip_address=ip_address,
             user_agent=user_agent,
             device_label=device_label,
+            auth_mode=auth_mode,
         )
 
     def logout(self, refresh_token: str) -> None:
@@ -156,7 +162,7 @@ class AuthService:
         user_id: UUID,
         session_id: UUID,
         *,
-        tenant_id_for_audit: UUID,
+        tenant_id_for_audit: UUID | None,
         actor_user_id: UUID,
     ) -> bool:
         """Revoke a session owned by ``user_id``. Returns True if revoked, False if already inactive."""
@@ -166,11 +172,12 @@ class AuthService:
         if session.revoked_at is not None or not self.sessions.is_active(session):
             return False
         session.revoked_at = datetime.now(UTC)
-        self.audit.log(
-            tenant_id=tenant_id_for_audit,
-            actor_user_id=actor_user_id,
-            event_type="session.revoked",
-            details={"session_id": str(session_id), "target_user_id": str(user_id)},
-        )
+        if tenant_id_for_audit is not None:
+            self.audit.log(
+                tenant_id=tenant_id_for_audit,
+                actor_user_id=actor_user_id,
+                event_type="session.revoked",
+                details={"session_id": str(session_id), "target_user_id": str(user_id)},
+            )
         self.db.commit()
         return True

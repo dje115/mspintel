@@ -17,6 +17,7 @@ export type MeResponse = {
   email: string;
   full_name: string;
   is_platform_admin: boolean;
+  auth_mode: "tenant" | "platform";
   memberships: MembershipSummary[];
 };
 
@@ -109,4 +110,32 @@ export type SystemStatus = {
   tenant_count: number;
   user_count: number;
   source_connection_count: number;
+};
+
+export type PlatformOverview = {
+  tenant_count: number;
+  user_count: number;
+  subscription_count: number;
+  app_version: string;
+  environment: string;
+};
+
+export type PlatformTenantRow = {
+  tenant_id: string;
+  name: string;
+  slug: string;
+  is_active: boolean;
+  created_at: string;
+  onboarding_status: string | null;
+  onboarding_step: string | null;
+  subscription_status: string | null;
+  plan_code: string | null;
+  plan_name: string | null;
+};
+
+export type PlatformTenantList = {
+  items: PlatformTenantRow[];
+  page: number;
+  page_size: number;
+  total: number;
 };

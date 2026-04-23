@@ -33,7 +33,7 @@ export function AppLayout() {
             <strong>{me?.full_name}</strong>
             <span className="muted"> {me?.email}</span>
             <div className="muted">
-              Platform admin: {me?.is_platform_admin ? "yes" : "no"} | Current role: {me?.memberships.find((m) => m.tenant_id === currentTenantId)?.role_code ?? "-"}
+              Role: {me?.memberships.find((m) => m.tenant_id === currentTenantId)?.role_code ?? "—"}
             </div>
           </div>
 

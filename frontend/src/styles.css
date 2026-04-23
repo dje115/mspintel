@@ -132,6 +132,237 @@ th, td {
   white-space: nowrap;
 }
 
+.tenant-auth-alt {
+  margin: 0.5rem 0 0;
+  font-size: 0.88rem;
+  color: #64748b;
+}
+
+.tenant-auth-alt a {
+  color: #2563eb;
+}
+
+/* —— Platform console (distinct from tenant shell) —— */
+.platform-public-wrap {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 1.25rem;
+  background: linear-gradient(155deg, #0b1224 0%, #1e293b 42%, #0f172a 100%);
+}
+
+.platform-login-card {
+  width: min(440px, 100%);
+  background: rgba(15, 23, 42, 0.94);
+  color: #e2e8f0;
+  border: 1px solid #334155;
+  border-radius: 16px;
+  padding: 1.5rem 1.35rem;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+}
+
+.platform-badge {
+  margin: 0 0 0.35rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.platform-login-card h1 {
+  margin: 0 0 0.5rem;
+  font-size: 1.45rem;
+  font-weight: 650;
+  color: #f8fafc;
+}
+
+.platform-lead {
+  margin: 0 0 1rem;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: #94a3b8;
+}
+
+.platform-form .platform-label {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+  color: #cbd5e1;
+}
+
+.platform-form input {
+  background: #0f172a;
+  border-color: #475569;
+  color: #f1f5f9;
+}
+
+.platform-error {
+  margin: 0;
+  color: #fca5a5;
+  font-size: 0.9rem;
+}
+
+.platform-primary-btn {
+  background: #38bdf8;
+  border-color: #0ea5e9;
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.platform-footer-links {
+  margin: 1rem 0 0;
+  font-size: 0.88rem;
+}
+
+.platform-footer-links a {
+  color: #7dd3fc;
+}
+
+.platform-version-tag {
+  margin: 0.75rem 0 0;
+  font-size: 0.82rem;
+  color: #64748b;
+}
+
+.platform-shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 248px 1fr;
+  background: #f1f5f9;
+}
+
+.platform-sidebar {
+  padding: 1.1rem 0.9rem;
+  background: #0f172a;
+  color: #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid #1e293b;
+}
+
+.platform-brand {
+  display: flex;
+  gap: 0.65rem;
+  align-items: flex-start;
+  margin-bottom: 1.25rem;
+}
+
+.platform-brand-mark {
+  width: 10px;
+  height: 36px;
+  border-radius: 4px;
+  background: linear-gradient(180deg, #38bdf8, #6366f1);
+  flex-shrink: 0;
+}
+
+.platform-brand-sub {
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.platform-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  flex: 1;
+}
+
+.platform-nav-link {
+  display: block;
+  padding: 0.5rem 0.55rem;
+  border-radius: 8px;
+  color: #cbd5e1;
+  text-decoration: none;
+  font-size: 0.92rem;
+}
+
+.platform-nav-link:hover {
+  background: rgba(148, 163, 184, 0.12);
+  color: #f8fafc;
+}
+
+.platform-nav-link.is-active {
+  background: rgba(56, 189, 248, 0.15);
+  color: #e0f2fe;
+}
+
+.platform-sidebar-version {
+  margin: 1rem 0 0;
+  font-size: 0.78rem;
+  color: #64748b;
+}
+
+.platform-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.platform-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.9rem 1.1rem;
+  background: #fff;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.platform-text-btn {
+  background: transparent;
+  border: 1px solid #cbd5e1;
+  color: #0f172a;
+}
+
+.platform-content {
+  padding: 1.1rem;
+  flex: 1;
+}
+
+.platform-page h1 {
+  margin: 0 0 0.35rem;
+}
+
+.platform-stat {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin: 0.35rem 0;
+  color: #0f172a;
+}
+
+.platform-stat.subtle {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.small-print {
+  font-size: 0.82rem;
+  margin: 0;
+}
+
+.platform-inline-link {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #2563eb;
+  text-decoration: none;
+}
+
+.platform-inline-link:hover {
+  text-decoration: underline;
+}
+
+.platform-pre {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 0.75rem;
+  overflow: auto;
+}
+
+.platform-table {
+  min-width: 960px;
+}
+
 @media (max-width: 900px) {
   .shell {
     grid-template-columns: 1fr;
@@ -145,5 +376,27 @@ th, td {
   .topbar {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .platform-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .platform-sidebar {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .platform-nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .platform-sidebar-version {
+    margin: 0;
+    width: 100%;
   }
 }
