@@ -1,0 +1,34 @@
+# Node artifacts
+node_modules/
+frontend/node_modules/
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+.venv/
+backend/.venv/
+worker/.venv/
+
+# Build and cache artifacts
+.vite/
+dist/
+coverage/
+.pytest_cache/
+.ruff_cache/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# IDE and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Docker
+*.log
