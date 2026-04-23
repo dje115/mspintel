@@ -2,6 +2,10 @@
 
 mspintel is a secure, AI-assisted MSP intelligence platform for MSPs. Release **`v1.7`** adds **platform-admin MFA recovery codes** (hashed at rest, one-time use, regeneration invalidates unused batches), **Redis-backed rate limiting** on platform password and MFA steps ([docs/PLATFORM_AUTH_HARDENING.md](docs/PLATFORM_AUTH_HARDENING.md)), and bumps deploy/UI defaults to **1.7**. **`v1.6`** hardened **platform-operator TOTP MFA** (validated **`MFA_TOTP_ENCRYPTION_KEY`**, non-sensitive MFA audit metadata, shared OTPAuth URI parsing in the SPA, **`get_totp_secret_crypto`** naming). **`v1.5`** introduced **`user_mfa_methods`** with Fernet-wrapped secrets, the two-step **`/platform/login`** flow (challenge JWT, then `POST /auth/platform/login/mfa`), optional **`PLATFORM_MFA_REQUIRED`**, QR enrolment on **`/platform/security`**, and platform-scoped MFA audits (see [docs/PLATFORM_MFA.md](docs/PLATFORM_MFA.md)). **`v1.4`** hardened **platform-operator** access: separate **tenant vs platform JWT/session TTLs**, `user_sessions.auth_mode`, scoped session list/revoke/logout-all, nullable **`audit_events.tenant_id`** for first-class platform audit rows, `/platform/security`, and a documented extension point for future MFA on platform login. **`v1.3`** introduced the separate platform console (`/platform/login`, JWT `am`, platform APIs). **`v1.2`** added tenant lifecycle controls on top of the v1.1 baseline (invitations, refresh rotation, audit, Mailpit).
 
+## Implementation guidance (Cursor / contributors)
+
+Standing rules for Docker, versioning, env vars, validation, docs, GitHub workflow, reporting, and tenant-vs-platform UX: **[docs/CURSOR_RULES.md](docs/CURSOR_RULES.md)**. Use that file as the default checklist for future implementation work.
+
 ## Stack
 
 - Frontend: React + TypeScript + Vite + React Router

@@ -1,5 +1,7 @@
 # Development
 
+**Ongoing implementation rules** (Docker-first, versioning, `.env.example`, validation, docs, GitHub reporting, tenant hero UX): see **[CURSOR_RULES.md](CURSOR_RULES.md)**. Future prompts and contributors should follow that document so setup and release discipline stay consistent.
+
 ## Prerequisites
 
 - Docker + Docker Compose
