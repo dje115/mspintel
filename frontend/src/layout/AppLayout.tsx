@@ -5,6 +5,7 @@ import { useSession } from "../state/session";
 const nav = [
   { to: "/app/customers", label: "Customers" },
   { to: "/app/members", label: "Members" },
+  { to: "/app/security", label: "Security" },
   { to: "/app/onboarding", label: "Onboarding" },
   { to: "/app/integrations", label: "Integrations" },
   { to: "/app/system-status", label: "System Status" }

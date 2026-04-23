@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.deps.db import get_db
-from app.core.security import decode_access_token
+from app.core.security import decode_access_token, decode_access_token_payload
 from app.models.entities import Role, Tenant, TenantMembership, User
 
 security = HTTPBearer(auto_error=False)
@@ -20,6 +20,7 @@ class AccessContext:
     membership: TenantMembership
     role_code: str
     is_platform_admin: bool
+    current_session_id: UUID | None = None
 
 
 ROLE_PERMISSIONS = {
@@ -76,9 +77,16 @@ def get_access_context(
     if credentials is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing auth token")
 
-    user_id = decode_access_token(credentials.credentials)
-    if not user_id:
+    payload = decode_access_token_payload(credentials.credentials)
+    if not payload or not payload.get("sub"):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid auth token")
+
+    user_id = str(payload["sub"])
+    sid_raw = payload.get("sid")
+    try:
+        current_session_id: UUID | None = UUID(str(sid_raw)) if sid_raw else None
+    except ValueError:
+        current_session_id = None
 
     user = db.get(User, UUID(user_id))
     if not user:
@@ -104,6 +112,7 @@ def get_access_context(
         membership=membership,
         role_code=role.code,
         is_platform_admin=user.is_platform_admin,
+        current_session_id=current_session_id,
     )
 
 

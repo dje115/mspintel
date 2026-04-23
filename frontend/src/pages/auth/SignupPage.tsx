@@ -20,7 +20,7 @@ export function SignupPage() {
     setError(null);
     try {
       const pair = await api.signup({ full_name: fullName, email, password, tenant_name: tenantName });
-      await login(pair.access_token, pair.refresh_token);
+      await login(pair.access_token, pair.refresh_token, pair.session_id);
       navigate("/app/onboarding");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Signup failed");

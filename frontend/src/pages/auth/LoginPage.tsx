@@ -17,7 +17,7 @@ export function LoginPage() {
     setError(null);
     try {
       const pair = await api.login({ email, password });
-      await login(pair.access_token, pair.refresh_token);
+      await login(pair.access_token, pair.refresh_token, pair.session_id);
       navigate("/app/customers");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");

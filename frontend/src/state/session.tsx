@@ -7,12 +7,14 @@ import type { MeResponse } from "../api/types";
 type SessionState = {
   accessToken: string | null;
   refreshToken: string | null;
+  currentSessionId: string | null;
   me: MeResponse | null;
   currentTenantId: string | null;
   loading: boolean;
-  login: (accessToken: string, refreshToken: string) => Promise<void>;
+  login: (accessToken: string, refreshToken: string, sessionId?: string) => Promise<void>;
   logout: () => Promise<void>;
   logoutAll: () => Promise<void>;
+  logoutOtherSessions: () => Promise<void>;
   setCurrentTenantId: (tenantId: string) => void;
   refreshMe: () => Promise<void>;
 };
@@ -21,6 +23,7 @@ const SessionContext = createContext<SessionState | undefined>(undefined);
 
 const ACCESS_KEY = "mspintel_access_token";
 const REFRESH_KEY = "mspintel_refresh_token";
+const SESSION_KEY = "mspintel_session_id";
 const TENANT_KEY = "mspintel_tenant_id";
 
 export function SessionProvider({ children }: { children: React.ReactNode }) {
@@ -29,15 +32,20 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [currentTenantId, setCurrentTenantIdState] = useState<string | null>(() =>
     localStorage.getItem(TENANT_KEY)
   );
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(() =>
+    localStorage.getItem(SESSION_KEY)
+  );
   const [me, setMe] = useState<MeResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
   const clearSession = useCallback(() => {
     localStorage.removeItem(ACCESS_KEY);
     localStorage.removeItem(REFRESH_KEY);
+    localStorage.removeItem(SESSION_KEY);
     localStorage.removeItem(TENANT_KEY);
     setAccessToken(null);
     setRefreshToken(null);
+    setCurrentSessionId(null);
     setCurrentTenantIdState(null);
     setMe(null);
   }, []);
@@ -66,8 +74,10 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         const rotated = await api.refresh(refreshToken);
         localStorage.setItem(ACCESS_KEY, rotated.access_token);
         localStorage.setItem(REFRESH_KEY, rotated.refresh_token);
+        localStorage.setItem(SESSION_KEY, rotated.session_id);
         setAccessToken(rotated.access_token);
         setRefreshToken(rotated.refresh_token);
+        setCurrentSessionId(rotated.session_id);
         const data = await api.me(rotated.access_token, currentTenantId ?? undefined);
         setMe(data);
       } catch {
@@ -83,9 +93,13 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   }, [refreshMe]);
 
   const login = useCallback(
-    async (nextAccessToken: string, nextRefreshToken: string) => {
+    async (nextAccessToken: string, nextRefreshToken: string, nextSessionId?: string) => {
       localStorage.setItem(ACCESS_KEY, nextAccessToken);
       localStorage.setItem(REFRESH_KEY, nextRefreshToken);
+      if (nextSessionId) {
+        localStorage.setItem(SESSION_KEY, nextSessionId);
+        setCurrentSessionId(nextSessionId);
+      }
       setAccessToken(nextAccessToken);
       setRefreshToken(nextRefreshToken);
       setLoading(true);
@@ -116,6 +130,15 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     clearSession();
   }, [accessToken, currentTenantId, clearSession]);
 
+  const logoutOtherSessions = useCallback(async () => {
+    if (!accessToken || !currentTenantId || !refreshToken) return;
+    try {
+      await api.logoutAll(accessToken, currentTenantId, { keep_refresh_token: refreshToken });
+    } catch {
+      // ignore
+    }
+  }, [accessToken, currentTenantId, refreshToken]);
+
   const setCurrentTenantId = useCallback((tenantId: string) => {
     localStorage.setItem(TENANT_KEY, tenantId);
     setCurrentTenantIdState(tenantId);
@@ -126,16 +149,31 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     () => ({
       accessToken,
       refreshToken,
+      currentSessionId,
       me,
       currentTenantId,
       loading,
       login,
       logout,
       logoutAll,
+      logoutOtherSessions,
       setCurrentTenantId,
       refreshMe
     }),
-    [accessToken, refreshToken, me, currentTenantId, loading, login, logout, logoutAll, setCurrentTenantId, refreshMe]
+    [
+      accessToken,
+      refreshToken,
+      currentSessionId,
+      me,
+      currentTenantId,
+      loading,
+      login,
+      logout,
+      logoutAll,
+      logoutOtherSessions,
+      setCurrentTenantId,
+      refreshMe
+    ]
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

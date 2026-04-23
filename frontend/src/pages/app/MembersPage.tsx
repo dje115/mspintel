@@ -64,7 +64,7 @@ export function MembersPage() {
           </thead>
           <tbody>
             {members.map((m) => (
-              <tr key={m.user_id}>
+              <tr key={m.membership_id}>
                 <td>{m.full_name}</td>
                 <td>{m.email}</td>
                 <td>{m.role_code}</td>

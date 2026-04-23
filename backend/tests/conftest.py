@@ -25,9 +25,13 @@ def db_session():
     db: Session = SessionLocal()
 
     roles = [
-      ("tenant_admin", "Tenant Admin"),
-      ("sales_user", "Sales User"),
-      ("director", "Director"),
+        ("platform_admin", "Platform Admin"),
+        ("tenant_admin", "Tenant Admin"),
+        ("director", "Director"),
+        ("sales_user", "Sales User"),
+        ("account_manager", "Account Manager"),
+        ("service_manager", "Service Manager"),
+        ("marketing_user", "Marketing User"),
     ]
     for code, desc in roles:
         db.add(Role(id=uuid.uuid4(), code=code, description=desc))

@@ -7,7 +7,7 @@ services:
     env_file:
       - .env
     environment:
-      VITE_APP_VERSION: ${MSPINTEL_APP_VERSION:-1.1}
+      VITE_APP_VERSION: ${MSPINTEL_APP_VERSION:-1.2}
     ports:
       - "5173:5173"
     volumes:
@@ -24,7 +24,7 @@ services:
     env_file:
       - .env
     environment:
-      MSPINTEL_APP_VERSION: ${MSPINTEL_APP_VERSION:-1.1}
+      MSPINTEL_APP_VERSION: ${MSPINTEL_APP_VERSION:-1.2}
     ports:
       - "8001:8000"
     volumes:
@@ -41,6 +41,8 @@ services:
       dockerfile: Dockerfile
     env_file:
       - .env
+    environment:
+      MSPINTEL_APP_VERSION: ${MSPINTEL_APP_VERSION:-1.2}
     volumes:
       - ./worker:/app
     depends_on:

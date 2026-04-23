@@ -8,7 +8,8 @@ import type {
   SubscriptionResponse,
   SystemStatus,
   TenantMember,
-  TokenPairResponse
+  TokenPairResponse,
+  UserSessionRow
 } from "./types";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8001";
@@ -55,8 +56,18 @@ export const api = {
       headers: authHeaders(),
       body: JSON.stringify({ refresh_token: refreshToken })
     }),
-  logoutAll: (accessToken: string, tenantId: string) =>
+  logoutAll: (accessToken: string, tenantId: string, body?: { keep_refresh_token?: string }) =>
     request<{ revoked_sessions: number }>("/api/v1/auth/logout-all", {
+      method: "POST",
+      headers: authHeaders(accessToken, tenantId),
+      body: JSON.stringify(body ?? {})
+    }),
+  listSessions: (accessToken: string, tenantId: string) =>
+    request<UserSessionRow[]>("/api/v1/auth/sessions", {
+      headers: authHeaders(accessToken, tenantId)
+    }),
+  revokeSession: (accessToken: string, tenantId: string, sessionId: string) =>
+    request<{ revoked: boolean }>(`/api/v1/auth/sessions/${sessionId}/revoke`, {
       method: "POST",
       headers: authHeaders(accessToken, tenantId)
     }),

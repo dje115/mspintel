@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -11,9 +13,11 @@ from app.schemas.tenant import (
     OnboardingStateResponse,
     OnboardingStateUpdate,
     SubscriptionSummary,
+    TenantMemberPatch,
     TenantMemberResponse,
 )
 from app.services.invitation import InvitationService
+from app.services.membership import MembershipService
 from app.services.tenant import TenantService
 
 router = APIRouter(prefix="/api/v1/tenants/current", tags=["tenants"])
@@ -42,6 +46,7 @@ def members(
     ).all()
     return [
         TenantMemberResponse(
+            membership_id=membership.id,
             user_id=user.id,
             full_name=user.full_name,
             email=user.email,
@@ -50,6 +55,21 @@ def members(
         )
         for membership, user, role in rows
     ]
+
+
+@router.patch("/members/{membership_id}", response_model=TenantMemberResponse)
+def patch_member(
+    membership_id: UUID,
+    payload: TenantMemberPatch,
+    ctx: AccessContext = Depends(require_permission("membership:write")),
+    db: Session = Depends(get_db),
+):
+    return MembershipService(db).update_membership(
+        ctx,
+        membership_id,
+        role_code=payload.role_code,
+        membership_status=payload.membership_status,
+    )
 
 
 @router.get("/invitations", response_model=list[InvitationResponse])

@@ -2,6 +2,7 @@ import base64
 import hashlib
 import hmac
 import secrets
+import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -41,9 +42,16 @@ def get_password_hash(password: str) -> str:
     )
 
 
-def create_access_token(subject: str, expires_delta: timedelta | None = None) -> str:
+def create_access_token(
+    subject: str,
+    expires_delta: timedelta | None = None,
+    *,
+    session_id: uuid.UUID | None = None,
+) -> str:
     expire = datetime.now(UTC) + (expires_delta or timedelta(minutes=settings.jwt_access_token_expire_minutes))
     to_encode: dict[str, Any] = {"sub": subject, "exp": expire, "typ": "access"}
+    if session_id is not None:
+        to_encode["sid"] = str(session_id)
     return jwt.encode(to_encode, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
 
 
@@ -66,10 +74,17 @@ def decode_token(token: str) -> dict[str, Any] | None:
 
 
 def decode_access_token(token: str) -> str | None:
+    payload = decode_access_token_payload(token)
+    if not payload:
+        return None
+    return str(payload.get("sub")) if payload.get("sub") else None
+
+
+def decode_access_token_payload(token: str) -> dict[str, Any] | None:
     payload = decode_token(token)
     if not payload or payload.get("typ") != "access":
         return None
-    return str(payload.get("sub")) if payload.get("sub") else None
+    return payload
 
 
 def hash_refresh_token(token: str) -> str:

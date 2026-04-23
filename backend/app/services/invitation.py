@@ -128,6 +128,13 @@ class InvitationService:
         invite = self.repo.by_token(payload.token)
         if not invite:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invitation not found")
+
+        if invite.status == "accepted":
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invitation already accepted")
+        if invite.status == "revoked":
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invitation was revoked")
+        if invite.status == "expired":
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invitation has expired")
         if invite.status != "pending":
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invitation is not pending")
 
@@ -137,7 +144,7 @@ class InvitationService:
         if invite_expiry < datetime.now(UTC):
             invite.status = "expired"
             self.db.commit()
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invitation expired")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invitation has expired")
 
         user = current_user
         if user:

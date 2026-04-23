@@ -24,8 +24,8 @@ def create_user_with_membership(db: Session, email: str, role_code: str, tenant:
     return user
 
 
-def auth_headers(user: User, tenant_id: str | None = None):
-    token = create_access_token(str(user.id), timedelta(minutes=60))
+def auth_headers(user: User, tenant_id: str | None = None, *, session_id: uuid.UUID | None = None):
+    token = create_access_token(str(user.id), timedelta(minutes=60), session_id=session_id)
     headers = {"Authorization": f"Bearer {token}"}
     if tenant_id:
         headers["X-Tenant-Id"] = tenant_id

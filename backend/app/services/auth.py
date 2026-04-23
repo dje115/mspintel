@@ -16,11 +16,14 @@ from app.core.security import (
 from app.models.entities import OnboardingState, Plan, Role, Subscription, Tenant, TenantMembership, User, UserSession
 from app.repositories.sessions import SessionRepository
 from app.schemas.auth import LoginRequest, RefreshRequest, SignupRequest, TokenPairResponse
+from app.services.audit import AuditService
+
 
 class AuthService:
     def __init__(self, db: Session):
         self.db = db
         self.sessions = SessionRepository(db)
+        self.audit = AuditService(db)
 
     def authenticate(self, payload: LoginRequest) -> User | None:
         user = self.db.scalars(select(User).where(User.email == payload.email.lower())).first()
@@ -65,8 +68,16 @@ class AuthService:
         self.db.refresh(user)
         return user
 
-    def issue_token_pair(self, user: User) -> TokenPairResponse:
-        access_token = create_access_token(str(user.id))
+    def issue_token_pair(
+        self,
+        user: User,
+        *,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+        device_label: str | None = None,
+    ) -> TokenPairResponse:
+        session_id = uuid.uuid4()
+        access_token = create_access_token(str(user.id), session_id=session_id)
         refresh_token = create_refresh_token(str(user.id))
 
         decoded = decode_token(refresh_token)
@@ -76,15 +87,30 @@ class AuthService:
 
         self.sessions.create(
             UserSession(
-                id=uuid.uuid4(),
+                id=session_id,
                 user_id=user.id,
                 refresh_token_hash=hash_refresh_token(refresh_token),
                 expires_at=expires_at,
+                ip_address=ip_address,
+                user_agent=user_agent,
+                device_label=device_label,
+                last_used_at=datetime.now(UTC),
             )
         )
-        return TokenPairResponse(access_token=access_token, refresh_token=refresh_token)
+        return TokenPairResponse(
+            access_token=access_token,
+            refresh_token=refresh_token,
+            session_id=session_id,
+        )
 
-    def refresh(self, payload: RefreshRequest) -> TokenPairResponse:
+    def refresh(
+        self,
+        payload: RefreshRequest,
+        *,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+        device_label: str | None = None,
+    ) -> TokenPairResponse:
         decoded = decode_token(payload.refresh_token)
         if not decoded or decoded.get("typ") != "refresh" or not decoded.get("sub"):
             raise ValueError("Invalid refresh token")
@@ -100,13 +126,51 @@ class AuthService:
         if not user or str(user.id) != str(decoded["sub"]):
             raise ValueError("User not found")
 
+        self.sessions.touch(session)
         self.sessions.revoke(session)
-        return self.issue_token_pair(user)
+        return self.issue_token_pair(
+            user,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            device_label=device_label,
+        )
 
     def logout(self, refresh_token: str) -> None:
         session = self.sessions.by_refresh_hash(hash_refresh_token(refresh_token))
         if session and self.sessions.is_active(session):
             self.sessions.revoke(session)
 
-    def logout_all(self, user_id: UUID) -> int:
+    def logout_all(self, user_id: UUID, *, keep_refresh_token: str | None = None) -> int:
+        if keep_refresh_token:
+            keep_hash = hash_refresh_token(keep_refresh_token)
+            session = self.sessions.by_refresh_hash(keep_hash)
+            if not session or session.user_id != user_id:
+                raise ValueError("keep_refresh_token does not match an active session for this user")
+            if not self.sessions.is_active(session):
+                raise ValueError("keep_refresh_token session is not active")
+            return self.sessions.revoke_all_for_user_except_refresh_hash(user_id, keep_hash)
         return self.sessions.revoke_all_for_user(user_id)
+
+    def revoke_session_for_user(
+        self,
+        user_id: UUID,
+        session_id: UUID,
+        *,
+        tenant_id_for_audit: UUID,
+        actor_user_id: UUID,
+    ) -> bool:
+        """Revoke a session owned by ``user_id``. Returns True if revoked, False if already inactive."""
+        session = self.sessions.get_for_user(session_id, user_id)
+        if not session:
+            raise ValueError("Session not found")
+        if session.revoked_at is not None or not self.sessions.is_active(session):
+            return False
+        session.revoked_at = datetime.now(UTC)
+        self.audit.log(
+            tenant_id=tenant_id_for_audit,
+            actor_user_id=actor_user_id,
+            event_type="session.revoked",
+            details={"session_id": str(session_id), "target_user_id": str(user_id)},
+        )
+        self.db.commit()
+        return True

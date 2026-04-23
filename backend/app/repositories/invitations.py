@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.models.entities import TenantInvitation
@@ -42,3 +42,24 @@ class InvitationRepository:
     def revoke(self, invitation: TenantInvitation) -> None:
         invitation.status = "revoked"
         invitation.updated_at = datetime.now(UTC)
+
+    def expire_pending_past_expiry(self, now: datetime | None = None) -> int:
+        """Mark ``pending`` invitations with ``expires_at`` in the past as ``expired`` (idempotent).
+
+        Re-running updates zero rows. Uses UTC-aware ``now`` for comparisons so ORM/SQLite stay consistent.
+        """
+        ts = now or datetime.now(UTC)
+        if ts.tzinfo is None:
+            ts = ts.replace(tzinfo=UTC)
+        stmt = (
+            update(TenantInvitation)
+            .where(
+                TenantInvitation.status == "pending",
+                TenantInvitation.expires_at < ts,
+            )
+            .values(status="expired", updated_at=ts)
+            .execution_options(synchronize_session=False)
+        )
+        res = self.db.execute(stmt)
+        self.db.commit()
+        return int(res.rowcount or 0)

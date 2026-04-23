@@ -2,6 +2,7 @@ export type TokenPairResponse = {
   access_token: string;
   refresh_token: string;
   token_type: string;
+  session_id: string;
 };
 
 export type MembershipSummary = {
@@ -32,11 +33,24 @@ export type Invitation = {
 };
 
 export type TenantMember = {
+  membership_id: string;
   user_id: string;
   full_name: string;
   email: string;
   role_code: string;
   status: string;
+};
+
+export type UserSessionRow = {
+  id: string;
+  ip_address: string | null;
+  device_label: string | null;
+  user_agent: string | null;
+  created_at: string;
+  last_used_at: string | null;
+  expires_at: string;
+  revoked_at: string | null;
+  is_current: boolean;
 };
 
 export type OnboardingResponse = { tenant_id: string; status: string; step: string };

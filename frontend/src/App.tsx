@@ -8,6 +8,7 @@ import { CustomerDetailPage } from "./pages/app/CustomerDetailPage";
 import { CustomersPage } from "./pages/app/CustomersPage";
 import { IntegrationsPage } from "./pages/app/IntegrationsPage";
 import { MembersPage } from "./pages/app/MembersPage";
+import { SecurityPage } from "./pages/app/SecurityPage";
 import { OnboardingPage } from "./pages/app/OnboardingPage";
 import { AcceptInvitationPage } from "./pages/auth/AcceptInvitationPage";
 import { LoginPage } from "./pages/auth/LoginPage";
@@ -29,6 +30,7 @@ function App() {
           <Route path="onboarding" element={<OnboardingPage />} />
           <Route path="integrations" element={<IntegrationsPage />} />
           <Route path="members" element={<MembersPage />} />
+          <Route path="security" element={<SecurityPage />} />
           <Route path="system-status" element={<SystemStatusPage />} />
           <Route index element={<Navigate to="customers" replace />} />
         </Route>
