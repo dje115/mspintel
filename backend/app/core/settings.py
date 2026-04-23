@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -14,6 +14,16 @@ class Settings(BaseSettings):
     backend_host: str = "0.0.0.0"
     backend_port: int = 8000
     backend_cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:5173"])
+
+    @model_validator(mode="after")
+    def _ensure_cors_origins_non_empty(self) -> "Settings":
+        """Mis-set ``BACKEND_CORS_ORIGINS`` in .env often parses as []; that strips CORS headers entirely."""
+        if not self.backend_cors_origins:
+            self.backend_cors_origins = [
+                "http://localhost:5173",
+                "http://127.0.0.1:5173",
+            ]
+        return self
 
     database_url: str = "postgresql+psycopg://mspintel:mspintel@postgres:5432/mspintel"
     redis_url: str = "redis://redis:6379/0"

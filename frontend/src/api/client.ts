@@ -12,7 +12,20 @@ import type {
   UserSessionRow
 } from "./types";
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8001";
+/**
+ * Empty base = same-origin `/api/...` (Vite dev proxy → backend). Set `VITE_API_BASE_URL` only when
+ * the UI should call the API host directly (e.g. production build behind its own origin rules).
+ */
+function apiBaseUrl(): string {
+  const raw = import.meta.env.VITE_API_BASE_URL as string | undefined;
+  if (raw === undefined || raw === "") {
+    // Dev: same-origin + Vite proxy. Production build: require explicit VITE_API_BASE_URL or default host.
+    return import.meta.env.DEV ? "" : "http://localhost:8001";
+  }
+  return raw.replace(/\/$/, "");
+}
+
+const API_BASE = apiBaseUrl();
 
 function authHeaders(accessToken?: string, tenantId?: string): HeadersInit {
   return {

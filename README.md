@@ -46,8 +46,11 @@ mspintel is a secure, AI-assisted MSP intelligence platform for MSPs. Release **
 
 1. `cp .env.example .env`
 2. `docker compose up --build -d`
-3. `docker compose exec backend alembic upgrade head` (includes `0004_session_metadata` for session columns)
-4. `docker compose exec backend python -m app.db.seed`
+3. `docker compose exec backend python -m app.db.seed` (first run / when you reset the DB)
+
+The backend image runs **`alembic upgrade head` on container start**, so new migrations (e.g. session metadata columns) apply automatically after `docker compose up --build`. You can still run `docker compose exec backend alembic upgrade head` manually if needed.
+
+**Browser → API in Compose:** the frontend dev server proxies `/api/*` to the `backend` service (`API_PROXY_TARGET`), and Compose sets `VITE_API_BASE_URL` to empty so the SPA calls **same-origin** `http://localhost:5173/api/...` (no cross-origin/CORS from the browser to `:8001`).
 
 ## Local URLs
 

@@ -13,9 +13,17 @@ def create_app() -> FastAPI:
         version=settings.app_version,
     )
 
+    # In development, also allow any localhost / 127.0.0.1 Vite port so a bad BACKEND_CORS_ORIGINS env
+    # cannot brick the UI (browser requires Access-Control-Allow-Origin on API responses).
+    dev_local_regex = (
+        r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$"
+        if settings.environment == "development"
+        else None
+    )
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.backend_cors_origins,
+        allow_origin_regex=dev_local_regex,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
