@@ -76,6 +76,18 @@ At the end of a phase, summarise for the user:
 
 ---
 
+## Stale frontend UI (Docker + Vite)
+
+If the browser still shows an **old layout** (e.g. flat “Customers / Members” nav instead of grouped **Dashboard / Accounts & customers**), the dev server is usually serving a **stale bundle**:
+
+1. **Pull latest** (`git pull`) and confirm `frontend/src/layout/AppLayout.tsx` uses `tenant-shell` / grouped nav.
+2. **Restart the frontend container** after pulling: `docker compose restart frontend` (or `docker compose up --build -d`).
+3. **Hard refresh** the browser (`Ctrl+Shift+R`) or use a private window.
+
+Compose sets **`CHOKIDAR_USEPOLLING=true`** for the frontend service so Vite **polls** the bind-mounted `./frontend` tree (needed on many **Windows + Docker Desktop** setups where file events do not reach the container). Local `npm run dev` without Docker does not need this unless you see the same symptom.
+
+---
+
 ## Quick reference commands
 
 | Goal | Command |
