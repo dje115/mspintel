@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.core.security import get_password_hash
 from app.models.entities import Tenant, User
-from tests.helpers import create_user_with_membership
+from tests.helpers import create_user_with_membership, platform_password_login
 
 
 def test_tenant_login_rejects_platform_admin(client, db_session: Session):
@@ -47,9 +47,7 @@ def test_platform_login_ok(client, db_session: Session):
     db_session.add(admin)
     db_session.commit()
 
-    res = client.post("/api/v1/auth/platform/login", json={"email": "plat2@example.com", "password": "ChangeMe123!"})
-    assert res.status_code == 200
-    body = res.json()
+    body = platform_password_login(client, "plat2@example.com", "ChangeMe123!")
     assert body["access_token"]
 
     me = client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {body['access_token']}"})
@@ -71,9 +69,7 @@ def test_platform_token_cannot_hit_tenant_customers(client, db_session: Session)
     )
     db_session.add(admin)
     db_session.commit()
-    pair = client.post(
-        "/api/v1/auth/platform/login", json={"email": "plat3@example.com", "password": "ChangeMe123!"}
-    ).json()
+    pair = platform_password_login(client, "plat3@example.com", "ChangeMe123!")
     res = client.get(
         "/api/v1/customers?page=1&page_size=10",
         headers={"Authorization": f"Bearer {pair['access_token']}", "X-Tenant-Id": str(tenant.id)},
@@ -91,9 +87,7 @@ def test_platform_overview_ok(client, db_session: Session):
     )
     db_session.add(admin)
     db_session.commit()
-    pair = client.post(
-        "/api/v1/auth/platform/login", json={"email": "plat4@example.com", "password": "ChangeMe123!"}
-    ).json()
+    pair = platform_password_login(client, "plat4@example.com", "ChangeMe123!")
     res = client.get("/api/v1/platform/overview", headers={"Authorization": f"Bearer {pair['access_token']}"})
     assert res.status_code == 200
     body = res.json()

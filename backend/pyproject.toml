@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mspintel-backend"
-version = "1.2"
+version = "1.6.0"
 description = "mspintel FastAPI SaaS backend"
 requires-python = ">=3.12"
 dependencies = [
@@ -16,7 +16,9 @@ dependencies = [
   "psycopg[binary]>=3.2.1",
   "python-jose[cryptography]>=3.3.0",
   "email-validator>=2.2.0",
-  "redis>=5.0.8"
+  "redis>=5.0.8",
+  "pyotp>=2.9.0",
+  "cryptography>=43.0.0"
 ]
 
 [project.optional-dependencies]

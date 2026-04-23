@@ -6,7 +6,8 @@ import { useSession } from "../state/session";
 const nav = [
   { to: "/platform", label: "Overview", end: true },
   { to: "/platform/tenants", label: "Tenants" },
-  { to: "/platform/system-status", label: "System status" }
+  { to: "/platform/system-status", label: "System status" },
+  { to: "/platform/security", label: "Security" }
 ];
 
 export function PlatformLayout() {

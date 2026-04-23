@@ -144,13 +144,18 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   }, [accessToken, currentTenantId, me?.auth_mode, clearSession]);
 
   const logoutOtherSessions = useCallback(async () => {
-    if (!accessToken || !currentTenantId || !refreshToken) return;
+    if (!accessToken || !refreshToken) return;
+    const mode = me?.auth_mode;
     try {
-      await api.logoutAll(accessToken, currentTenantId, { keep_refresh_token: refreshToken });
+      if (mode === "platform") {
+        await api.logoutAll(accessToken, undefined, { keep_refresh_token: refreshToken });
+      } else if (currentTenantId) {
+        await api.logoutAll(accessToken, currentTenantId, { keep_refresh_token: refreshToken });
+      }
     } catch {
       // ignore
     }
-  }, [accessToken, currentTenantId, refreshToken]);
+  }, [accessToken, currentTenantId, refreshToken, me?.auth_mode]);
 
   const setCurrentTenantId = useCallback((tenantId: string) => {
     localStorage.setItem(TENANT_KEY, tenantId);

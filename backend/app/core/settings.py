@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from pydantic import Field, model_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -9,7 +9,7 @@ class Settings(BaseSettings):
 
     project_name: str = "mspintel"
     environment: str = "development"
-    app_version: str = Field(default="1.3", validation_alias="MSPINTEL_APP_VERSION")
+    app_version: str = Field(default="1.6", validation_alias="MSPINTEL_APP_VERSION")
 
     backend_host: str = "0.0.0.0"
     backend_port: int = 8000
@@ -30,8 +30,56 @@ class Settings(BaseSettings):
 
     jwt_secret_key: str = "change-me-in-production"
     jwt_algorithm: str = "HS256"
-    jwt_access_token_expire_minutes: int = 30
-    jwt_refresh_token_expire_minutes: int = 60 * 24 * 7
+
+    # Tenant workspace sessions (JWT ``am=tenant``)
+    tenant_access_token_expire_minutes: int = Field(
+        default=30,
+        validation_alias="TENANT_ACCESS_TOKEN_EXPIRE_MINUTES",
+    )
+    tenant_refresh_token_expire_days: int = Field(
+        default=7,
+        validation_alias="TENANT_REFRESH_TOKEN_EXPIRE_DAYS",
+    )
+    # Platform console sessions (JWT ``am=platform``) — shorter defaults by design
+    platform_access_token_expire_minutes: int = Field(
+        default=15,
+        validation_alias="PLATFORM_ACCESS_TOKEN_EXPIRE_MINUTES",
+    )
+    platform_refresh_token_expire_days: int = Field(
+        default=3,
+        validation_alias="PLATFORM_REFRESH_TOKEN_EXPIRE_DAYS",
+    )
+
+    # Platform TOTP MFA (operator accounts only; see docs/PLATFORM_MFA.md)
+    platform_mfa_required: bool = Field(default=False, validation_alias="PLATFORM_MFA_REQUIRED")
+    mfa_totp_encryption_key: str = Field(
+        default="sEPh09o3P1QLJECURZ1PrQbVIv540e3eec0lgsBvxeA=",
+        validation_alias="MFA_TOTP_ENCRYPTION_KEY",
+        description="Fernet key (44 url-safe base64 chars). Override in production.",
+    )
+    mfa_challenge_ttl_minutes: int = Field(default=5, validation_alias="MFA_CHALLENGE_TTL_MINUTES")
+    mfa_enrollment_setup_ttl_minutes: int = Field(
+        default=15,
+        validation_alias="MFA_ENROLLMENT_SETUP_TTL_MINUTES",
+    )
+
+    @field_validator("mfa_totp_encryption_key")
+    @classmethod
+    def _mfa_totp_key_must_be_valid_fernet(cls, v: str) -> str:
+        """Reject misconfigured keys early so TOTP secrets are never written with a broken cipher."""
+        from cryptography.fernet import Fernet
+
+        s = (v or "").strip()
+        if not s:
+            raise ValueError("MFA_TOTP_ENCRYPTION_KEY must not be empty")
+        try:
+            Fernet(s.encode("utf-8"))
+        except Exception as exc:
+            raise ValueError(
+                "MFA_TOTP_ENCRYPTION_KEY must be a url-safe base64-encoded 32-byte Fernet key "
+                "(generate with cryptography.fernet.Fernet.generate_key())"
+            ) from exc
+        return s
 
     invitation_ttl_hours: int = 72
     frontend_app_url: str = "http://localhost:5173"

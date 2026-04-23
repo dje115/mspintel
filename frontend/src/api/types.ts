@@ -44,6 +44,7 @@ export type TenantMember = {
 
 export type UserSessionRow = {
   id: string;
+  auth_mode: "tenant" | "platform";
   ip_address: string | null;
   device_label: string | null;
   user_agent: string | null;
@@ -138,4 +139,28 @@ export type PlatformTenantList = {
   page: number;
   page_size: number;
   total: number;
+};
+
+export type PlatformLoginOutcome = "authenticated" | "mfa_challenge" | "mfa_enrollment_setup";
+
+export type PlatformLoginResponse = {
+  outcome: PlatformLoginOutcome;
+  access_token?: string | null;
+  refresh_token?: string | null;
+  session_id?: string | null;
+  token_type?: string;
+  mfa_challenge_token?: string | null;
+  enrollment_setup_token?: string | null;
+};
+
+export type PlatformMfaStatusResponse = {
+  totp_enabled: boolean;
+  totp_pending: boolean;
+  platform_mfa_required: boolean;
+  pending_method_id: string | null;
+};
+
+export type TotpEnrollmentStartResponse = {
+  method_id: string;
+  otpauth_uri: string;
 };

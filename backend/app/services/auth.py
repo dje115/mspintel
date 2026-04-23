@@ -15,6 +15,7 @@ from app.core.security import (
     hash_refresh_token,
     verify_password,
 )
+from app.core.token_policy import access_refresh_deltas, normalized_session_auth_mode
 from app.models.entities import OnboardingState, Plan, Role, Subscription, Tenant, TenantMembership, User, UserSession
 from app.repositories.sessions import SessionRepository
 from app.schemas.auth import LoginRequest, RefreshRequest, SignupRequest, TokenPairResponse
@@ -80,8 +81,11 @@ class AuthService:
         auth_mode: str = AUTH_MODE_TENANT,
     ) -> TokenPairResponse:
         session_id = uuid.uuid4()
-        access_token = create_access_token(str(user.id), session_id=session_id, auth_mode=auth_mode)
-        refresh_token = create_refresh_token(str(user.id), auth_mode=auth_mode)
+        access_td, refresh_td = access_refresh_deltas(auth_mode)
+        access_token = create_access_token(
+            str(user.id), access_td, session_id=session_id, auth_mode=auth_mode
+        )
+        refresh_token = create_refresh_token(str(user.id), refresh_td, auth_mode=auth_mode)
 
         decoded = decode_token(refresh_token)
         if not decoded or "exp" not in decoded:
@@ -98,6 +102,7 @@ class AuthService:
                 user_agent=user_agent,
                 device_label=device_label,
                 last_used_at=datetime.now(UTC),
+                auth_mode=normalized_session_auth_mode(auth_mode),
             )
         )
         return TokenPairResponse(
@@ -146,7 +151,10 @@ class AuthService:
         if session and self.sessions.is_active(session):
             self.sessions.revoke(session)
 
-    def logout_all(self, user_id: UUID, *, keep_refresh_token: str | None = None) -> int:
+    def logout_all(
+        self, user_id: UUID, *, auth_mode: str, keep_refresh_token: str | None = None
+    ) -> int:
+        am = normalized_session_auth_mode(auth_mode)
         if keep_refresh_token:
             keep_hash = hash_refresh_token(keep_refresh_token)
             session = self.sessions.by_refresh_hash(keep_hash)
@@ -154,8 +162,12 @@ class AuthService:
                 raise ValueError("keep_refresh_token does not match an active session for this user")
             if not self.sessions.is_active(session):
                 raise ValueError("keep_refresh_token session is not active")
-            return self.sessions.revoke_all_for_user_except_refresh_hash(user_id, keep_hash)
-        return self.sessions.revoke_all_for_user(user_id)
+            if normalized_session_auth_mode(session.auth_mode) != am:
+                raise ValueError("keep_refresh_token session does not match the current auth mode")
+            return self.sessions.revoke_all_for_user_except_refresh_hash_in_auth_mode(
+                user_id, keep_hash, am
+            )
+        return self.sessions.revoke_all_for_user_in_auth_mode(user_id, am)
 
     def revoke_session_for_user(
         self,
@@ -164,11 +176,14 @@ class AuthService:
         *,
         tenant_id_for_audit: UUID | None,
         actor_user_id: UUID,
+        caller_auth_mode: str,
     ) -> bool:
         """Revoke a session owned by ``user_id``. Returns True if revoked, False if already inactive."""
         session = self.sessions.get_for_user(session_id, user_id)
         if not session:
             raise ValueError("Session not found")
+        if normalized_session_auth_mode(session.auth_mode) != normalized_session_auth_mode(caller_auth_mode):
+            raise ValueError("Session auth mode mismatch")
         if session.revoked_at is not None or not self.sessions.is_active(session):
             return False
         session.revoked_at = datetime.now(UTC)
@@ -177,6 +192,13 @@ class AuthService:
                 tenant_id=tenant_id_for_audit,
                 actor_user_id=actor_user_id,
                 event_type="session.revoked",
+                details={"session_id": str(session_id), "target_user_id": str(user_id)},
+            )
+        else:
+            self.audit.log(
+                tenant_id=None,
+                actor_user_id=actor_user_id,
+                event_type="platform.session.revoked",
                 details={"session_id": str(session_id), "target_user_id": str(user_id)},
             )
         self.db.commit()

@@ -2,6 +2,7 @@ import { FormEvent, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { api } from "../../api/client";
+import { APP_VERSION } from "../../config/version";
 import { useSession } from "../../state/session";
 
 export function AcceptInvitationPage() {
@@ -53,6 +54,7 @@ export function AcceptInvitationPage() {
         <button type="submit">Accept invitation</button>
         {message ? <p>{message}</p> : null}
       </form>
+      <p className="version-tag">v{APP_VERSION}</p>
     </>
   );
 }

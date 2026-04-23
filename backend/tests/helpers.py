@@ -24,6 +24,18 @@ def create_user_with_membership(db: Session, email: str, role_code: str, tenant:
     return user
 
 
+def platform_password_login(client, email: str, password: str) -> dict:
+    """POST ``/auth/platform/login`` and assert ``outcome == authenticated`` (no MFA step).
+
+    Use raw ``client.post`` when testing ``mfa_challenge`` / ``mfa_enrollment_setup`` responses.
+    """
+    r = client.post("/api/v1/auth/platform/login", json={"email": email, "password": password})
+    assert r.status_code == 200, r.text
+    b = r.json()
+    assert b.get("outcome") == "authenticated", b
+    return b
+
+
 def auth_headers(user: User, tenant_id: str | None = None, *, session_id: uuid.UUID | None = None):
     token = create_access_token(str(user.id), timedelta(minutes=60), session_id=session_id)
     headers = {"Authorization": f"Bearer {token}"}

@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint, Uuid
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, JSON, String, Text, UniqueConstraint, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
 
@@ -23,6 +23,24 @@ class User(Base, TimestampMixin):
     full_name: Mapped[str] = mapped_column(String(200))
     password_hash: Mapped[str] = mapped_column(String(255))
     is_platform_admin: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class UserMfaMethod(Base, TimestampMixin):
+    """Second-factor methods for a user (platform TOTP today; WebAuthn metadata reserved)."""
+
+    __tablename__ = "user_mfa_methods"
+    __table_args__ = (UniqueConstraint("user_id", "method_type", name="uq_user_mfa_method_type"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    method_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    is_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    method_label: Mapped[str] = mapped_column(String(120), default="Authenticator app")
+    ciphertext: Mapped[str] = mapped_column(Text, nullable=False)
+    method_metadata: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class Tenant(Base, TimestampMixin):
@@ -92,7 +110,10 @@ class TenantInvitation(Base, TimestampMixin):
 
 class UserSession(Base, TimestampMixin):
     __tablename__ = "user_sessions"
-    __table_args__ = (Index("ix_user_sessions_user_revoked", "user_id", "revoked_at"),)
+    __table_args__ = (
+        Index("ix_user_sessions_user_revoked", "user_id", "revoked_at"),
+        Index("ix_user_sessions_user_auth", "user_id", "auth_mode"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True)
@@ -103,6 +124,7 @@ class UserSession(Base, TimestampMixin):
     user_agent: Mapped[str | None] = mapped_column(Text)
     device_label: Mapped[str | None] = mapped_column(String(200))
     last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    auth_mode: Mapped[str] = mapped_column(String(16), default="tenant", server_default="tenant")
 
 
 class TenantSetting(Base, TimestampMixin):
@@ -284,7 +306,9 @@ class AuditEvent(Base, TimestampMixin):
     __tablename__ = "audit_events"
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("tenants.id"), index=True)
+    tenant_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), index=True, nullable=True
+    )
     actor_user_id: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), index=True)
     event_type: Mapped[str] = mapped_column(String(80))
     details: Mapped[str | None] = mapped_column(Text)

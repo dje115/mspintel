@@ -18,6 +18,7 @@ import { LoginPage } from "./pages/auth/LoginPage";
 import { SignupPage } from "./pages/auth/SignupPage";
 import { PlatformLoginPage } from "./pages/platform/PlatformLoginPage";
 import { PlatformOverviewPage } from "./pages/platform/PlatformOverviewPage";
+import { PlatformSecurityPage } from "./pages/platform/PlatformSecurityPage";
 import { PlatformSystemStatusPage } from "./pages/platform/PlatformSystemStatusPage";
 import { PlatformTenantsPage } from "./pages/platform/PlatformTenantsPage";
 
@@ -37,6 +38,7 @@ function App() {
           <Route index element={<PlatformOverviewPage />} />
           <Route path="tenants" element={<PlatformTenantsPage />} />
           <Route path="system-status" element={<PlatformSystemStatusPage />} />
+          <Route path="security" element={<PlatformSecurityPage />} />
         </Route>
       </Route>
 

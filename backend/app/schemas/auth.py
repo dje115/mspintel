@@ -29,6 +29,7 @@ class LogoutAllRequest(BaseModel):
 
 class UserSessionResponse(BaseModel):
     id: UUID
+    auth_mode: Literal["tenant", "platform"] = "tenant"
     ip_address: str | None
     device_label: str | None
     user_agent: str | None

@@ -10,11 +10,13 @@ from jose import JWTError, jwt
 
 from app.core.settings import get_settings
 
-settings = get_settings()
-
 # JWT ``am`` claim: tenant app vs platform console (same user store, scoped tokens).
 AUTH_MODE_TENANT = "tenant"
 AUTH_MODE_PLATFORM = "platform"
+
+# Short-lived step tokens (platform MFA); signed with ``jwt_secret_key`` like access tokens.
+MFA_CHALLENGE_TYP = "mfa_challenge"
+MFA_ENROLL_TYP = "mfa_enroll"
 
 
 def _pbkdf2_hash(password: str, salt: bytes, rounds: int = 310_000) -> bytes:
@@ -48,25 +50,27 @@ def get_password_hash(password: str) -> str:
 
 def create_access_token(
     subject: str,
-    expires_delta: timedelta | None = None,
+    expires_delta: timedelta,
     *,
     session_id: uuid.UUID | None = None,
     auth_mode: str = AUTH_MODE_TENANT,
 ) -> str:
-    expire = datetime.now(UTC) + (expires_delta or timedelta(minutes=settings.jwt_access_token_expire_minutes))
+    expire = datetime.now(UTC) + expires_delta
+    s = get_settings()
     to_encode: dict[str, Any] = {"sub": subject, "exp": expire, "typ": "access", "am": auth_mode}
     if session_id is not None:
         to_encode["sid"] = str(session_id)
-    return jwt.encode(to_encode, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
+    return jwt.encode(to_encode, s.jwt_secret_key, algorithm=s.jwt_algorithm)
 
 
 def create_refresh_token(
     subject: str,
-    expires_delta: timedelta | None = None,
+    expires_delta: timedelta,
     *,
     auth_mode: str = AUTH_MODE_TENANT,
 ) -> str:
-    expire = datetime.now(UTC) + (expires_delta or timedelta(minutes=settings.jwt_refresh_token_expire_minutes))
+    expire = datetime.now(UTC) + expires_delta
+    s = get_settings()
     to_encode: dict[str, Any] = {
         "sub": subject,
         "exp": expire,
@@ -74,12 +78,13 @@ def create_refresh_token(
         "jti": secrets.token_hex(12),
         "am": auth_mode,
     }
-    return jwt.encode(to_encode, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
+    return jwt.encode(to_encode, s.jwt_secret_key, algorithm=s.jwt_algorithm)
 
 
 def decode_token(token: str) -> dict[str, Any] | None:
+    s = get_settings()
     try:
-        return jwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])
+        return jwt.decode(token, s.jwt_secret_key, algorithms=[s.jwt_algorithm])
     except JWTError:
         return None
 
@@ -119,3 +124,24 @@ def auth_mode_from_refresh_payload(payload: dict[str, Any] | None) -> str:
 
 def hash_refresh_token(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def create_mfa_step_token(user_id: str, step_type: str, ttl_minutes: int) -> str:
+    s = get_settings()
+    expire = datetime.now(UTC) + timedelta(minutes=ttl_minutes)
+    payload: dict[str, Any] = {"sub": user_id, "exp": expire, "typ": step_type}
+    return jwt.encode(payload, s.jwt_secret_key, algorithm=s.jwt_algorithm)
+
+
+def decode_mfa_step_token(token: str) -> tuple[str, str] | None:
+    """Return ``(user_id, step_type)`` for ``mfa_challenge`` / ``mfa_enroll`` tokens."""
+    payload = decode_token(token)
+    if not payload:
+        return None
+    typ = payload.get("typ")
+    if typ not in (MFA_CHALLENGE_TYP, MFA_ENROLL_TYP):
+        return None
+    sub = payload.get("sub")
+    if not sub:
+        return None
+    return str(sub), str(typ)

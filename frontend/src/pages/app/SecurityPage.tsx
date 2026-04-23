@@ -40,7 +40,7 @@ export function SecurityPage() {
     setBusy(true);
     setError(null);
     try {
-      await api.revokeSession(accessToken, currentTenantId, id);
+      await api.revokeSession(accessToken, id, currentTenantId);
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Revoke failed");

@@ -4,6 +4,8 @@ import type {
   Invitation,
   MeResponse,
   OnboardingResponse,
+  PlatformLoginResponse,
+  PlatformMfaStatusResponse,
   PlatformOverview,
   PlatformTenantList,
   SourceConnection,
@@ -11,6 +13,7 @@ import type {
   SystemStatus,
   TenantMember,
   TokenPairResponse,
+  TotpEnrollmentStartResponse,
   UserSessionRow
 } from "./types";
 
@@ -77,9 +80,36 @@ export const api = {
       body: JSON.stringify(payload)
     }),
   platformLogin: (payload: { email: string; password: string }) =>
-    request<TokenPairResponse>("/api/v1/auth/platform/login", {
+    request<PlatformLoginResponse>("/api/v1/auth/platform/login", {
       method: "POST",
       headers: authHeaders(),
+      body: JSON.stringify(payload)
+    }),
+  platformLoginMfa: (payload: { mfa_challenge_token: string; totp_code: string }) =>
+    request<TokenPairResponse>("/api/v1/auth/platform/login/mfa", {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify(payload)
+    }),
+  platformMfaStatus: (accessToken: string) =>
+    request<PlatformMfaStatusResponse>("/api/v1/platform/mfa/status", {
+      headers: authHeaders(accessToken)
+    }),
+  platformMfaTotpEnrollmentStart: (bearer: string) =>
+    request<TotpEnrollmentStartResponse>("/api/v1/platform/mfa/totp/enrollment", {
+      method: "POST",
+      headers: authHeaders(bearer)
+    }),
+  platformMfaTotpEnrollmentConfirm: (bearer: string, payload: { method_id: string; totp_code: string }) =>
+    request<{ status: string }>("/api/v1/platform/mfa/totp/enrollment/confirm", {
+      method: "POST",
+      headers: authHeaders(bearer),
+      body: JSON.stringify(payload)
+    }),
+  platformMfaTotpDisable: (accessToken: string, payload: { totp_code: string }) =>
+    request<{ status: string }>("/api/v1/platform/mfa/totp/disable", {
+      method: "POST",
+      headers: authHeaders(accessToken),
       body: JSON.stringify(payload)
     }),
   refresh: (refreshToken: string) =>
@@ -100,11 +130,11 @@ export const api = {
       headers: authHeaders(accessToken, tenantId),
       body: JSON.stringify(body ?? {})
     }),
-  listSessions: (accessToken: string, tenantId: string) =>
+  listSessions: (accessToken: string, tenantId?: string) =>
     request<UserSessionRow[]>("/api/v1/auth/sessions", {
       headers: authHeaders(accessToken, tenantId)
     }),
-  revokeSession: (accessToken: string, tenantId: string, sessionId: string) =>
+  revokeSession: (accessToken: string, sessionId: string, tenantId?: string) =>
     request<{ revoked: boolean }>(`/api/v1/auth/sessions/${sessionId}/revoke`, {
       method: "POST",
       headers: authHeaders(accessToken, tenantId)
