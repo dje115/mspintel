@@ -119,6 +119,7 @@ def test_platform_login_mfa_invalid_code_rejected_and_audited(client, db_session
         json={"mfa_challenge_token": step1["mfa_challenge_token"], "totp_code": "000000"},
     )
     assert r.status_code == 401
+    assert r.json().get("detail") == "Unable to complete sign-in"
 
     db_session.expire_all()
     row = db_session.scalars(

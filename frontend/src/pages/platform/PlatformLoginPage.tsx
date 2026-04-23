@@ -21,6 +21,8 @@ export function PlatformLoginPage() {
   const [enrollmentBearer, setEnrollmentBearer] = useState<string | null>(null);
   const [enrollPayload, setEnrollPayload] = useState<TotpEnrollmentStartResponse | null>(null);
   const [totpCode, setTotpCode] = useState("");
+  const [recoveryCode, setRecoveryCode] = useState("");
+  const [useRecovery, setUseRecovery] = useState(false);
   const [enrollTotpCode, setEnrollTotpCode] = useState("");
 
   const resetMfaState = () => {
@@ -29,6 +31,8 @@ export function PlatformLoginPage() {
     setEnrollmentBearer(null);
     setEnrollPayload(null);
     setTotpCode("");
+    setRecoveryCode("");
+    setUseRecovery(false);
     setEnrollTotpCode("");
     setError(null);
   };
@@ -82,7 +86,11 @@ export function PlatformLoginPage() {
     if (!mfaChallengeToken) return;
     setError(null);
     try {
-      const pair = await api.platformLoginMfa({ mfa_challenge_token: mfaChallengeToken, totp_code: totpCode.trim() });
+      const pair = await api.platformLoginMfa(
+        useRecovery
+          ? { mfa_challenge_token: mfaChallengeToken, recovery_code: recoveryCode.trim() }
+          : { mfa_challenge_token: mfaChallengeToken, totp_code: totpCode.trim() }
+      );
       await finishAuthenticated(pair.access_token, pair.refresh_token, pair.session_id);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Invalid code");
@@ -155,19 +163,47 @@ export function PlatformLoginPage() {
 
         {phase === "totp" ? (
           <div className="stack platform-mfa-panel">
-            <p className="platform-mfa-title">Authenticator code</p>
-            <p className="muted">Enter the 6-digit code from your authenticator app.</p>
+            <p className="platform-mfa-title">Second factor</p>
+            <p className="muted">
+              {useRecovery
+                ? "Enter a one-time recovery code (format XXXXX-XXXXX)."
+                : "Enter the 6-digit code from your authenticator app."}
+            </p>
+            <label className="platform-label platform-inline-check">
+              <input
+                type="checkbox"
+                checked={useRecovery}
+                onChange={(ev) => {
+                  setUseRecovery(ev.target.checked);
+                  setTotpCode("");
+                  setRecoveryCode("");
+                }}
+              />
+              Use a recovery code instead of the authenticator
+            </label>
             <form className="stack platform-form" onSubmit={(ev) => void onTotpSubmit(ev)}>
-              <label className="platform-label">
-                TOTP code
-                <input
-                  value={totpCode}
-                  onChange={(ev) => setTotpCode(ev.target.value)}
-                  placeholder="123456"
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
-                />
-              </label>
+              {useRecovery ? (
+                <label className="platform-label">
+                  Recovery code
+                  <input
+                    value={recoveryCode}
+                    onChange={(ev) => setRecoveryCode(ev.target.value)}
+                    placeholder="ABCDE-FGHIJ"
+                    autoComplete="one-time-code"
+                  />
+                </label>
+              ) : (
+                <label className="platform-label">
+                  TOTP code
+                  <input
+                    value={totpCode}
+                    onChange={(ev) => setTotpCode(ev.target.value)}
+                    placeholder="123456"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                  />
+                </label>
+              )}
               {error ? <p className="platform-error">{error}</p> : null}
               <button type="submit" className="platform-primary-btn">
                 Verify and continue

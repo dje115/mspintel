@@ -6,6 +6,7 @@ import type {
   OnboardingResponse,
   PlatformLoginResponse,
   PlatformMfaStatusResponse,
+  RecoveryCodesGenerateResponse,
   PlatformOverview,
   PlatformTenantList,
   SourceConnection,
@@ -85,7 +86,11 @@ export const api = {
       headers: authHeaders(),
       body: JSON.stringify(payload)
     }),
-  platformLoginMfa: (payload: { mfa_challenge_token: string; totp_code: string }) =>
+  platformLoginMfa: (payload: {
+    mfa_challenge_token: string;
+    totp_code?: string;
+    recovery_code?: string;
+  }) =>
     request<TokenPairResponse>("/api/v1/auth/platform/login/mfa", {
       method: "POST",
       headers: authHeaders(),
@@ -111,6 +116,11 @@ export const api = {
       method: "POST",
       headers: authHeaders(accessToken),
       body: JSON.stringify(payload)
+    }),
+  platformMfaRecoveryCodesGenerate: (accessToken: string) =>
+    request<RecoveryCodesGenerateResponse>("/api/v1/platform/mfa/recovery-codes/generate", {
+      method: "POST",
+      headers: authHeaders(accessToken)
     }),
   refresh: (refreshToken: string) =>
     request<TokenPairResponse>("/api/v1/auth/refresh", {

@@ -158,6 +158,12 @@ export type PlatformMfaStatusResponse = {
   totp_pending: boolean;
   platform_mfa_required: boolean;
   pending_method_id: string | null;
+  recovery_codes_unused: number;
+};
+
+export type RecoveryCodesGenerateResponse = {
+  codes: string[];
+  batch_id: string;
 };
 
 export type TotpEnrollmentStartResponse = {

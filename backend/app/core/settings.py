@@ -9,7 +9,7 @@ class Settings(BaseSettings):
 
     project_name: str = "mspintel"
     environment: str = "development"
-    app_version: str = Field(default="1.6", validation_alias="MSPINTEL_APP_VERSION")
+    app_version: str = Field(default="1.7", validation_alias="MSPINTEL_APP_VERSION")
 
     backend_host: str = "0.0.0.0"
     backend_port: int = 8000
@@ -62,6 +62,36 @@ class Settings(BaseSettings):
         default=15,
         validation_alias="MFA_ENROLLMENT_SETUP_TTL_MINUTES",
     )
+    mfa_recovery_code_pepper: str = Field(
+        default="dev-mfa-recovery-pepper-min-sixteen",
+        validation_alias="MFA_RECOVERY_CODE_PEPPER",
+        description="HMAC pepper for hashing platform recovery codes at rest.",
+    )
+
+    platform_login_ratelimit_enabled: bool = Field(
+        default=True,
+        validation_alias="PLATFORM_LOGIN_RATELIMIT_ENABLED",
+    )
+    platform_login_password_max_attempts: int = Field(
+        default=30,
+        ge=1,
+        validation_alias="PLATFORM_LOGIN_PASSWORD_MAX_ATTEMPTS",
+    )
+    platform_login_password_window_seconds: int = Field(
+        default=900,
+        ge=30,
+        validation_alias="PLATFORM_LOGIN_PASSWORD_WINDOW_SECONDS",
+    )
+    platform_login_mfa_max_attempts: int = Field(
+        default=40,
+        ge=1,
+        validation_alias="PLATFORM_LOGIN_MFA_MAX_ATTEMPTS",
+    )
+    platform_login_mfa_window_seconds: int = Field(
+        default=900,
+        ge=30,
+        validation_alias="PLATFORM_LOGIN_MFA_WINDOW_SECONDS",
+    )
 
     @field_validator("mfa_totp_encryption_key")
     @classmethod
@@ -79,6 +109,14 @@ class Settings(BaseSettings):
                 "MFA_TOTP_ENCRYPTION_KEY must be a url-safe base64-encoded 32-byte Fernet key "
                 "(generate with cryptography.fernet.Fernet.generate_key())"
             ) from exc
+        return s
+
+    @field_validator("mfa_recovery_code_pepper")
+    @classmethod
+    def _mfa_recovery_pepper_min_length(cls, v: str) -> str:
+        s = (v or "").strip()
+        if len(s) < 16:
+            raise ValueError("MFA_RECOVERY_CODE_PEPPER must be at least 16 characters")
         return s
 
     invitation_ttl_hours: int = 72

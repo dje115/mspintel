@@ -7,19 +7,27 @@ or empty where metadata alone suffices (product choice at WebAuthn time).
 
 from __future__ import annotations
 
+import secrets
 import uuid
 from datetime import UTC, datetime
 from uuid import UUID
 
 import pyotp
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
-from app.models.entities import User, UserMfaMethod
+from app.core.settings import get_settings
+from app.models.entities import PlatformMfaRecoveryCode, User, UserMfaMethod
 from app.services.audit import AuditService
 from app.services.mfa_totp_crypto import get_totp_secret_crypto
+from app.services.platform_recovery_code_hash import (
+    format_recovery_code_for_display,
+    hash_platform_recovery_code,
+    normalize_recovery_code,
+)
 
 MFA_METHOD_TOTP = "totp"
+RECOVERY_CODE_COUNT = 10
 
 
 class PlatformMfaService:
@@ -148,6 +156,7 @@ class PlatformMfaService:
         if not self.verify_totp_code(user.id, code):
             raise ValueError("Invalid authenticator code")
         self.db.delete(row)
+        self.db.execute(delete(PlatformMfaRecoveryCode).where(PlatformMfaRecoveryCode.user_id == user.id))
         self.db.commit()
         self.audit.log(
             tenant_id=None,
@@ -156,3 +165,97 @@ class PlatformMfaService:
             details={"ip": ip},
         )
         self.db.commit()
+
+    def count_unused_recovery_codes(self, user_id: UUID) -> int:
+        n = self.db.scalar(
+            select(func.count())
+            .select_from(PlatformMfaRecoveryCode)
+            .where(
+                PlatformMfaRecoveryCode.user_id == user_id,
+                PlatformMfaRecoveryCode.is_used.is_(False),
+            )
+        )
+        return int(n or 0)
+
+    def generate_recovery_codes(self, user: User, *, ip: str | None) -> tuple[list[str], UUID]:
+        if not user.is_platform_admin:
+            raise PermissionError("Not a platform administrator")
+        if not self.has_enabled_totp(user.id):
+            raise ValueError("Enable TOTP before generating recovery codes")
+
+        # Only unused rows are removed; consumed codes stay for audit / abuse review.
+        res = self.db.execute(
+            delete(PlatformMfaRecoveryCode).where(
+                PlatformMfaRecoveryCode.user_id == user.id,
+                PlatformMfaRecoveryCode.is_used.is_(False),
+            )
+        )
+        invalidated = int(res.rowcount or 0)
+        pepper = get_settings().mfa_recovery_code_pepper
+        batch_id = uuid.uuid4()
+        display_codes: list[str] = []
+        for _ in range(RECOVERY_CODE_COUNT):
+            token = secrets.token_hex(5)
+            normalized = token.upper()
+            digest = hash_platform_recovery_code(pepper, user.id, normalized)
+            self.db.add(
+                PlatformMfaRecoveryCode(
+                    id=uuid.uuid4(),
+                    user_id=user.id,
+                    batch_id=batch_id,
+                    code_hash=digest,
+                    is_used=False,
+                    used_at=None,
+                )
+            )
+            display_codes.append(format_recovery_code_for_display(token))
+        self.db.commit()
+
+        event = (
+            "platform.mfa.recovery_codes.regenerated"
+            if invalidated > 0
+            else "platform.mfa.recovery_codes.generated"
+        )
+        self.audit.log(
+            tenant_id=None,
+            actor_user_id=user.id,
+            event_type=event,
+            details={
+                "batch_id": str(batch_id),
+                "count": RECOVERY_CODE_COUNT,
+                "invalidated_unused": invalidated,
+                "ip": ip,
+            },
+        )
+        self.db.commit()
+        return display_codes, batch_id
+
+    def verify_and_consume_recovery_code(self, user_id: UUID, raw_code: str, *, ip: str | None) -> bool:
+        try:
+            normalized = normalize_recovery_code(raw_code)
+        except ValueError:
+            return False
+        pepper = get_settings().mfa_recovery_code_pepper
+        digest = hash_platform_recovery_code(pepper, user_id, normalized)
+        row = self.db.scalars(
+            select(PlatformMfaRecoveryCode)
+            .where(
+                PlatformMfaRecoveryCode.user_id == user_id,
+                PlatformMfaRecoveryCode.code_hash == digest,
+                PlatformMfaRecoveryCode.is_used.is_(False),
+            )
+            .with_for_update()
+        ).first()
+        if not row:
+            return False
+        row.is_used = True
+        row.used_at = datetime.now(UTC)
+        self.db.commit()
+        self.audit.log(
+            tenant_id=None,
+            actor_user_id=user_id,
+            event_type="platform.mfa.recovery_code.used",
+            details={"code_id": str(row.id), "batch_id": str(row.batch_id), "ip": ip},
+        )
+        self.db.commit()
+        return True

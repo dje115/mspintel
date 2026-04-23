@@ -33,6 +33,10 @@ from app.services.audit import AuditService
 from app.services.auth import AuthService
 from app.schemas.platform_mfa import PlatformLoginResponse, PlatformMfaLoginRequest
 from app.services.platform_auth import validate_platform_login_extras
+from app.services.platform_login_ratelimit import (
+    increment_platform_mfa_login_failures,
+    increment_platform_password_login_failures,
+)
 from app.services.platform_mfa import PlatformMfaService
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
@@ -92,22 +96,40 @@ def login(payload: LoginRequest, request: Request, db: Session = Depends(get_db)
     )
 
 
+def _rate_limit_password_or_raise(db: Session, ip: str | None) -> None:
+    if not increment_platform_password_login_failures(ip):
+        AuditService(db).log(
+            tenant_id=None,
+            actor_user_id=None,
+            event_type="platform.login.rate_limited",
+            details={"scope": "password", "ip": ip},
+        )
+        db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many sign-in attempts. Try again later.",
+        )
+
+
 @router.post("/platform/login", response_model=PlatformLoginResponse)
 def platform_login(payload: LoginRequest, request: Request, db: Session = Depends(get_db)) -> PlatformLoginResponse:
     service = AuthService(db)
     settings = get_settings()
+    ip, ua, label = _meta(request)
     user = service.authenticate(payload)
     if not user:
+        _rate_limit_password_or_raise(db, ip)
         _log.info("platform_login_failed", extra={"reason": "invalid_credentials"})
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unable to sign in")
     if not user.is_platform_admin:
+        _rate_limit_password_or_raise(db, ip)
         _log.info("platform_login_denied", extra={"reason": "not_platform_admin", "user_id": str(user.id)})
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unable to sign in")
     _log.info("platform_login_ok", extra={"user_id": str(user.id)})
-    ip, ua, label = _meta(request)
     try:
         validate_platform_login_extras(user, ip=ip, user_agent=ua)
     except ValueError as exc:
+        _rate_limit_password_or_raise(db, ip)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc)) from exc
 
     mfa = PlatformMfaService(db)
@@ -154,6 +176,21 @@ def platform_login(payload: LoginRequest, request: Request, db: Session = Depend
     )
 
 
+def _rate_limit_mfa_or_raise(db: Session, ip: str | None, user_id: UUID) -> None:
+    if not increment_platform_mfa_login_failures(ip, user_id):
+        AuditService(db).log(
+            tenant_id=None,
+            actor_user_id=user_id,
+            event_type="platform.login.rate_limited",
+            details={"scope": "mfa", "ip": ip},
+        )
+        db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many sign-in attempts. Try again later.",
+        )
+
+
 @router.post("/platform/login/mfa", response_model=TokenPairResponse)
 def platform_login_mfa(
     payload: PlatformMfaLoginRequest, request: Request, db: Session = Depends(get_db)
@@ -166,26 +203,40 @@ def platform_login_mfa(
     if not user or not user.is_platform_admin:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid MFA challenge")
 
+    ip, ua, label = _meta(request)
     mfa = PlatformMfaService(db)
-    if not mfa.verify_totp_code(user.id, payload.totp_code):
+    second_factor_ok = False
+    via: str
+    if payload.totp_code:
+        second_factor_ok = mfa.verify_totp_code(user.id, payload.totp_code)
+        via = "totp"
+    else:
+        second_factor_ok = mfa.verify_and_consume_recovery_code(user.id, payload.recovery_code or "", ip=ip)
+        via = "recovery_code"
+
+    if not second_factor_ok:
+        _rate_limit_mfa_or_raise(db, ip, user.id)
+        reason = "invalid_totp" if payload.totp_code else "invalid_recovery_code"
         AuditService(db).log(
             tenant_id=None,
             actor_user_id=user.id,
             event_type="platform.mfa.challenge_failed",
-            details={"reason": "invalid_totp"},
+            details={"reason": reason, "ip": ip},
         )
         db.commit()
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid authenticator code")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Unable to complete sign-in",
+        )
 
     AuditService(db).log(
         tenant_id=None,
         actor_user_id=user.id,
         event_type="platform.mfa.challenge_passed",
-        details={},
+        details={"via": via},
     )
     db.commit()
 
-    ip, ua, label = _meta(request)
     service = AuthService(db)
     pair = service.issue_token_pair(
         user, ip_address=ip, user_agent=ua, device_label=label, auth_mode=AUTH_MODE_PLATFORM
@@ -194,7 +245,7 @@ def platform_login_mfa(
         tenant_id=None,
         actor_user_id=user.id,
         event_type="platform.login",
-        details={"ip": ip, "session_id": str(pair.session_id), "via": "totp"},
+        details={"ip": ip, "session_id": str(pair.session_id), "via": via},
     )
     db.commit()
     return pair

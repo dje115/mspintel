@@ -7,9 +7,19 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.api.deps.db import get_db
+from app.core import settings as settings_module
 from app.db.session import Base
 from app.main import app
 from app.models.entities import Plan, Role
+
+
+@pytest.fixture(autouse=True)
+def disable_platform_login_ratelimit_in_tests(monkeypatch):
+    """Tests have no Redis; keep platform password/MFA paths deterministic."""
+    settings_module.get_settings.cache_clear()
+    monkeypatch.setenv("PLATFORM_LOGIN_RATELIMIT_ENABLED", "false")
+    yield
+    settings_module.get_settings.cache_clear()
 
 
 @pytest.fixture()

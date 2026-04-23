@@ -43,6 +43,26 @@ class UserMfaMethod(Base, TimestampMixin):
     verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
+class PlatformMfaRecoveryCode(Base, TimestampMixin):
+    """One-time platform MFA recovery codes (hashed at rest; platform operators only)."""
+
+    __tablename__ = "platform_mfa_recovery_codes"
+    __table_args__ = (
+        Index("ix_platform_mfa_recovery_user_unused", "user_id", "is_used"),
+        Index("ix_platform_mfa_recovery_user_batch", "user_id", "batch_id"),
+        Index("ix_platform_mfa_recovery_user_codehash", "user_id", "code_hash"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    batch_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    code_hash: Mapped[str] = mapped_column(String(128), nullable=False)
+    is_used: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 class Tenant(Base, TimestampMixin):
     __tablename__ = "tenants"
 

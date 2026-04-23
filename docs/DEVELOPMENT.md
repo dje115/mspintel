@@ -8,7 +8,7 @@
 
 ## Quick Start (Docker)
 
-1. `cp .env.example .env` (set **`MFA_TOTP_ENCRYPTION_KEY`** to a Fernet key from `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"` for any non-demo deployment)
+1. `cp .env.example .env` (set **`MFA_TOTP_ENCRYPTION_KEY`** to a Fernet key from `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"` for any non-demo deployment; set a long random **`MFA_RECOVERY_CODE_PEPPER`** (≥16 chars) before relying on platform recovery codes in production)
 2. `docker compose up --build -d` (the frontend dev image runs **`npm install`** on each container start so `node_modules` matches `package.json` after pulls; if you ever need a clean install, `docker compose rm -sf frontend` then `docker compose up --build -d` recreates the anonymous `node_modules` volume.)
 3. `docker compose exec backend alembic upgrade head` (optional: the backend entrypoint already runs `alembic upgrade head` on container start)
 4. `docker compose exec backend python -m app.db.seed`
@@ -42,5 +42,11 @@
 
 ## Versioning
 
-- Current release: `1.1`
-- Keep `MSPINTEL_APP_VERSION` and `VITE_MSPINTEL_APP_VERSION` aligned for each Docker/platform release update.
+- Current app release: **1.7** (see `MSPINTEL_APP_VERSION` / `VITE_APP_VERSION` in `.env.example` and `compose.yaml`).
+- Keep **`MSPINTEL_APP_VERSION`** and **`VITE_APP_VERSION`** aligned for each release.
+
+## Platform MFA recovery codes (local)
+
+- After seeding, enable TOTP on **`/platform/security`**, then generate recovery codes from the same page.
+- **`POST /api/v1/auth/platform/login/mfa`** accepts either `totp_code` or `recovery_code` (see [PLATFORM_MFA.md](PLATFORM_MFA.md)).
+- Rate limiting uses **Redis** (`PLATFORM_LOGIN_RATELIMIT_ENABLED`, `REDIS_URL`); see [PLATFORM_AUTH_HARDENING.md](PLATFORM_AUTH_HARDENING.md).

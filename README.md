@@ -1,6 +1,6 @@
 # mspintel
 
-mspintel is a secure, AI-assisted MSP intelligence platform for MSPs. Release **`v1.6`** hardens **platform-operator TOTP MFA** (validated **`MFA_TOTP_ENCRYPTION_KEY`**, non-sensitive MFA audit metadata, shared OTPAuth URI parsing in the SPA, **`get_totp_secret_crypto`** naming) and bumps deploy/UI defaults to **1.6**. **`v1.5`** introduced **`user_mfa_methods`** with Fernet-wrapped secrets, the two-step **`/platform/login`** flow (challenge JWT, then `POST /auth/platform/login/mfa`), optional **`PLATFORM_MFA_REQUIRED`**, QR enrolment on **`/platform/security`**, and platform-scoped MFA audits (see [docs/PLATFORM_MFA.md](docs/PLATFORM_MFA.md)). **`v1.4`** hardened **platform-operator** access: separate **tenant vs platform JWT/session TTLs**, `user_sessions.auth_mode`, scoped session list/revoke/logout-all, nullable **`audit_events.tenant_id`** for first-class platform audit rows, `/platform/security`, and a documented extension point for future MFA on platform login. **`v1.3`** introduced the separate platform console (`/platform/login`, JWT `am`, platform APIs). **`v1.2`** added tenant lifecycle controls on top of the v1.1 baseline (invitations, refresh rotation, audit, Mailpit).
+mspintel is a secure, AI-assisted MSP intelligence platform for MSPs. Release **`v1.7`** adds **platform-admin MFA recovery codes** (hashed at rest, one-time use, regeneration invalidates unused batches), **Redis-backed rate limiting** on platform password and MFA steps ([docs/PLATFORM_AUTH_HARDENING.md](docs/PLATFORM_AUTH_HARDENING.md)), and bumps deploy/UI defaults to **1.7**. **`v1.6`** hardened **platform-operator TOTP MFA** (validated **`MFA_TOTP_ENCRYPTION_KEY`**, non-sensitive MFA audit metadata, shared OTPAuth URI parsing in the SPA, **`get_totp_secret_crypto`** naming). **`v1.5`** introduced **`user_mfa_methods`** with Fernet-wrapped secrets, the two-step **`/platform/login`** flow (challenge JWT, then `POST /auth/platform/login/mfa`), optional **`PLATFORM_MFA_REQUIRED`**, QR enrolment on **`/platform/security`**, and platform-scoped MFA audits (see [docs/PLATFORM_MFA.md](docs/PLATFORM_MFA.md)). **`v1.4`** hardened **platform-operator** access: separate **tenant vs platform JWT/session TTLs**, `user_sessions.auth_mode`, scoped session list/revoke/logout-all, nullable **`audit_events.tenant_id`** for first-class platform audit rows, `/platform/security`, and a documented extension point for future MFA on platform login. **`v1.3`** introduced the separate platform console (`/platform/login`, JWT `am`, platform APIs). **`v1.2`** added tenant lifecycle controls on top of the v1.1 baseline (invitations, refresh rotation, audit, Mailpit).
 
 ## Stack
 
@@ -15,7 +15,7 @@ mspintel is a secure, AI-assisted MSP intelligence platform for MSPs. Release **
 
 ## Versioning
 
-- Current app version: **`1.6`**
+- Current app version: **`1.7`**
 - Central runtime version variable: `MSPINTEL_APP_VERSION` (root `.env` and Compose → backend `MSPINTEL_APP_VERSION`)
 - Frontend display: `VITE_APP_VERSION` in `.env`, overridden in Compose from `MSPINTEL_APP_VERSION` as `VITE_APP_VERSION` for the dev container
 
@@ -45,6 +45,7 @@ mspintel is a secure, AI-assisted MSP intelligence platform for MSPs. Release **
 - **v1.4:** Tenant vs platform **access/refresh TTL** env vars; `user_sessions.auth_mode`; session APIs scoped by `am`; platform audit events with `tenant_id` null; `/platform/security`. See [docs/PLATFORM_SESSIONS_AND_AUDIT.md](docs/PLATFORM_SESSIONS_AND_AUDIT.md).
 - **v1.5:** Platform **TOTP MFA** for operator accounts only; tenant `/auth/login` unchanged. Encrypted TOTP secrets, step tokens for login/enrolment, policy flag `PLATFORM_MFA_REQUIRED`. See [docs/PLATFORM_MFA.md](docs/PLATFORM_MFA.md).
 - **v1.6:** MFA **hardening** (Fernet key validation at settings load, failed-challenge audit `reason` codes, migration/docs clarity) and version **1.6** across Compose defaults and UI version tags (`VITE_APP_VERSION` / `MSPINTEL_APP_VERSION`).
+- **v1.7:** Platform **recovery codes** for MFA (pepper + HMAC storage, `/platform/security` UX), **`POST /platform/mfa/recovery-codes/generate`**, MFA step accepts **`recovery_code`** or **`totp_code`**, **Redis rate limits** on platform login/MFA with **429** + `platform.login.rate_limited` audit, operational docs in [docs/PLATFORM_AUTH_HARDENING.md](docs/PLATFORM_AUTH_HARDENING.md). Tenant `/auth/login` unchanged.
 
 ## Local Run (Docker-first)
 
@@ -78,7 +79,7 @@ The backend image runs **`alembic upgrade head` on container start**, so new mig
   - `POST /api/v1/auth/signup`
   - `POST /api/v1/auth/login` (tenant users only; **403** if `is_platform_admin`)
   - `POST /api/v1/auth/platform/login` (platform admins only; **401** if not authorized—same message for wrong password or non-admin; response includes `outcome`: `authenticated` \| `mfa_challenge` \| `mfa_enrollment_setup` — tokens are returned only when `outcome` is `authenticated`)
-  - `POST /api/v1/auth/platform/login/mfa` (body: `mfa_challenge_token`, `totp_code`; returns normal token pair after successful TOTP)
+  - `POST /api/v1/auth/platform/login/mfa` (body: `mfa_challenge_token` and **either** `totp_code` **or** `recovery_code`; returns normal token pair after successful second factor; **429** if rate limited)
   - `POST /api/v1/auth/refresh`
   - `POST /api/v1/auth/logout`
   - `POST /api/v1/auth/logout-all` (optional JSON `{"keep_refresh_token": "<current refresh>"}`; works with **tenant** or **platform** access token—no `X-Tenant-Id` required for platform sessions)
@@ -92,7 +93,8 @@ The backend image runs **`alembic upgrade head` on container start**, so new mig
   - `GET /api/v1/platform/mfa/status`
   - `POST /api/v1/platform/mfa/totp/enrollment` (Bearer: platform access **or** short-lived `mfa_enroll` setup token from login when MFA is required but TOTP not yet enabled)
   - `POST /api/v1/platform/mfa/totp/enrollment/confirm`
-  - `POST /api/v1/platform/mfa/totp/disable` (platform access only; requires valid TOTP)
+  - `POST /api/v1/platform/mfa/totp/disable` (platform access only; requires valid TOTP; clears recovery codes)
+  - `POST /api/v1/platform/mfa/recovery-codes/generate` (platform access only; TOTP must be enabled; returns plaintext codes **once**)
 - Tenant members/invitations:
   - `GET /api/v1/tenants/current/members`
   - `PATCH /api/v1/tenants/current/members/{membership_id}` (tenant role and/or `active` / `suspended` status; see `backend/app/domain/membership_rules.py`)
@@ -117,6 +119,8 @@ The backend image runs **`alembic upgrade head` on container start**, so new mig
 
 - Alembic `0004_session_metadata` adds `ip_address`, `user_agent`, `device_label`, and `last_used_at` to `user_sessions`.
 - Alembic `0006_user_mfa_methods` adds platform-operator TOTP MFA storage ([docs/PLATFORM_MFA.md](docs/PLATFORM_MFA.md)).
+- Alembic `0007_platform_mfa_recovery_codes` adds hashed platform recovery codes ([docs/PLATFORM_MFA.md](docs/PLATFORM_MFA.md)).
+- Alembic `0008_plat_mfa_rc_hash_ix` adds `(user_id, code_hash)` index for verification lookups.
 - Access tokens include optional claim `sid` (session id) so the UI can highlight the current row.
 - **v1.3:** Access and refresh tokens include claim `am` (`tenant` \| `platform`) so tenant APIs cannot be used with a platform-console session and vice versa. Refresh preserves `am`. Legacy tokens without `am` are treated as tenant scope for compatibility.
 - **v1.4:** `user_sessions.auth_mode` mirrors JWT scope; logout-all only revokes matching `auth_mode` rows. **TTL:** `TENANT_*` vs `PLATFORM_*` env vars (see `.env.example` and [docs/PLATFORM_SESSIONS_AND_AUDIT.md](docs/PLATFORM_SESSIONS_AND_AUDIT.md)).
@@ -139,6 +143,7 @@ The backend image runs **`alembic upgrade head` on container start**, so new mig
 
 ## Tests added this phase
 
+- `tests/test_platform_recovery_and_ratelimit.py` — recovery-code hashing, MFA substitute, single-use, regeneration, audits, platform rate limit **429**, tenant login unaffected.
 - `tests/test_platform_mfa.py` — platform TOTP enrolment, login challenge, policy `PLATFORM_MFA_REQUIRED`, audits, tenant login unchanged.
 - `tests/test_membership_patch.py` — role updates, 403 for non-admin, cross-tenant 404, last-admin guard.
 - `tests/test_invitation_sweep_repo.py` + `app/services/invitation_sweep.py` — idempotent expiry sweep.

@@ -10,6 +10,7 @@ from app.models.entities import User
 from app.schemas.platform import PlatformOverviewResponse, PlatformTenantListResponse
 from app.schemas.platform_mfa import (
     PlatformMfaStatusResponse,
+    RecoveryCodesGenerateResponse,
     TotpDisableRequest,
     TotpEnrollmentConfirmRequest,
     TotpEnrollmentStartResponse,
@@ -55,11 +56,13 @@ def platform_mfa_status(
     settings = get_settings()
     svc = PlatformMfaService(db)
     enabled, pending, mid = svc.get_totp_status(ctx.user.id)
+    unused = svc.count_unused_recovery_codes(ctx.user.id)
     return PlatformMfaStatusResponse(
         totp_enabled=enabled,
         totp_pending=pending,
         platform_mfa_required=settings.platform_mfa_required,
         pending_method_id=mid if pending else None,
+        recovery_codes_unused=unused,
     )
 
 
@@ -94,6 +97,24 @@ def platform_totp_enrollment_confirm(
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     return {"status": "ok"}
+
+
+@router.post("/mfa/recovery-codes/generate", response_model=RecoveryCodesGenerateResponse)
+def platform_recovery_codes_generate(
+    request: Request,
+    ctx: BearerIdentity = Depends(get_platform_admin),
+    db: Session = Depends(get_db),
+) -> RecoveryCodesGenerateResponse:
+    """Return plaintext codes once; server stores only HMAC hashes."""
+    ip = client_ip(request)
+    svc = PlatformMfaService(db)
+    try:
+        codes, batch_id = svc.generate_recovery_codes(ctx.user, ip=ip)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+    return RecoveryCodesGenerateResponse(codes=codes, batch_id=batch_id)
 
 
 @router.post("/mfa/totp/disable")

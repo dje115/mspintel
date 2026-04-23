@@ -34,6 +34,9 @@ Platform-scoped events use `tenant_id = NULL` and distinct `event_type` values, 
 | `platform.login` | Successful platform console sign-in |
 | `platform.session.revoked` | Operator revoked another platform refresh session |
 | `platform.sessions.logout_all` | Operator used logout-all from a platform session |
+| `platform.login.rate_limited` | Platform password or MFA step exceeded configured Redis rate limit (`details.scope`: `password` \| `mfa`). |
+
+MFA- and recovery-specific types (`platform.mfa.*`, `platform.login` after MFA) are listed in [docs/PLATFORM_MFA.md](PLATFORM_MFA.md).
 
 Do not invent a synthetic “platform tenant” row: absence of `tenant_id` means **global / platform realm**.
 

@@ -27,6 +27,7 @@ export function PlatformSecurityPage() {
   const [enrollDraft, setEnrollDraft] = useState<TotpEnrollmentStartResponse | null>(null);
   const [enrollCode, setEnrollCode] = useState("");
   const [disableCode, setDisableCode] = useState("");
+  const [recoveryReveal, setRecoveryReveal] = useState<string[] | null>(null);
 
   const loadSessions = useCallback(async () => {
     if (!accessToken) return;
@@ -161,7 +162,9 @@ export function PlatformSecurityPage() {
               <strong>{mfaStatus.totp_enabled ? "enabled" : mfaStatus.totp_pending ? "pending" : "not set up"}</strong>
             </li>
             <li>Policy: platform MFA required = {mfaStatus.platform_mfa_required ? "yes" : "no"}</li>
-            <li>Recovery codes are not implemented in this release.</li>
+            <li>
+              Recovery codes (unused): <strong>{mfaStatus.recovery_codes_unused ?? 0}</strong>
+            </li>
           </ul>
         ) : (
           <p className="muted">Loading MFA status…</p>
@@ -224,12 +227,73 @@ export function PlatformSecurityPage() {
         )}
       </section>
 
+      {mfaStatus?.totp_enabled ? (
+        <section className="card platform-policy-card">
+          <h2>Recovery codes</h2>
+          <p className="muted">
+            One-time backup codes if you lose your authenticator device. Each code works once. Store them offline
+            (password manager or print). The server only keeps hashes — you will <strong>never</strong> see these codes
+            again after this screen.
+          </p>
+          {recoveryReveal ? (
+            <div className="platform-recovery-reveal stack">
+              <p className="platform-error">Copy now. This list will disappear when you leave the page.</p>
+              <ul className="platform-recovery-list">
+                {recoveryReveal.map((c) => (
+                  <li key={c}>
+                    <code>{c}</code>
+                  </li>
+                ))}
+              </ul>
+              <button type="button" className="platform-text-btn" onClick={() => setRecoveryReveal(null)}>
+                Dismiss
+              </button>
+            </div>
+          ) : null}
+          <div className="row-actions">
+            <button
+              type="button"
+              className="platform-primary-btn"
+              disabled={mfaBusy || !accessToken}
+              onClick={() => {
+                if (
+                  !window.confirm(
+                    "Generate a new set of recovery codes? Any unused previous codes will stop working. Continue?"
+                  )
+                ) {
+                  return;
+                }
+                void (async () => {
+                  if (!accessToken) return;
+                  setMfaBusy(true);
+                  setMfaError(null);
+                  try {
+                    const res = await api.platformMfaRecoveryCodesGenerate(accessToken);
+                    setRecoveryReveal(res.codes);
+                    await loadMfa();
+                  } catch (e) {
+                    setMfaError(e instanceof Error ? e.message : "Generation failed");
+                  } finally {
+                    setMfaBusy(false);
+                  }
+                })();
+              }}
+            >
+              {mfaStatus.recovery_codes_unused ? "Regenerate recovery codes" : "Generate recovery codes"}
+            </button>
+          </div>
+        </section>
+      ) : null}
+
       <section className="card platform-policy-card">
         <h2>Policy snapshot</h2>
         <ul className="platform-policy-list">
           <li>Platform and tenant sessions are stored separately and scoped by JWT <code>am</code>.</li>
           <li>Signing out other sessions here affects only platform console logins for your operator account.</li>
-          <li>Platform MFA is documented in <code>docs/PLATFORM_MFA.md</code>.</li>
+          <li>
+            Platform MFA and recovery are documented in <code>docs/PLATFORM_MFA.md</code> and{" "}
+            <code>docs/PLATFORM_AUTH_HARDENING.md</code>.
+          </li>
         </ul>
       </section>
 
