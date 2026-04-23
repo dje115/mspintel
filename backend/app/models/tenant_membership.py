@@ -1,9 +1,3 @@
-from pydantic import BaseModel
+from app.models.entities import TenantMembership
 
-
-class TenantMembership(BaseModel):
-    id: int
-    tenant_id: int
-    user_id: int
-    role: str
-    status: str
+__all__ = ["TenantMembership"]

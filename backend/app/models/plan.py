@@ -1,9 +1,3 @@
-from pydantic import BaseModel
+from app.models.entities import Plan
 
-
-class Plan(BaseModel):
-    id: int
-    code: str
-    name: str
-    price_monthly_cents: int
-    is_active: bool = True
+__all__ = ["Plan"]

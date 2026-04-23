@@ -1,8 +1,3 @@
-from pydantic import BaseModel
+from app.models.entities import User
 
-
-class User(BaseModel):
-    id: int
-    email: str
-    display_name: str | None = None
-    is_platform_admin: bool = False
+__all__ = ["User"]

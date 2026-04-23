@@ -4,19 +4,25 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mspintel-backend"
-version = "0.1.0"
-description = "mspintel FastAPI backend"
+version = "1.1"
+description = "mspintel FastAPI SaaS backend"
 requires-python = ">=3.12"
 dependencies = [
   "fastapi>=0.115.0",
   "uvicorn[standard]>=0.30.6",
   "pydantic-settings>=2.5.2",
-  "psycopg[binary]>=3.2.1"
+  "sqlalchemy>=2.0.36",
+  "alembic>=1.13.3",
+  "psycopg[binary]>=3.2.1",
+  "python-jose[cryptography]>=3.3.0",
+  "email-validator>=2.2.0",
+  "redis>=5.0.8"
 ]
 
 [project.optional-dependencies]
 dev = [
-  "ruff>=0.6.5"
+  "ruff>=0.6.5",
+  "pytest>=8.3.3"
 ]
 
 [tool.setuptools]

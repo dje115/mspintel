@@ -1,55 +1,57 @@
-# mspintel Architecture (SaaS Multi-tenant Scaffold)
+# Architecture
 
-## Initial Service Layout
+## v1.1 Focus
 
-- **frontend** (`React + TypeScript + Vite`)
-  - Contains base state/provider structure for:
-    - public pages
-    - authenticated app pages
-    - platform admin pages
-    - tenant admin pages
-    - onboarding pages
-    - future tenant switcher UX
+This phase hardens the SaaS access-control core before deeper analytics/connectors/billing integrations.
 
-- **backend** (`FastAPI`)
-  - App factory setup with versioned routers
-  - API health routes and platform context probe route
-  - Modular package structure for SaaS domain growth
+## Services
 
-- **worker** (`Python`)
-  - Independent background service
-  - Queue-framework-ready for Celery/RQ/Dramatiq expansion
+- `frontend`: public auth pages + protected tenant app pages
+- `backend`: FastAPI API, access context, invitation/session logic
+- `worker`: async job scaffold
+- `postgres`: transactional store
+- `redis`: cache/queue backbone
+- `mailpit`: development SMTP and mail inbox
 
-- **postgres** (`PostgreSQL 16`)
-  - Primary relational store
-  - Bootstrap SQL initializes SaaS core tables
+## Core Data Model
 
-- **redis** (`Redis 7`)
-  - Queue/cache support for async and transient state needs
+- `users`
+- `tenants`
+- `tenant_memberships`
+- `tenant_invitations`
+- `user_sessions`
+- `plans`, `subscriptions`
+- `audit_events`
 
-## Why Docker-first
+## Access Context and Permissions
 
-Docker Compose gives one-command startup, reproducible environments, and clean separation of services that mirrors production-oriented deployment style.
+- Access context resolves authenticated user + selected tenant + effective membership role.
+- Capabilities enforced with reusable server-side dependencies.
+- Tenant admin member/invitation operations are tenant-bound and role-protected.
+- Platform admins can be granted broader capabilities where explicitly intended.
 
-## SaaS Multi-tenant Concept Model
+## Invitation Security Model
 
-Initial conceptual model baked into schema and module layout:
+- Invite tokens are generated server-side and sent via email.
+- Response payloads include safe acceptance metadata; raw token exposure is disabled by default outside debug mode.
+- Existing-account acceptance requires authentication as the invited email identity.
+- Invite lifecycle statuses are constrained and tenant-scoped.
 
-- `users` = global identities
-- `tenants` = MSP organizations/workspaces
-- `tenant_memberships` = user-tenant role assignments
-- `plans` = available subscription tiers
-- `subscriptions` = tenant billing/subscription state
-- platform admins are distinct from tenant admins
+## Session Security Model
 
-The scaffold shapes architecture around strict tenant-isolation checks and membership checks, while deferring full implementation detail to future iterations.
+- Short-lived access tokens.
+- Refresh sessions stored in `user_sessions` with hash + expiry + revocation timestamp.
+- Refresh rotates session (old refresh token is invalidated).
+- Logout revokes one session; logout-all revokes all sessions.
 
-## Planned Backend / Frontend / Worker Split
+## Tenant Isolation
 
-- **Backend API**: identity, access, tenant context, orchestration, integration surfaces
-- **Worker**: background ingestion, enrichment, notifications, and AI/batch jobs
-- **Frontend**: public + authenticated SaaS UX layers and role-aware admin surfaces
+- Tenant-aware dependencies + membership checks on protected endpoints.
+- Repository/service patterns keep tenant filtering the default.
+- Cross-tenant reads/writes are denied unless explicitly intended.
 
-## Future Adapter-based Model
+## Versioning Strategy
 
-Architecture supports future adapters for Autotask, ConnectWise, ITQuoter, Veeam, and additional systems by separating source adapter concerns from canonical internal models.
+- Runtime version is controlled by `MSPINTEL_APP_VERSION` (currently `1.1`).
+- Compose maps `MSPINTEL_APP_VERSION` into backend and `VITE_MSPINTEL_APP_VERSION` into frontend.
+- Future platform releases increment to `1.2`, `1.3`, etc by updating env/version references.

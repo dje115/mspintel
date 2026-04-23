@@ -1,28 +1,119 @@
 from dataclasses import dataclass
+from uuid import UUID
 
-from fastapi import Header
+from fastapi import Depends, Header, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from app.api.deps.db import get_db
+from app.core.security import decode_access_token
+from app.models.entities import Role, Tenant, TenantMembership, User
+
+security = HTTPBearer(auto_error=False)
 
 
-@dataclass(frozen=True)
+@dataclass
 class AccessContext:
-    """Request-level access context.
+    user: User
+    tenant: Tenant
+    membership: TenantMembership
+    role_code: str
+    is_platform_admin: bool
 
-    This is intentionally simple for scaffold stage. It creates a stable shape where
-    authentication, tenant membership, and platform-role checks can be enforced later.
-    """
 
-    user_id: str | None
-    tenant_slug: str | None
-    platform_role: str
+ROLE_PERMISSIONS = {
+    "platform_admin": {
+        "system:read",
+        "tenant:read",
+        "membership:read",
+        "membership:write",
+        "invitation:read",
+        "invitation:write",
+        "customer:read",
+        "dashboard:executive",
+        "dashboard:sales",
+        "dashboard:service",
+    },
+    "tenant_admin": {
+        "tenant:read",
+        "membership:read",
+        "membership:write",
+        "invitation:read",
+        "invitation:write",
+        "customer:read",
+        "onboarding:write",
+        "dashboard:executive",
+        "dashboard:sales",
+        "dashboard:service",
+        "system:read",
+    },
+    "director": {"customer:read", "dashboard:executive", "membership:read", "invitation:read"},
+    "sales_user": {"customer:read", "dashboard:sales"},
+    "account_manager": {"customer:read", "dashboard:executive"},
+    "service_manager": {"customer:read", "dashboard:service"},
+    "marketing_user": {"customer:read", "dashboard:executive"},
+}
+
+
+def get_optional_user(
+    credentials: HTTPAuthorizationCredentials | None = Depends(security),
+    db: Session = Depends(get_db),
+) -> User | None:
+    if not credentials:
+        return None
+    user_id = decode_access_token(credentials.credentials)
+    if not user_id:
+        return None
+    return db.get(User, UUID(user_id))
 
 
 def get_access_context(
-    x_user_id: str | None = Header(default=None),
-    x_tenant_slug: str | None = Header(default=None),
-    x_platform_role: str | None = Header(default="user"),
+    credentials: HTTPAuthorizationCredentials | None = Depends(security),
+    x_tenant_id: UUID | None = Header(default=None),
+    db: Session = Depends(get_db),
 ) -> AccessContext:
-    return AccessContext(
-        user_id=x_user_id,
-        tenant_slug=x_tenant_slug,
-        platform_role=x_platform_role or "user",
+    if credentials is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing auth token")
+
+    user_id = decode_access_token(credentials.credentials)
+    if not user_id:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid auth token")
+
+    user = db.get(User, UUID(user_id))
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+
+    membership_query = (
+        select(TenantMembership, Tenant, Role)
+        .join(Tenant, TenantMembership.tenant_id == Tenant.id)
+        .join(Role, TenantMembership.role_id == Role.id)
+        .where(TenantMembership.user_id == user.id, TenantMembership.status == "active")
     )
+    if x_tenant_id:
+        membership_query = membership_query.where(TenantMembership.tenant_id == x_tenant_id)
+
+    row = db.execute(membership_query).first()
+    if not row:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tenant membership access")
+
+    membership, tenant, role = row
+    return AccessContext(
+        user=user,
+        tenant=tenant,
+        membership=membership,
+        role_code=role.code,
+        is_platform_admin=user.is_platform_admin,
+    )
+
+
+def require_permission(permission: str):
+    def checker(ctx: AccessContext = Depends(get_access_context)) -> AccessContext:
+        if ctx.is_platform_admin:
+            return ctx
+        allowed = ROLE_PERMISSIONS.get(ctx.role_code, set())
+        if permission not in allowed:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
+        return ctx
+
+    return checker

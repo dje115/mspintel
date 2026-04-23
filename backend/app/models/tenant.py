@@ -1,8 +1,3 @@
-from pydantic import BaseModel
+from app.models.entities import Tenant
 
-
-class Tenant(BaseModel):
-    id: int
-    slug: str
-    name: str
-    is_active: bool = True
+__all__ = ["Tenant"]

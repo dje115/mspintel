@@ -1,8 +1,3 @@
-from pydantic import BaseModel
+from app.models.entities import Subscription
 
-
-class Subscription(BaseModel):
-    id: int
-    tenant_id: int
-    plan_id: int
-    status: str
+__all__ = ["Subscription"]

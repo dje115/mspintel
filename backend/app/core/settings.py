@@ -9,6 +9,7 @@ class Settings(BaseSettings):
 
     project_name: str = "mspintel"
     environment: str = "development"
+    app_version: str = Field(default="1.1", validation_alias="MSPINTEL_APP_VERSION")
 
     backend_host: str = "0.0.0.0"
     backend_port: int = 8000
@@ -17,18 +18,33 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg://mspintel:mspintel@postgres:5432/mspintel"
     redis_url: str = "redis://redis:6379/0"
 
-    # SaaS multi-tenant identity and context defaults
-    require_tenant_context: bool = False
-    platform_admin_email_domain: str = "mspintel.local"
+    jwt_secret_key: str = "change-me-in-production"
+    jwt_algorithm: str = "HS256"
+    jwt_access_token_expire_minutes: int = 30
+    jwt_refresh_token_expire_minutes: int = 60 * 24 * 7
 
-    # Future provider and security settings
+    invitation_ttl_hours: int = 72
+    frontend_app_url: str = "http://localhost:5173"
+    expose_invitation_token_in_response: bool = False
+
+    mail_from_email: str = "noreply@mspintel.local"
+    mail_smtp_host: str = "mailpit"
+    mail_smtp_port: int = 1025
+    mail_smtp_username: str = ""
+    mail_smtp_password: str = ""
+    mail_use_tls: bool = False
+
+    require_tenant_context: bool = False
+
     ai_provider_default: str = "openai"
     ai_provider_api_key: str = ""
     integration_encryption_key: str = "change-me"
 
-    # Future billing/subscription provider settings
     billing_provider: str = "stripe"
     billing_provider_api_key: str = ""
+
+    seed_platform_admin_email: str = "admin@mspintel.example.com"
+    seed_platform_admin_password: str = "ChangeMe123!"
 
 
 @lru_cache

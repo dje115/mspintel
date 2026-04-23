@@ -6,8 +6,10 @@ ENV PYTHONUNBUFFERED=1
 WORKDIR /app
 
 COPY pyproject.toml ./
+COPY alembic.ini ./
 COPY app ./app
-RUN pip install --no-cache-dir -e .
+COPY tests ./tests
+RUN pip install --no-cache-dir -e .[dev]
 
 EXPOSE 8000
 

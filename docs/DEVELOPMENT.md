@@ -1,57 +1,46 @@
-# Development Workflow
+# Development
 
 ## Prerequisites
 
-- Docker Desktop (or Docker Engine + Compose plugin)
-- Node.js 20+ (for local frontend-only runs)
-- Python 3.12+ (for local backend/worker-only runs)
+- Docker + Docker Compose
+- Python 3.12+ (for local backend testing)
+- Node.js 20+ (for local frontend)
 
-## First Run
+## Quick Start (Docker)
 
-1. Copy env template:
-   - `cp .env.example .env`
-2. Start stack:
-   - `docker compose up --build`
-3. Verify:
-   - Frontend: `http://localhost:5173`
-   - Backend health: `http://localhost:8001/health`
-   - API health: `http://localhost:8001/api/v1/health`
-   - Platform context: `http://localhost:8001/api/v1/platform/context`
+1. `cp .env.example .env`
+2. `docker compose up --build -d`
+3. `docker compose exec backend alembic upgrade head`
+4. `docker compose exec backend python -m app.db.seed`
 
-## Docker Commands
+## Mailpit (Local Dev Email)
 
-- Start: `docker compose up --build`
-- Start detached: `docker compose up --build -d`
-- Stop: `docker compose down`
-- Remove volumes: `docker compose down -v`
-- Logs: `docker compose logs -f`
-- Status: `docker compose ps`
+- UI: [http://localhost:8025](http://localhost:8025)
+- SMTP host/port for backend (Docker network): `mailpit:1025`
+- Invitation mails should appear in Mailpit after create-invite requests.
 
-## Run Services Individually
+## Tests and Checks
 
-### Frontend
+- Backend tests: `cd backend && python -m pytest`
+- Frontend build check: `cd frontend && npm run build`
+- Frontend lint: `cd frontend && npm run lint`
 
-- `cd frontend`
-- `npm install`
-- `npm run dev`
+## Migration Commands
 
-### Backend
+- Upgrade: `docker compose exec backend alembic upgrade head`
+- Current revision: `docker compose exec backend alembic current`
+- Downgrade one step: `docker compose exec backend alembic downgrade -1`
 
-- `cd backend`
-- `python -m venv .venv`
-- Activate virtualenv
-- `pip install -e .[dev]`
-- `uvicorn app.main:app --reload --host 0.0.0.0 --port 8000`
+## Coverage Added in This Hardening Pass
 
-### Worker
+- signup tenant+membership creation
+- invitation create/list permission enforcement
+- invite acceptance (new user + existing-account restriction)
+- tenant-scoped customer access and cross-tenant denial
+- refresh rotation, logout revocation, logout-all revocation
+- invitation acceptance audit-event verification
 
-- `cd worker`
-- `python -m venv .venv`
-- Activate virtualenv
-- `pip install -e .[dev]`
-- `python -m app.main`
+## Versioning
 
-## Notes
-
-- Postgres bootstrap SQL runs only on first initialization of the database volume.
-- If schema bootstrap changes later, use migrations (recommended) rather than repeatedly recreating volumes.
+- Current release: `1.1`
+- Keep `MSPINTEL_APP_VERSION` and `VITE_MSPINTEL_APP_VERSION` aligned for each Docker/platform release update.

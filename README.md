@@ -1,86 +1,77 @@
 # mspintel
 
-mspintel is a secure, AI-assisted MSP intelligence platform for managed service providers. This repository provides a production-leaning, Docker-first SaaS multi-tenant scaffold with React, FastAPI, Python workers, PostgreSQL, and Redis.
+mspintel is a secure, AI-assisted MSP intelligence platform for MSPs. This release (`v1.1`) hardens SaaS access control with invitation workflows, stricter permissions, refresh/session revocation, audit logging, and Mailpit-backed development email.
 
 ## Stack
 
-- Frontend: React + TypeScript (Vite)
-- Backend API: FastAPI (app factory + modular packages)
-- Worker: Python worker service scaffold
+- Frontend: React + TypeScript + Vite + React Router
+- Backend: FastAPI + SQLAlchemy + Alembic
+- Auth: JWT access + refresh tokens with persisted session revocation
 - Database: PostgreSQL 16
-- Cache/Queue: Redis 7
-- Runtime: Python 3.12
-- Local orchestration: Docker Compose
+- Cache/queue: Redis 7
+- Dev mail: Mailpit (SMTP + inbox UI)
+- Worker: Python 3.12 scaffold
+- Orchestration: Docker Compose
 
-## Repository Structure
+## Versioning
 
-- `frontend/` - UI scaffold prepared for public, app, platform admin, tenant admin, and onboarding areas
-- `backend/` - FastAPI SaaS-oriented API structure
-- `worker/` - Background worker foundation for async processing
-- `docs/` - Architecture and development docs
-- `compose.yaml` - Full local stack orchestration
+- Current app version: `1.1`
+- Central runtime version variable: `MSPINTEL_APP_VERSION` (root `.env`)
+- Frontend display version variable: `VITE_MSPINTEL_APP_VERSION` (set from `MSPINTEL_APP_VERSION` in Compose)
 
-## SaaS Multi-tenant Foundation
-
-This scaffold is structured for true SaaS multi-tenancy from day one:
+## Multi-tenant Access Model
 
 - `users` are global identities
 - `tenants` are MSP workspaces
-- `tenant_memberships` connect users to tenants with roles
-- `plans` and `subscriptions` belong to tenants
-- backend access context shape supports platform-role + tenant context evaluation
+- `tenant_memberships` link users to tenant roles
+- `tenant_invitations` manages invite lifecycle (`pending`, `accepted`, `expired`, `revoked`)
+- `user_sessions` stores refresh sessions for revocation/rotation
+- `plans` and `subscriptions` are tenant-owned billing foundations
+- Platform admin remains distinct from tenant roles
 
-Included now:
+## Security and Hardening in v1.1
 
-- Core SaaS schema bootstrap SQL (`users`, `tenants`, `tenant_memberships`, `plans`, `subscriptions`)
-- Backend module layout for platform, tenants, memberships, plans, subscriptions, onboarding
-- Access context dependency (`user`, `tenant`, `platform role`) for future authz checks
+- Server-side permission enforcement with role capability checks
+- Tenant-scoped invitation/member endpoints and query filtering
+- Refresh token rotation with old session invalidation
+- Logout revokes current refresh session; logout-all revokes all sessions
+- Existing-account invite acceptance requires login as invited identity
+- Invitation/member change audit events are persisted in `audit_events`
+- Raw invitation token exposure is disabled by default (`EXPOSE_INVITATION_TOKEN_IN_RESPONSE=false`)
 
-Not fully implemented yet (by design):
+## Local Run (Docker-first)
 
-- real signup and onboarding workflows
-- payment provider integration
-- full RBAC and tenant isolation middleware
-- full tenant switch UX and management screens
+1. `cp .env.example .env`
+2. `docker compose up --build -d`
+3. `docker compose exec backend alembic upgrade head`
+4. `docker compose exec backend python -m app.db.seed`
 
-## Local Setup (Docker-first)
+## Local URLs
 
-1. Copy environment template:
-   - `cp .env.example .env`
-2. Start platform:
-   - `docker compose up --build`
-3. Access:
-   - Frontend: <http://localhost:5173>
-   - Backend health: <http://localhost:8001/health>
-   - API health: <http://localhost:8001/api/v1/health>
-   - Platform context probe: <http://localhost:8001/api/v1/platform/context>
+- Frontend: [http://localhost:5173](http://localhost:5173)
+- API health: [http://localhost:8001/health](http://localhost:8001/health)
+- API v1 health: [http://localhost:8001/api/v1/health](http://localhost:8001/api/v1/health)
+- Mailpit UI: [http://localhost:8025](http://localhost:8025)
+- Mailpit SMTP: `mailpit:1025` (inside Docker network)
 
-## Run Services Individually
+## Key Endpoints (Access-Control Slice)
 
-### Frontend
+- Auth/session:
+  - `POST /api/v1/auth/signup`
+  - `POST /api/v1/auth/login`
+  - `POST /api/v1/auth/refresh`
+  - `POST /api/v1/auth/logout`
+  - `POST /api/v1/auth/logout-all`
+  - `GET /api/v1/auth/me`
+- Tenant members/invitations:
+  - `GET /api/v1/tenants/current/members`
+  - `GET /api/v1/tenants/current/invitations`
+  - `POST /api/v1/tenants/current/invitations`
+  - `POST /api/v1/tenants/current/invitations/{invitation_id}/revoke`
+  - `POST /api/v1/invitations/accept`
 
-1. `cd frontend`
-2. `npm install`
-3. `npm run dev`
+## Validation Commands
 
-### Backend
-
-1. `cd backend`
-2. `python -m venv .venv`
-3. Activate virtualenv
-4. `pip install -e .[dev]`
-5. `uvicorn app.main:app --reload --host 0.0.0.0 --port 8000`
-
-### Worker
-
-1. `cd worker`
-2. `python -m venv .venv`
-3. Activate virtualenv
-4. `pip install -e .[dev]`
-5. `python -m app.main`
-
-## Tooling
-
-- Frontend: ESLint + TypeScript checks
-- Backend/Worker: Ruff setup
-- Root: `.gitignore`, `.env.example`, Dockerfiles, Compose setup
+- Backend tests: `cd backend && python -m pytest`
+- Frontend build: `cd frontend && npm run build`
+- Frontend lint: `cd frontend && npm run lint`

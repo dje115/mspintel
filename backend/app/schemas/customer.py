@@ -1,0 +1,34 @@
+from uuid import UUID
+
+from pydantic import BaseModel
+
+
+class CustomerListItem(BaseModel):
+    id: UUID
+    name: str
+    status: str
+    owner_name: str | None
+    risk_score: int | None
+    attention_score: int | None
+    growth_score: int | None
+    next_best_action: str | None
+
+
+class CustomerListResponse(BaseModel):
+    items: list[CustomerListItem]
+    page: int
+    page_size: int
+    total: int
+
+
+class CustomerDetailResponse(BaseModel):
+    id: UUID
+    name: str
+    status: str
+    owner_name: str | None
+    latest_scores: dict[str, int] | None
+    open_tickets_count: int
+    open_opportunities_count: int
+    open_quotes_count: int
+    recommendation_summary: list[str]
+    recent_actions: list[str]

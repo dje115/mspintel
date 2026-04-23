@@ -1,0 +1,62 @@
+from uuid import UUID
+
+from fastapi import HTTPException, status
+from sqlalchemy.orm import Session
+
+from app.repositories.customers import CustomerRepository
+from app.schemas.customer import CustomerDetailResponse, CustomerListItem, CustomerListResponse
+
+
+class CustomerService:
+    def __init__(self, db: Session):
+        self.repo = CustomerRepository(db)
+
+    def list_customers(self, tenant_id: UUID, search: str | None, status_filter: str | None, page: int, page_size: int):
+        customers, total = self.repo.list_customers(tenant_id, search, status_filter, page, page_size)
+        items: list[CustomerListItem] = []
+        for customer in customers:
+            score = self.repo.latest_score(tenant_id, customer.id)
+            recs = self.repo.recommendation_summary(tenant_id, customer.id)
+            items.append(
+                CustomerListItem(
+                    id=customer.id,
+                    name=customer.name,
+                    status=customer.status,
+                    owner_name=customer.owner_name,
+                    risk_score=score.risk_score if score else None,
+                    attention_score=score.attention_score if score else None,
+                    growth_score=score.growth_score if score else None,
+                    next_best_action=recs[0] if recs else None,
+                )
+            )
+
+        return CustomerListResponse(items=items, page=page, page_size=page_size, total=total)
+
+    def get_customer_detail(self, tenant_id: UUID, customer_id: UUID) -> CustomerDetailResponse:
+        customer = self.repo.get_customer(tenant_id, customer_id)
+        if not customer:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Customer not found")
+
+        score = self.repo.latest_score(tenant_id, customer_id)
+        tickets, opps, quotes = self.repo.open_counts(tenant_id, customer_id)
+        recs = self.repo.recommendation_summary(tenant_id, customer_id)
+        actions = self.repo.recent_actions(tenant_id, customer_id)
+
+        return CustomerDetailResponse(
+            id=customer.id,
+            name=customer.name,
+            status=customer.status,
+            owner_name=customer.owner_name,
+            latest_scores={
+                "risk_score": score.risk_score,
+                "attention_score": score.attention_score,
+                "growth_score": score.growth_score,
+            }
+            if score
+            else None,
+            open_tickets_count=tickets,
+            open_opportunities_count=opps,
+            open_quotes_count=quotes,
+            recommendation_summary=recs,
+            recent_actions=actions,
+        )
