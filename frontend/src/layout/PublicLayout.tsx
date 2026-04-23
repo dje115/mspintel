@@ -2,10 +2,10 @@ import { Outlet } from "react-router-dom";
 
 export function PublicLayout() {
   return (
-    <main className="public-wrap">
-      <section className="public-card">
+    <div className="tenant-public-root">
+      <div className="tenant-public-inner">
         <Outlet />
-      </section>
-    </main>
+      </div>
+    </div>
   );
 }

@@ -63,7 +63,8 @@ The backend image runs **`alembic upgrade head` on container start**, so new mig
 | --- | --- |
 | Tenant login | [http://localhost:5173/login](http://localhost:5173/login) |
 | Tenant signup | [http://localhost:5173/signup](http://localhost:5173/signup) |
-| Tenant app (after login) | [http://localhost:5173/app/…](http://localhost:5173/app/customers) |
+| Tenant dashboard (after login) | [http://localhost:5173/app](http://localhost:5173/app) |
+| Tenant customers | [http://localhost:5173/app/customers](http://localhost:5173/app/customers) |
 | **Platform console login** | [http://localhost:5173/platform/login](http://localhost:5173/platform/login) |
 | **Platform console** | [http://localhost:5173/platform](http://localhost:5173/platform) |
 | **Platform security / sessions** | [http://localhost:5173/platform/security](http://localhost:5173/platform/security) |
@@ -131,11 +132,23 @@ The backend image runs **`alembic upgrade head` on container start**, so new mig
 - **Platform SPA:** `/platform/login`, `/platform`, `/platform/tenants`, `/platform/system-status`, `/platform/security` — `is_platform_admin` users only, with platform-scoped JWTs.
 - Same deployment and user table; enforcement is **server-side** (JWT + flags) with **frontend route guards** for UX (`TenantProtectedRoute`, `PlatformProtectedRoute`).
 
-### Seed credentials (local)
+### Demo credentials (local Docker / seed)
 
-- Tenant demo: `tenant-admin@demo-msp.example.com` / `ChangeMe123!` (see `backend/app/services/seed.py`).
-- Platform demo: `admin@mspintel.example.com` / `ChangeMe123!` (`seed_platform_admin_email` / `seed_platform_admin_password` in settings).
-- Refresh records `last_used_at` on the session being rotated; login/signup/refresh capture client IP and User-Agent when available.
+Run `docker compose exec backend python -m app.db.seed` after the database is up. Then use:
+
+| Role | Email | Password | Sign-in URL |
+|------|--------|----------|-------------|
+| **Tenant MSP admin** (demo workspace) | `tenant-admin@demo-msp.example.com` | `ChangeMe123!` | [http://localhost:5173/login](http://localhost:5173/login) |
+| **Platform operator** | `admin@mspintel.example.com` | `ChangeMe123!` | [http://localhost:5173/platform/login](http://localhost:5173/platform/login) |
+
+Defaults match `SEED_PLATFORM_ADMIN_*` and the demo tenant in `backend/app/services/seed.py`. Override via `.env` if needed.
+
+Tenant and platform accounts use **separate** login URLs (tenant JWT cannot call tenant APIs with `am=platform`, and vice versa).
+
+### Product UX docs (tenant)
+
+- [docs/TENANT_PRODUCT_WIREFRAMES.md](docs/TENANT_PRODUCT_WIREFRAMES.md) — information architecture and page wireframes for the MSP workspace.
+- [docs/ROUTES_UX_MAP.md](docs/ROUTES_UX_MAP.md) — which layout wraps which routes (public tenant auth vs `AppLayout` vs platform console).
 
 ## Session UI
 
@@ -155,18 +168,17 @@ The backend image runs **`alembic upgrade head` on container start**, so new mig
 
 | Path | Purpose |
 |------|---------|
-| `/login` | Sign in |
+| `/login` | Tenant MSP sign-in (distinct visual system from platform login) |
 | `/signup` | New tenant + owner signup |
 | `/accept-invitation` | Accept invite (query `?token=`) |
-| `/app` | Redirects to default app landing |
+| `/app` | **Dashboard** — executive KPIs + priority account lists (`GET /api/v1/dashboards/executive` + customer slices) |
 | `/app/onboarding` | Tenant onboarding |
-| `/app/customers` | Customer list |
-| `/app/customers/:id` | Customer detail |
-| `/app/members` | Members + invitations management |
+| `/app/customers` | Accounts & customers directory (`?status=` supported) |
+| `/app/customers/:id` | Customer 360 / account intelligence |
+| `/app/members` | Team & invitations |
+| `/app/integrations` | Integration connections |
 | `/app/security` | Sessions list / revoke / sign out others |
 | `/app/system-status` | System status (requires `system:read`; shows API version) |
-
-Dashboard JSON endpoints exist under `/api/v1/dashboards/*` (no dedicated SPA chart route yet).
 
 ## Validation Commands
 

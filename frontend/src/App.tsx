@@ -9,6 +9,7 @@ import { PublicLayout } from "./layout/PublicLayout";
 import { SystemStatusPage } from "./pages/admin/SystemStatusPage";
 import { CustomerDetailPage } from "./pages/app/CustomerDetailPage";
 import { CustomersPage } from "./pages/app/CustomersPage";
+import { DashboardPage } from "./pages/app/DashboardPage";
 import { IntegrationsPage } from "./pages/app/IntegrationsPage";
 import { MembersPage } from "./pages/app/MembersPage";
 import { SecurityPage } from "./pages/app/SecurityPage";
@@ -51,7 +52,7 @@ function App() {
           <Route path="members" element={<MembersPage />} />
           <Route path="security" element={<SecurityPage />} />
           <Route path="system-status" element={<SystemStatusPage />} />
-          <Route index element={<Navigate to="customers" replace />} />
+          <Route index element={<DashboardPage />} />
         </Route>
       </Route>
 

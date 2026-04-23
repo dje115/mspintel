@@ -18,30 +18,66 @@ export function LoginPage() {
     try {
       const pair = await api.login({ email, password });
       await login(pair.access_token, pair.refresh_token, pair.session_id);
-      navigate("/app/customers");
+      navigate("/app");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
     }
   };
 
   return (
-    <>
-      <h1>Login</h1>
-      <form className="stack" onSubmit={onSubmit}>
-        <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" />
-        <input
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          placeholder="Password"
-          type="password"
-        />
-        {error ? <p className="error">{error}</p> : null}
-        <button type="submit">Sign in</button>
-      </form>
-      <p className="tenant-auth-alt">
-        MSPintel platform staff? <Link to="/platform/login">Platform console sign-in</Link>
+    <div className="tenant-auth-card">
+      <div className="tenant-auth-brand">
+        <div className="tenant-auth-mark" aria-hidden="true" />
+        <div className="tenant-auth-brand-text">
+          <strong>mspintel</strong>
+          <span>MSP intelligence workspace</span>
+        </div>
+      </div>
+
+      <p className="tenant-auth-eyebrow">Tenant workspace</p>
+      <h1 className="tenant-auth-title">Sign in to your MSP</h1>
+      <p className="tenant-auth-lead">
+        Access customer health, recommendations, and team tools for the MSP you manage — not the operator console.
       </p>
-      <p className="version-tag">v{APP_VERSION}</p>
-    </>
+
+      <form className="tenant-form-grid" onSubmit={onSubmit}>
+        <label className="tenant-label">
+          Work email
+          <input
+            className="tenant-input"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@your-msp.com"
+            type="email"
+            autoComplete="email"
+          />
+        </label>
+        <label className="tenant-label">
+          Password
+          <input
+            className="tenant-input"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="••••••••"
+            type="password"
+            autoComplete="current-password"
+          />
+        </label>
+        {error ? <p className="tenant-error">{error}</p> : null}
+        <button className="tenant-btn-primary" type="submit">
+          Continue to workspace
+        </button>
+      </form>
+
+      <p className="tenant-auth-footer">
+        New MSP workspace? <Link to="/signup">Create an account</Link>
+      </p>
+
+      <p className="tenant-auth-platform-link">
+        <Link to="/platform/login">Platform operator sign-in →</Link>
+      </p>
+
+      <p className="tenant-version-tag">mspintel v{APP_VERSION}</p>
+    </div>
   );
 }

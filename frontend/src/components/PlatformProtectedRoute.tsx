@@ -18,7 +18,7 @@ export function PlatformProtectedRoute() {
 
   if (!me.is_platform_admin || authMode !== "platform") {
     if (authMode === "tenant") {
-      return <Navigate to="/app/customers" replace />;
+      return <Navigate to="/app" replace />;
     }
     return <Navigate to="/login" replace />;
   }

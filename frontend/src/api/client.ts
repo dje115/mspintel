@@ -1,6 +1,7 @@
 import type {
   CustomerDetailResponse,
   CustomerListResponse,
+  ExecutiveDashboardResponse,
   Invitation,
   MeResponse,
   OnboardingResponse,
@@ -209,10 +210,9 @@ export const api = {
       headers: authHeaders(accessToken, tenantId)
     }),
   executiveDashboard: (accessToken: string, tenantId: string) =>
-    request<{ customers: number; high_risk_customers: number; open_recommendations: number; lost_quotes_revisit_count: number }>(
-      "/api/v1/dashboards/executive",
-      { headers: authHeaders(accessToken, tenantId) }
-    ),
+    request<ExecutiveDashboardResponse>("/api/v1/dashboards/executive", {
+      headers: authHeaders(accessToken, tenantId)
+    }),
   systemStatus: (accessToken: string, tenantId: string) =>
     request<SystemStatus>("/api/v1/system/status", { headers: authHeaders(accessToken, tenantId) }),
   integrations: (accessToken: string, tenantId: string) =>

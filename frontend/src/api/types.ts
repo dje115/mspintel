@@ -71,6 +71,13 @@ export type SourceConnection = {
   last_sync_at: string | null;
 };
 
+export type ExecutiveDashboardResponse = {
+  customers: number;
+  high_risk_customers: number;
+  open_recommendations: number;
+  lost_quotes_revisit_count: number;
+};
+
 export type CustomerListItem = {
   id: string;
   name: string;

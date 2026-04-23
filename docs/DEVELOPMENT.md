@@ -45,6 +45,11 @@
 - Current app release: **1.7** (see `MSPINTEL_APP_VERSION` / `VITE_APP_VERSION` in `.env.example` and `compose.yaml`).
 - Keep **`MSPINTEL_APP_VERSION`** and **`VITE_APP_VERSION`** aligned for each release.
 
+## Tenant product UX (local)
+
+- Tenant-facing IA and wireframes: [TENANT_PRODUCT_WIREFRAMES.md](TENANT_PRODUCT_WIREFRAMES.md).
+- Route ↔ layout map: [ROUTES_UX_MAP.md](ROUTES_UX_MAP.md).
+
 ## Platform MFA recovery codes (local)
 
 - After seeding, enable TOTP on **`/platform/security`**, then generate recovery codes from the same page.

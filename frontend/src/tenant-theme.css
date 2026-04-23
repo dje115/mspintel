@@ -1,0 +1,798 @@
+/* Tenant MSP product — design system (distinct from platform console) */
+
+.tenant-public-root {
+  min-height: 100vh;
+  background:
+    radial-gradient(1200px 600px at 10% -10%, rgba(20, 184, 166, 0.14), transparent 55%),
+    radial-gradient(900px 500px at 100% 0%, rgba(59, 130, 246, 0.1), transparent 50%),
+    linear-gradient(180deg, #eef2f7 0%, #e8edf5 40%, #f1f5f9 100%);
+  color: #0f172a;
+  font-family: "IBM Plex Sans", Inter, system-ui, sans-serif;
+}
+
+.tenant-public-inner {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem 1rem 2.5rem;
+}
+
+.tenant-auth-card {
+  width: min(440px, 100%);
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 20px;
+  padding: 2rem 1.75rem 1.75rem;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.8) inset,
+    0 24px 48px -12px rgba(15, 23, 42, 0.12);
+}
+
+.tenant-auth-card--wide {
+  width: min(480px, 100%);
+}
+
+.tenant-auth-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.tenant-auth-mark {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: linear-gradient(145deg, #14b8a6, #0d9488 48%, #0f766e);
+  box-shadow: 0 8px 20px rgba(13, 148, 136, 0.35);
+  flex-shrink: 0;
+}
+
+.tenant-auth-brand-text strong {
+  display: block;
+  font-family: "Plus Jakarta Sans", "IBM Plex Sans", sans-serif;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.tenant-auth-brand-text span {
+  font-size: 0.82rem;
+  color: #64748b;
+}
+
+.tenant-auth-eyebrow {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #0d9488;
+  margin: 0 0 0.35rem;
+}
+
+.tenant-auth-title {
+  font-family: "Plus Jakarta Sans", "IBM Plex Sans", sans-serif;
+  font-size: 1.55rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  margin: 0 0 0.5rem;
+  line-height: 1.2;
+  color: #0f172a;
+}
+
+.tenant-auth-lead {
+  margin: 0 0 1.35rem;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: #475569;
+}
+
+.tenant-form-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.tenant-label {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.tenant-input {
+  width: 100%;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  font: inherit;
+  background: #fff;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.tenant-input:focus {
+  outline: none;
+  border-color: #14b8a6;
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.2);
+}
+
+.tenant-btn-primary {
+  width: 100%;
+  margin-top: 0.25rem;
+  padding: 0.75rem 1rem;
+  border: none;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  background: linear-gradient(180deg, #14b8a6, #0d9488);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(13, 148, 136, 0.35);
+}
+
+.tenant-btn-primary:hover {
+  filter: brightness(1.05);
+}
+
+.tenant-btn-primary:active {
+  transform: translateY(1px);
+}
+
+.tenant-auth-footer {
+  margin-top: 1.25rem;
+  padding-top: 1.1rem;
+  border-top: 1px solid #e2e8f0;
+  font-size: 0.88rem;
+  color: #64748b;
+  text-align: center;
+}
+
+.tenant-auth-footer a {
+  color: #0f766e;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.tenant-auth-footer a:hover {
+  text-decoration: underline;
+}
+
+.tenant-auth-platform-link {
+  margin-top: 0.75rem;
+  font-size: 0.84rem;
+  text-align: center;
+}
+
+.tenant-auth-platform-link a {
+  color: #64748b;
+  text-decoration: none;
+  border-bottom: 1px dashed #94a3b8;
+}
+
+.tenant-auth-platform-link a:hover {
+  color: #475569;
+}
+
+.tenant-version-tag {
+  margin: 1rem 0 0;
+  text-align: center;
+  font-size: 0.78rem;
+  color: #94a3b8;
+}
+
+.tenant-error {
+  margin: 0;
+  padding: 0.55rem 0.65rem;
+  border-radius: 8px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 0.88rem;
+}
+
+.tenant-msg {
+  margin: 0;
+  padding: 0.55rem 0.65rem;
+  border-radius: 8px;
+  background: #f0fdf4;
+  color: #166534;
+  font-size: 0.88rem;
+}
+
+/* —— App shell —— */
+
+.tenant-shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  background: #eef2f7;
+  color: #0f172a;
+  font-family: "IBM Plex Sans", Inter, system-ui, sans-serif;
+}
+
+.tenant-sidebar {
+  background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+  color: #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  padding: 1.25rem 0.9rem 1rem;
+  border-right: 1px solid rgba(15, 23, 42, 0.5);
+}
+
+.tenant-sidebar-brand {
+  display: flex;
+  gap: 0.65rem;
+  align-items: center;
+  margin-bottom: 1.75rem;
+  padding: 0 0.35rem;
+}
+
+.tenant-sidebar-mark {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: linear-gradient(145deg, #2dd4bf, #14b8a6 50%, #0f766e);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+  flex-shrink: 0;
+}
+
+.tenant-sidebar-brand strong {
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  display: block;
+}
+
+.tenant-sidebar-brand span {
+  font-size: 0.72rem;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.tenant-nav-group {
+  margin-bottom: 1.25rem;
+}
+
+.tenant-nav-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #64748b;
+  padding: 0 0.5rem 0.35rem;
+}
+
+.tenant-nav-link {
+  display: block;
+  padding: 0.5rem 0.55rem;
+  border-radius: 9px;
+  color: #cbd5e1;
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+  margin-bottom: 0.1rem;
+}
+
+.tenant-nav-link:hover {
+  background: rgba(148, 163, 184, 0.12);
+  color: #f8fafc;
+}
+
+.tenant-nav-link.is-active {
+  background: rgba(45, 212, 191, 0.15);
+  color: #ccfbf1;
+  border: 1px solid rgba(45, 212, 191, 0.25);
+}
+
+.tenant-sidebar-foot {
+  margin-top: auto;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(51, 65, 85, 0.6);
+  font-size: 0.72rem;
+  color: #64748b;
+  padding-left: 0.45rem;
+}
+
+.tenant-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.tenant-topbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.tenant-topbar-user strong {
+  font-size: 0.95rem;
+  display: block;
+}
+
+.tenant-topbar-user span {
+  font-size: 0.82rem;
+  color: #64748b;
+}
+
+.tenant-topbar-role {
+  margin-top: 0.2rem;
+  font-size: 0.78rem;
+  color: #94a3b8;
+}
+
+.tenant-topbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.tenant-select {
+  padding: 0.45rem 0.65rem;
+  border-radius: 9px;
+  border: 1px solid #cbd5e1;
+  font: inherit;
+  background: #fff;
+  min-width: 10rem;
+}
+
+.tenant-btn-ghost {
+  padding: 0.45rem 0.75rem;
+  border-radius: 9px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  font-size: 0.82rem;
+  cursor: pointer;
+  color: #334155;
+}
+
+.tenant-btn-ghost:hover {
+  background: #f8fafc;
+}
+
+.tenant-canvas {
+  flex: 1;
+  padding: 1.25rem 1.5rem 2rem;
+  max-width: 1320px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.tenant-page-head {
+  margin-bottom: 1.25rem;
+}
+
+.tenant-page-title {
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  margin: 0 0 0.35rem;
+}
+
+.tenant-page-sub {
+  margin: 0;
+  font-size: 0.92rem;
+  color: #64748b;
+  max-width: 42rem;
+  line-height: 1.5;
+}
+
+/* KPI row */
+.tenant-kpi-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+@media (max-width: 1100px) {
+  .tenant-kpi-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 520px) {
+  .tenant-kpi-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.tenant-kpi {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 1rem 1.1rem;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset;
+}
+
+.tenant-kpi-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #64748b;
+  margin: 0 0 0.35rem;
+}
+
+.tenant-kpi-value {
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-size: 1.65rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  margin: 0;
+  color: #0f172a;
+}
+
+.tenant-kpi-hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.8rem;
+  color: #94a3b8;
+}
+
+/* Cards & panels */
+.tenant-panel {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  overflow: hidden;
+  margin-bottom: 1.25rem;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.tenant-panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 1.1rem;
+  border-bottom: 1px solid #f1f5f9;
+  background: linear-gradient(180deg, #fafbfc, #fff);
+}
+
+.tenant-panel-title {
+  margin: 0;
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.tenant-panel-link {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #0d9488;
+  text-decoration: none;
+}
+
+.tenant-panel-link:hover {
+  text-decoration: underline;
+}
+
+.tenant-panel-body {
+  padding: 0;
+}
+
+.tenant-empty {
+  padding: 2rem 1.25rem;
+  text-align: center;
+  color: #64748b;
+  font-size: 0.92rem;
+}
+
+.tenant-empty-title {
+  font-weight: 600;
+  color: #334155;
+  margin: 0 0 0.35rem;
+  font-size: 0.95rem;
+}
+
+/* Tables */
+.tenant-table-wrap {
+  overflow-x: auto;
+}
+
+.tenant-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+.tenant-table th {
+  text-align: left;
+  padding: 0.65rem 1rem;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.tenant-table td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
+}
+
+.tenant-table tbody tr {
+  transition: background 0.12s;
+}
+
+.tenant-table tbody tr:hover {
+  background: #f8faffc9;
+}
+
+.tenant-table a {
+  font-weight: 600;
+  color: #0f766e;
+  text-decoration: none;
+}
+
+.tenant-table a:hover {
+  text-decoration: underline;
+}
+
+.tenant-pagination {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-top: 1px solid #f1f5f9;
+  font-size: 0.88rem;
+  color: #64748b;
+}
+
+.tenant-pagination button {
+  padding: 0.4rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  cursor: pointer;
+  font-size: 0.82rem;
+}
+
+.tenant-pagination button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Filters */
+.tenant-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-bottom: 1rem;
+}
+
+.tenant-toolbar .tenant-input {
+  flex: 1;
+  min-width: 12rem;
+  max-width: 22rem;
+}
+
+/* Badges */
+.tenant-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.tenant-badge--active {
+  background: #d1fae5;
+  color: #047857;
+}
+
+.tenant-badge--watch {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.tenant-badge--at_risk {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.tenant-badge--muted {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+/* Score meter */
+.tenant-score-meter {
+  min-width: 88px;
+}
+
+.tenant-score-meter-top {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.68rem;
+  color: #64748b;
+  margin-bottom: 0.2rem;
+}
+
+.tenant-score-meter-track {
+  height: 6px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  overflow: hidden;
+}
+
+.tenant-score-meter-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #14b8a6, #0ea5e9);
+}
+
+.tenant-score-meter-fill--risk {
+  background: linear-gradient(90deg, #f97316, #ef4444);
+}
+
+/* Customer 360 */
+.tenant-breadcrumb {
+  font-size: 0.82rem;
+  margin-bottom: 0.65rem;
+}
+
+.tenant-breadcrumb a {
+  color: #0d9488;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.tenant-breadcrumb a:hover {
+  text-decoration: underline;
+}
+
+.tenant-breadcrumb span {
+  color: #94a3b8;
+}
+
+.tenant-hero-title {
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-size: 1.65rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  margin: 0 0 0.35rem;
+}
+
+.tenant-hero-meta {
+  margin: 0 0 1.25rem;
+  font-size: 0.9rem;
+  color: #64748b;
+}
+
+.tenant-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+@media (max-width: 900px) {
+  .tenant-metric-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.tenant-metric-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 1.1rem 1.15rem;
+}
+
+.tenant-metric-card h3 {
+  margin: 0 0 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.tenant-metric-big {
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0;
+  letter-spacing: -0.04em;
+}
+
+.tenant-metric-note {
+  margin: 0.35rem 0 0;
+  font-size: 0.82rem;
+  color: #94a3b8;
+  line-height: 1.4;
+}
+
+.tenant-list-plain {
+  margin: 0;
+  padding: 0 1.1rem 1rem 2rem;
+  color: #475569;
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.tenant-rec-card {
+  padding: 0.85rem 1.1rem;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 0.9rem;
+  color: #334155;
+}
+
+.tenant-rec-card:last-child {
+  border-bottom: none;
+}
+
+.tenant-two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+@media (max-width: 960px) {
+  .tenant-two-col {
+    grid-template-columns: 1fr;
+  }
+}
+
+.tenant-skeleton {
+  padding: 2rem;
+  text-align: center;
+  color: #94a3b8;
+  font-size: 0.9rem;
+}
+
+/* Responsive shell */
+@media (max-width: 1024px) {
+  .tenant-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .tenant-sidebar {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 0.5rem 1rem;
+  }
+
+  .tenant-sidebar-brand {
+    width: 100%;
+    margin-bottom: 0.5rem;
+  }
+
+  .tenant-nav-group {
+    margin-bottom: 0.5rem;
+  }
+
+  .tenant-nav-label {
+    width: 100%;
+  }
+
+  .tenant-nav-link {
+    display: inline-block;
+    margin-right: 0.25rem;
+  }
+
+  .tenant-sidebar-foot {
+    width: 100%;
+    border-top: none;
+    padding-top: 0.5rem;
+  }
+}
