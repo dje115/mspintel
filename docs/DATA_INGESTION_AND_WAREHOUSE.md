@@ -2,6 +2,8 @@
 
 This phase introduces a real connector runtime foundation with Autotask v1 and a storage model that can grow into richer analytics without re-architecting.
 
+**Strategic context:** connector priorities, per-system entity expectations, cadence philosophy, and how ingestion supports retention/commercial/billing product areas are summarised in **[MSP360_PRODUCT_SPEC.md](MSP360_PRODUCT_SPEC.md)** (especially §§17–18). Keep this technical doc aligned when the connector matrix changes materially.
+
 ## Data flow
 
 1. Tenant admin configures a source connection in `/app/integrations`.

@@ -2,6 +2,8 @@
 
 **Ongoing implementation rules** (Docker-first, versioning, `.env.example`, validation, docs, GitHub reporting, tenant hero UX): see **[CURSOR_RULES.md](CURSOR_RULES.md)**. Future prompts and contributors should follow that document so setup and release discipline stay consistent.
 
+**Product direction** (customer intelligence scope, connectors, prompt planning, roadmap): **[MSP360_PRODUCT_SPEC.md](MSP360_PRODUCT_SPEC.md)**.
+
 ## Prerequisites
 
 - Docker + Docker Compose
@@ -11,7 +13,7 @@
 ## Quick Start (Docker)
 
 1. `cp .env.example .env` (set **`MFA_TOTP_ENCRYPTION_KEY`** to a Fernet key from `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"` for any non-demo deployment; set a long random **`MFA_RECOVERY_CODE_PEPPER`** (≥16 chars) before relying on platform recovery codes in production)
-2. `docker compose up --build -d` (the frontend dev image runs **`npm install`** on each container start so `node_modules` matches `package.json` after pulls; the app tree is bind-mounted at **`/src`** so Vite can serve the SPA route **`/app`** without colliding with the container workdir. If you ever need a clean install, `docker compose rm -sf frontend` then `docker compose up --build -d` recreates the anonymous `node_modules` volume.)
+2. `docker compose up --build -d` (the frontend dev image runs **`npm install`** on each container start so `node_modules` matches `package.json` after pulls; the app tree is bind-mounted at **`/src`** so Vite can serve the SPA route **`/app`** without colliding with the container workdir. Dependencies live on the named Compose volume **`frontend_node_modules`**; to reset only that volume, see README “Frontend image” / Rollup troubleshooting.)
 3. `docker compose exec backend alembic upgrade head` (optional: the backend entrypoint already runs `alembic upgrade head` on container start)
 4. `docker compose exec backend python -m app.db.seed`
 
@@ -52,9 +54,8 @@ After the stack is up and seeded:
 
 ## Versioning
 
-- **Current app release: 1.8** (no bump in this hygiene pass; last bump shipped the tenant workspace slice).
-- **Single operator-facing version** is driven by **`MSPINTEL_APP_VERSION`** (backend `settings.app_version`, Compose defaults for backend/worker/frontend, root `.env` / `.env.example`).
-- **Frontend display string** uses **`VITE_APP_VERSION`** (set in `.env` or overridden in Compose from `MSPINTEL_APP_VERSION`); `frontend/src/config/version.ts` reads it for the tenant shell footer.
+- **Current app release** is driven by **`MSPINTEL_APP_VERSION`** — see **[README.md](../README.md)** (Versioning) and **`compose.yaml`** defaults for the live number.
+- **Single operator-facing version** flows to backend `settings.app_version`, Compose, root `.env` / **`.env.example`**, and frontend **`VITE_APP_VERSION`** (tenant shell footer via `frontend/src/config/version.ts`).
 - **Python package** version: `backend/pyproject.toml` (`mspintel-backend`); **npm package** version: `frontend/package.json` — keep these aligned with the same release train when you cut a versioned build.
 
 ## Tenant product UX (local)

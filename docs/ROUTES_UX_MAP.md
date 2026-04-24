@@ -50,6 +50,8 @@ All require tenant JWT and tenant context (`X-Tenant-Id` from session).
 | `/app/ai-settings` | `AiSettingsPage` | Tenant AI defaults, task routing table, provider/deployment badges; warnings for behavioural impact. |
 | `/app/prompts` | `PromptsPage` | Prompt list, version history, tenant overrides (configure roles); warnings on edits/activation. |
 | `/app/system-status` | `SystemStatusPage` | Tenant-scoped API status (admin capability). |
+| `/app/roadmap` | `RoadmapHubPage` | **Placeholder hub** — links to spec-backed future product areas (billing integrity, M365 health, relationship health, etc.). |
+| `/app/roadmap/:topic` | `RoadmapTopicPage` | **Placeholder detail** per topic slug (`billing-integrity`, `m365-health`, …); no backend side-effects. See [MSP360_PRODUCT_SPEC.md](MSP360_PRODUCT_SPEC.md). |
 
 **Redirect:** `/` → `/login`.
 
@@ -95,4 +97,4 @@ All require tenant JWT and tenant context (`X-Tenant-Id` from session).
 - `/app/opportunities?tab=lost` — lost-quote revisit list.
 - `/app/customers/<uuid>#workspace` — customer 360 with recommendations tab.
 
-See [TENANT_PRODUCT_WIREFRAMES.md](TENANT_PRODUCT_WIREFRAMES.md) for IA detail; routes are registered in `App.tsx` under **AppLayout**.
+See [TENANT_PRODUCT_WIREFRAMES.md](TENANT_PRODUCT_WIREFRAMES.md) for IA detail; routes are registered in `App.tsx` under **AppLayout**. Planned product breadth and maturity are summarised in [MSP360_PRODUCT_SPEC.md](MSP360_PRODUCT_SPEC.md).

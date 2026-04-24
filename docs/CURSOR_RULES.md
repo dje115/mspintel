@@ -76,6 +76,29 @@ At the end of a phase, summarise for the user:
 
 ---
 
+## 9. Master product specification (spec-first)
+
+- The **authoritative product direction** lives in **[docs/MSP360_PRODUCT_SPEC.md](MSP360_PRODUCT_SPEC.md)** (vision, section matrix, data sources, prompt planning, maturity, roadmap).
+- Before **large** implementation slices that introduce a **new product area**, **major connector**, or **new AI task family**, update the master spec (and **ROUTES_UX_MAP** / **TENANT_PRODUCT_WIREFRAMES** when routes or IA change) so the repo stays aligned with intent.
+- Small bugfixes and strictly local refactors do not require spec edits.
+
+---
+
+## 10. AI prompts and lineage
+
+- **Prompts belong in the prompt database** (platform defaults + tenant overrides, versioned)—not hardcoded in frontend or backend for **user-facing analysis templates** when a `prompt_key` and task route already exist or are being added.
+- **AI task runs** must continue to capture **lineage**: provider family/mode, model, prompt definition and **active version** ids, fallbacks, and terminal status—see [AI_CONFIGURATION_AND_PROMPTS.md](AI_CONFIGURATION_AND_PROMPTS.md) and `ai_task_runs`.
+- New AI features should define **stable `prompt_key`s** and document them in the master spec §20 (and seed/platform catalog as appropriate) before shipping broad UX.
+
+---
+
+## 11. Core product concerns (not side quests)
+
+- **Customer 360**, **retention / at-risk**, **commercial growth**, **billing integrity / revenue assurance**, and **data confidence** are **first-class** product concerns—implementation and UX priority should reflect that over time.
+- **Connectors** remain **tenant-scoped**, **canonical-model-driven**, and **auditable** (sync runs + mappings); avoid one-off APIs that bypass the ingestion model described in [DATA_INGESTION_AND_WAREHOUSE.md](DATA_INGESTION_AND_WAREHOUSE.md).
+
+---
+
 ## Stale frontend UI (Docker + Vite)
 
 If the browser still shows an **old layout** (e.g. flat “Customers / Members” nav instead of grouped **Dashboard / Accounts & customers**), the dev server is usually serving a **stale bundle**:
@@ -103,7 +126,9 @@ Compose sets **`CHOKIDAR_USEPOLLING=true`** for the frontend service so Vite **p
 
 ## Related docs
 
+- [MSP360_PRODUCT_SPEC.md](MSP360_PRODUCT_SPEC.md) — master product direction, section matrix, connectors, prompt keys, roadmap.
 - [DEVELOPMENT.md](DEVELOPMENT.md) — local prerequisites, Compose quick start, tests.
 - [README.md](../README.md) — overview, URLs, endpoints, seed credentials table.
 - [ROUTES_UX_MAP.md](ROUTES_UX_MAP.md) — SPA routes and layouts.
 - [TENANT_PRODUCT_WIREFRAMES.md](TENANT_PRODUCT_WIREFRAMES.md) — tenant product IA.
+- [AI_CONFIGURATION_AND_PROMPTS.md](AI_CONFIGURATION_AND_PROMPTS.md) — AI runtime, prompts, lineage.

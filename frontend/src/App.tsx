@@ -24,6 +24,7 @@ import { ServiceRiskPage } from "./pages/app/ServiceRiskPage";
 import { OnboardingPage } from "./pages/app/OnboardingPage";
 import { PromptsPage } from "./pages/app/PromptsPage";
 import { DataQualityPage } from "./pages/app/DataQualityPage";
+import { RoadmapHubPage, RoadmapTopicPage } from "./pages/app/RoadmapPages";
 import { AcceptInvitationPage } from "./pages/auth/AcceptInvitationPage";
 import { LoginPage } from "./pages/auth/LoginPage";
 import { SignupPage } from "./pages/auth/SignupPage";
@@ -79,6 +80,8 @@ function App() {
           <Route path="ai-settings" element={<AiSettingsPage />} />
           <Route path="prompts" element={<PromptsPage />} />
           <Route path="system-status" element={<SystemStatusPage />} />
+          <Route path="roadmap" element={<RoadmapHubPage />} />
+          <Route path="roadmap/:topic" element={<RoadmapTopicPage />} />
           <Route index element={<DashboardPage />} />
         </Route>
       </Route>

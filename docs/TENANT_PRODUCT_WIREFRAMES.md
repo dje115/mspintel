@@ -2,6 +2,8 @@
 
 This document defines the **tenant-facing** MSP workspace (the hero product). The **platform console** (`/platform/...`) stays a separate, more operational surface and is not specified here beyond cross-links.
 
+**Master direction:** Full product vision, section matrix, connector map, prompt planning, and roadmap live in **[MSP360_PRODUCT_SPEC.md](MSP360_PRODUCT_SPEC.md)**. Update that file before large new slices; keep this wireframe doc aligned when routes or IA change.
+
 Audience: **MSP owner / service manager** — needs signal, prioritisation, and fast paths to accounts, not raw admin chrome.
 
 ---
@@ -205,6 +207,7 @@ Audience: **MSP owner / service manager** — needs signal, prioritisation, and 
 | Integrations | `/app/integrations` | **Implemented** |
 | Onboarding | `/app/onboarding` | **Implemented** |
 | System status | `/app/system-status` | **Implemented** |
+| Product roadmap (placeholder hub + topics) | `/app/roadmap`, `/app/roadmap/:topic` | **Placeholder** — IA visibility only until connectors/APIs land |
 
 ---
 

@@ -2,6 +2,8 @@
 
 This document describes the **tenant-scoped AI engine configuration**, **task routing**, **versioned prompt registry**, and **runtime execution** (`v2.0+`) used by product features.
 
+**Prompt key planning** for future product areas (relationship health, billing assurance, M365, backup, marketing, data quality, etc.) lives in **[MSP360_PRODUCT_SPEC.md](MSP360_PRODUCT_SPEC.md) §20** — add stable keys there (and to seed/catalog) when introducing new AI task types; avoid long hardcoded prompts in application code for user-facing templates.
+
 ---
 
 ## Runtime execution (`AIExecutionService`)

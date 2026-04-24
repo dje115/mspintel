@@ -6,6 +6,8 @@ mspintel is a secure, AI-assisted MSP intelligence platform for MSPs. Release **
 
 Standing rules for Docker, versioning, env vars, validation, docs, GitHub workflow, reporting, and tenant-vs-platform UX: **[docs/CURSOR_RULES.md](docs/CURSOR_RULES.md)**. Use that file as the default checklist for future implementation work.
 
+**Master product specification** (vision, roles, product matrix, data sources, prompt keys, maturity, roadmap): **[docs/MSP360_PRODUCT_SPEC.md](docs/MSP360_PRODUCT_SPEC.md)**.
+
 ## Stack
 
 - Frontend: React + TypeScript + Vite + React Router
@@ -75,6 +77,7 @@ The backend image runs **`alembic upgrade head` on container start**, so new mig
 | Tenant login | [http://localhost:5173/login](http://localhost:5173/login) |
 | Tenant signup | [http://localhost:5173/signup](http://localhost:5173/signup) |
 | Tenant dashboard (after login) | [http://localhost:5173/app](http://localhost:5173/app) |
+| Product roadmap (placeholder hub) | [http://localhost:5173/app/roadmap](http://localhost:5173/app/roadmap) |
 | Recommendations queue | [http://localhost:5173/app/recommendations](http://localhost:5173/app/recommendations) |
 | Opportunities & quotes | [http://localhost:5173/app/opportunities](http://localhost:5173/app/opportunities) |
 | Marketing & campaigns | [http://localhost:5173/app/marketing](http://localhost:5173/app/marketing) |
