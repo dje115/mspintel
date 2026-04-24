@@ -2,6 +2,12 @@ import { Link, useParams } from "react-router-dom";
 
 const ROADMAP_TOPICS: { slug: string; title: string; summary: string }[] = [
   {
+    slug: "tenant-knowledge-layer",
+    title: "Tenant knowledge layer (AI-maintained)",
+    summary:
+      "Persistent, refreshable knowledge objects between canonical sync data and product surfaces—lineage, staleness, and maintainer prompts; specified in the master product spec and data/AI docs."
+  },
+  {
     slug: "billing-integrity",
     title: "Revenue assurance & billing integrity",
     summary:

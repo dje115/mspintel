@@ -4,6 +4,8 @@ This document describes the **tenant-scoped AI engine configuration**, **task ro
 
 **Prompt key planning** for future product areas (relationship health, billing assurance, M365, backup, marketing, data quality, etc.) lives in **[MSP360_PRODUCT_SPEC.md](MSP360_PRODUCT_SPEC.md) §20** — add stable keys there (and to seed/catalog) when introducing new AI task types; avoid long hardcoded prompts in application code for user-facing templates.
 
+**Persistent knowledge layer:** the product direction is to support **maintainer** (refresh) prompts that **update tenant-scoped knowledge objects**, not only **on-demand** completion prompts—see **§ Knowledge object maintenance** below and the master spec **Persistent tenant knowledge layer**.
+
 **Tenant UI shells:** Review & QBR prep (`/app/reviews`), Marketing (`/app/marketing`), and the **AI account manager guidance** component label placeholder surfaces with the intended `*.system` keys so product and engineering stay aligned before runtime wiring.
 
 ---
@@ -26,6 +28,26 @@ This document describes the **tenant-scoped AI engine configuration**, **task ro
 - `GET|POST /api/v1/workspace/recommendations/{id}/ai/explanation`
 
 **Platform observability:** `GET /api/v1/platform/ai/task-runs?limit=…`
+
+---
+
+## Knowledge object maintenance (maintainer prompts)
+
+The prompt system is designed for **two complementary modes**:
+
+| Mode | When it runs | Typical `prompt_key` pattern | Persisted output |
+|------|----------------|------------------------------|------------------|
+| **On-demand / user-facing** | User opens a panel or clicks “Generate” | e.g. `account_manager_next_conversation.system`, `billing_variance_summary.system` | Usually **`ai_task_runs`** (+ optional UI cache)—ephemeral unless separately saved |
+| **Maintainer / knowledge refresh** | Schedule, **post-sync** trigger, operator batch, or prompt-version rollout | e.g. `customer_overview_maintainer.system` (see master spec **§20.7**) | **Knowledge object** store (future)—durable tenant artefact with **staleness**, **evidence pointers**, and **same lineage** fields as other runs |
+
+**Requirements for implementers (directional):**
+
+- **Maintainers use the same prompt DB** — `prompt_key`, `prompt_versions`, tenant overrides, and activation rules as on-demand tasks. **Do not** hardcode maintainer system text in workers when a keyed definition exists.
+- **Each refresh should create or update `ai_task_runs`** (or a clearly linked child record) so **provider, model, prompt definition/version ids**, and outcome attach to the knowledge object for audit.
+- **User-facing prompts** should **prefer reading** the latest valid knowledge object **plus** a small window of canonical facts for deltas, rather than re-synthesising the entire account from scratch on every request—when the object exists and is fresh enough (policy TBD).
+- **Task types** for maintainers will need **routing rows** (`tenant_ai_task_routes`) and, when wired, **worker or API** entrypoints distinct from interactive `POST …/ai/...` customer endpoints—implementation TBD; this doc establishes the **contract** with the product spec.
+
+Cross-links: [DATA_INGESTION_AND_WAREHOUSE.md](DATA_INGESTION_AND_WAREHOUSE.md) (tier 4 derived knowledge), master spec **Persistent tenant knowledge layer** and **§18**.
 
 ---
 

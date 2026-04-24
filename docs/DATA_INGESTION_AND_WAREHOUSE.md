@@ -2,7 +2,19 @@
 
 This phase introduces a real connector runtime foundation with Autotask v1 and a storage model that can grow into richer analytics without re-architecting.
 
-**Strategic context:** connector priorities, per-system entity expectations, cadence philosophy, and how ingestion supports retention/commercial/billing product areas are summarised in **[MSP360_PRODUCT_SPEC.md](MSP360_PRODUCT_SPEC.md)** (especially §§17–18). Keep this technical doc aligned when the connector matrix changes materially.
+**Strategic context:** connector priorities, per-system entity expectations, cadence philosophy, and how ingestion supports retention/commercial/billing product areas are summarised in **[MSP360_PRODUCT_SPEC.md](MSP360_PRODUCT_SPEC.md)** (especially **Persistent tenant knowledge layer**, §§17–18, and §21 roadmap). The **four conceptual tiers** below align that spec with this technical doc—keep both files aligned when the connector matrix or knowledge model changes materially.
+
+## Architecture tiers (conceptual)
+
+| Tier | Description | Typical storage / artefacts today |
+|------|-------------|-------------------------------------|
+| **1. Raw synced source data** | Payloads and control data as produced by connectors—before or alongside normalisation into business rows | Encrypted `source_system_connections`, `integration_sync_runs`, adapter cursors/stats |
+| **2. Source ↔ canonical mappings** | Stable links from external IDs to internal tenant rows | `source_entity_mappings` |
+| **3. Canonical operational entities** | **Current-state** tenant tables that power queues, APIs, and Customer 360 counts | `customers`, `contacts`, `tickets`, `opportunities`, `quotes`, … — **source of truth** for operational facts |
+| **4. Derived knowledge objects** | **Persistent**, tenant-scoped, **AI-maintained** summaries/narratives/postures (**not** a replacement for tier 3 facts). Refreshed on cadence or after sync; lineage via prompts + `ai_task_runs` | **Specified in product spec; not yet a first-class DB module** — future tables or document store TBD |
+| **5. Historical snapshots / warehouse / analytics** | Append-only facts for trends and reporting without overloading tier 3 | Future: e.g. `warehouse_*_snapshot` facts; event streams |
+
+**Why tier 4 matters:** product surfaces (360, QBR prep, marketing match, billing narrative) should not depend **only** on **query-time** RAG over raw rows or repeated one-off LLM synthesis. A **maintained knowledge layer** gives **stable narratives**, **staleness/evidence** semantics, and **governed prompt versions**—while tiers 1–3 remain authoritative for **what actually happened** in PSA, backup, M365, etc.
 
 ## Data flow
 
@@ -12,8 +24,9 @@ This phase introduces a real connector runtime foundation with Autotask v1 and a
 4. Sync run writes lifecycle into `integration_sync_runs` and updates connection health/status timestamps.
 5. Adapter upserts canonical operational entities (`customers`, `contacts`, `tickets`, `opportunities`, optional `quotes`).
 6. Source-to-canonical lineage is persisted in `source_entity_mappings`.
+7. **(Future)** Successful sync completion or schedules **enqueue knowledge-object refresh** jobs for affected accounts (tier **4**)—see master spec maintenance lifecycle.
 
-## Current storage tiers
+## Current storage tiers (implementation)
 
 - **Connection/config layer**  
   `source_system_connections` stores tenant-scoped connection metadata, cadence, health, and encrypted credentials/config.
@@ -27,6 +40,9 @@ This phase introduces a real connector runtime foundation with Autotask v1 and a
 - **Canonical operational layer**  
   `customers`, `contacts`, `tickets`, `opportunities`, `quotes` continue as tenant-facing current-state records (now with optional `external_ref`; opportunities/quotes also carry title/value fields).
 
+- **Derived knowledge layer (planned)**  
+  Tenant-scoped **knowledge objects** (typed summaries linked to `customer_id` or tenant aggregates) **downstream of** canonical upserts. Populated by **maintainer** prompt runs, not by mutating tier 3 to “look like” AI output. **Ingestion’s role:** emit events or flags so refreshes run **after** data lands; **lint** jobs can compare objects to canonical facts for drift.
+
 ## Cadence model (first pass)
 
 - **Connection test**: on demand (`POST /api/v1/integrations/connections/{id}/test`)
@@ -39,12 +55,13 @@ This phase introduces a real connector runtime foundation with Autotask v1 and a
 
 The v2.1 model intentionally keeps the current app in a **canonical operational store first** pattern:
 
-- Product pages query canonical tables directly for current-state UX.
-- Historical/replay/analytics can be added by introducing append-only snapshot facts later, e.g.:
+- Product pages query **canonical tables** (tier 3) directly for current-state UX today.
+- **Knowledge objects** (tier 4) will sit **beside** canonical rows: reads compose **canonical facts + latest knowledge snapshot + freshness metadata**.
+- Historical/replay/analytics (tier 5) can be added by introducing append-only snapshot facts later, e.g.:
   - `warehouse_customer_daily_snapshot`
   - `warehouse_ticket_backlog_snapshot`
   - `warehouse_quote_stage_events`
-- `integration_sync_runs` + `source_entity_mappings` already provide the lineage needed to backfill snapshots or verify source drift.
+- `integration_sync_runs` + `source_entity_mappings` already provide the lineage needed to backfill snapshots, verify source drift, and **justify knowledge refresh** (what sync changed).
 
 ## ITQuoter and commercial roadmap grounding
 
