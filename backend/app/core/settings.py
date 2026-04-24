@@ -9,7 +9,7 @@ class Settings(BaseSettings):
 
     project_name: str = "mspintel"
     environment: str = "development"
-    app_version: str = Field(default="2.1", validation_alias="MSPINTEL_APP_VERSION")
+    app_version: str = Field(default="2.1.1", validation_alias="MSPINTEL_APP_VERSION")
 
     backend_host: str = "0.0.0.0"
     backend_port: int = 8000

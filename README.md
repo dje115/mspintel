@@ -19,7 +19,7 @@ Standing rules for Docker, versioning, env vars, validation, docs, GitHub workfl
 
 ## Versioning
 
-- Current app version: **`2.1`**
+- Current app version: **`2.1.1`** (patch: Docker frontend base image + Rollup native bindings in Compose)
 - Central runtime version variable: `MSPINTEL_APP_VERSION` (root `.env` and Compose → backend `MSPINTEL_APP_VERSION`)
 - Frontend display: `VITE_APP_VERSION` in `.env`, overridden in Compose from `MSPINTEL_APP_VERSION` as `VITE_APP_VERSION` for the dev container
 
@@ -65,6 +65,8 @@ The backend image runs **`alembic upgrade head` on container start**, so new mig
 **Migrations without relying on container startup:** from the repo root, with Compose up, run `docker compose exec backend alembic upgrade head`. For a **local** backend venv, `cd backend`, set `DATABASE_URL` to your Postgres DSN (for the default Compose DB: `postgresql+psycopg://mspintel:mspintel@127.0.0.1:5432/mspintel`), then `python -m alembic upgrade head`.
 
 **Browser → API in Compose:** the frontend dev server proxies `/api/*` to the `backend` service (`API_PROXY_TARGET`), and Compose sets `VITE_API_BASE_URL` to empty so the SPA calls **same-origin** `http://localhost:5173/api/...` (no cross-origin/CORS from the browser to `:8001`). The frontend container uses **`WORKDIR /src`** and bind-mounts **`./frontend:/src`** so the tenant route **`/app`** never collides with the filesystem path `/app` (which previously caused Vite **500** / `EISDIR` on `GET /app`).
+
+**Frontend image:** **`node:20-bookworm-slim`** (glibc). Vite 5 / Rollup 4 need a matching **native** `@rollup/rollup-*` package inside Linux containers. Alpine (`musl`) plus npm’s optional-dependency behaviour could crash Vite with `Cannot find module '@rollup/rollup-linux-x64-musl'`; even on Debian, a persisted volume could hit `Cannot find module '@rollup/rollup-linux-x64-gnu'` when npm skips an optional transitive. **`frontend/package.json`** therefore declares **`optionalDependencies.@rollup/rollup-linux-x64-gnu`** (installed in Docker/Linux, skipped on Windows host installs). Compose keeps `node_modules` on the named volume **`frontend_node_modules`**. To reset only that volume: `docker compose stop frontend`, `docker volume rm <project>_frontend_node_modules` (see `docker volume ls`; default project name is the repo folder), then `docker compose up --build -d`. Avoid `docker compose down -v` unless you accept wiping Postgres/Redis data volumes too.
 
 ## Local URLs
 
