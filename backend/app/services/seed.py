@@ -1,5 +1,4 @@
 import uuid
-from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -8,21 +7,12 @@ from app.core.security import get_password_hash
 from app.core.settings import get_settings
 from app.models.entities import (
     AIProvider,
-    AccountScore,
-    Action,
-    Contact,
-    Customer,
     OnboardingState,
-    Opportunity,
     Plan,
-    Quote,
-    Recommendation,
     Role,
-    SourceSystemConnection,
     Subscription,
     Tenant,
     TenantMembership,
-    Ticket,
     User,
 )
 
@@ -119,51 +109,25 @@ def seed_all(db: Session) -> None:
     if not subscription and starter_plan:
         db.add(Subscription(id=uuid.uuid4(), tenant_id=tenant.id, plan_id=starter_plan.id, status="trial"))
 
-    conn = db.scalars(select(SourceSystemConnection).where(SourceSystemConnection.tenant_id == tenant.id)).first()
-    if not conn:
+    from app.services.demo_rich_seed import seed_demo_workspace_if_demo_tenant
+
+    seed_demo_workspace_if_demo_tenant(db, tenant)
+
+    if not db.scalars(select(AIProvider).where(AIProvider.tenant_id == tenant.id)).first():
         db.add(
-            SourceSystemConnection(
+            AIProvider(
                 id=uuid.uuid4(),
                 tenant_id=tenant.id,
-                system_type="connectwise",
-                display_name="ConnectWise PSA",
+                provider_name="openai",
                 status="configured",
-                last_sync_at=datetime.now(UTC),
+                catalog_code="openai_hosted",
+                provider_family="openai",
+                deployment_mode="hosted",
+                display_label="OpenAI (demo)",
+                is_enabled=True,
             )
         )
-
-    customers = db.scalars(select(Customer).where(Customer.tenant_id == tenant.id)).all()
-    if not customers:
-        c1 = Customer(id=uuid.uuid4(), tenant_id=tenant.id, name="Northwind Health", status="at_risk", owner_name="Sales User")
-        c2 = Customer(id=uuid.uuid4(), tenant_id=tenant.id, name="Contoso Logistics", status="active", owner_name="Tenant Admin")
-        c3 = Customer(id=uuid.uuid4(), tenant_id=tenant.id, name="Fabrikam Retail", status="watch", owner_name="Service Manager")
-        db.add_all([c1, c2, c3])
         db.flush()
-
-        db.add_all(
-            [
-                Contact(id=uuid.uuid4(), tenant_id=tenant.id, customer_id=c1.id, name="Alicia Wright", email="alicia@northwind.com"),
-                Ticket(id=uuid.uuid4(), tenant_id=tenant.id, customer_id=c1.id, status="open"),
-                Opportunity(id=uuid.uuid4(), tenant_id=tenant.id, customer_id=c2.id, status="open"),
-                Quote(id=uuid.uuid4(), tenant_id=tenant.id, customer_id=c2.id, status="lost"),
-                AccountScore(id=uuid.uuid4(), tenant_id=tenant.id, customer_id=c1.id, risk_score=84, attention_score=78, growth_score=32),
-                AccountScore(id=uuid.uuid4(), tenant_id=tenant.id, customer_id=c2.id, risk_score=30, attention_score=41, growth_score=72),
-                Recommendation(id=uuid.uuid4(), tenant_id=tenant.id, customer_id=c1.id, scope="executive", status="open", summary="Escalate quarterly service review."),
-                Recommendation(id=uuid.uuid4(), tenant_id=tenant.id, customer_id=c2.id, scope="sales", status="open", summary="Revisit lost backup modernization quote."),
-                Action(id=uuid.uuid4(), tenant_id=tenant.id, customer_id=c1.id, description="Assign service manager follow-up call."),
-                AIProvider(
-                    id=uuid.uuid4(),
-                    tenant_id=tenant.id,
-                    provider_name="openai",
-                    status="configured",
-                    catalog_code="openai_hosted",
-                    provider_family="openai",
-                    deployment_mode="hosted",
-                    display_label="OpenAI (demo)",
-                    is_enabled=True,
-                ),
-            ]
-        )
 
     from app.services.ai_foundation_seed import (
         ensure_ai_provider_catalog,

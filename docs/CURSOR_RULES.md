@@ -143,3 +143,5 @@ Compose sets **`CHOKIDAR_USEPOLLING=true`** for the frontend service so Vite **p
 - [ROUTES_UX_MAP.md](ROUTES_UX_MAP.md) — SPA routes and layouts.
 - [TENANT_PRODUCT_WIREFRAMES.md](TENANT_PRODUCT_WIREFRAMES.md) — tenant product IA.
 - [AI_CONFIGURATION_AND_PROMPTS.md](AI_CONFIGURATION_AND_PROMPTS.md) — AI runtime, prompts, lineage.
+- [DEMO_SEED_DATA.md](DEMO_SEED_DATA.md) — what the **`demo-msp`** synthetic dataset contains and how reseed behaves.
+- [IMPLEMENTATION_STATUS_REVIEW.md](IMPLEMENTATION_STATUS_REVIEW.md) — truth-based maturity vs placeholders (updated when major slices ship).

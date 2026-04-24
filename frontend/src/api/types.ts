@@ -202,6 +202,8 @@ export type CustomerDetailResponse = {
   name: string;
   status: string;
   owner_name: string | null;
+  /** Present on `demo-msp` seeded accounts: synthetic UK MSP scenario JSON for AI/testing. */
+  demo_profile?: Record<string, unknown> | null;
   latest_scores: { risk_score: number; attention_score: number; growth_score: number } | null;
   open_tickets_count: number;
   open_opportunities_count: number;

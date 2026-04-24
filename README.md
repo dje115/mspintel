@@ -60,7 +60,9 @@ Standing rules for Docker, versioning, env vars, validation, docs, GitHub workfl
 
 1. `cp .env.example .env`
 2. `docker compose up --build -d`
-3. `docker compose exec backend python -m app.db.seed` (first run / when you reset the DB)
+3. `docker compose exec backend python -m app.db.seed` (first run / when you reset the DB — **re-applies the rich `demo-msp` workspace** each time; see [docs/DEMO_SEED_DATA.md](docs/DEMO_SEED_DATA.md))
+
+**Implementation audit (what is real vs placeholder):** [docs/IMPLEMENTATION_STATUS_REVIEW.md](docs/IMPLEMENTATION_STATUS_REVIEW.md)
 
 The backend image runs **`alembic upgrade head` on container start**, then **idempotently ensures platform default prompt rows** (including new task keys as they ship), so new migrations and prompt stubs apply automatically after `docker compose up --build`. You can still run `docker compose exec backend alembic upgrade head` manually if needed.
 
@@ -91,7 +93,7 @@ The backend image runs **`alembic upgrade head` on container start**, then **ide
 | Tenant AI settings | [http://localhost:5173/app/ai-settings](http://localhost:5173/app/ai-settings) |
 | Tenant prompts | [http://localhost:5173/app/prompts](http://localhost:5173/app/prompts) |
 | Tenant customers | [http://localhost:5173/app/customers](http://localhost:5173/app/customers) |
-| Customer 360 | From [customers](http://localhost:5173/app/customers), open any account row (seed: Northwind Health, Contoso Logistics, Fabrikam Retail). Example: `http://localhost:5173/app/customers/<customer-uuid>?ai=risk` (risk AI). **Prepare review:** `/app/reviews?customer_id=<customer-uuid>`. |
+| Customer 360 | From [customers](http://localhost:5173/app/customers), open any account row. The **`demo-msp`** tenant is reseeded with **31 fictional UK-style accounts** (PSA-shaped tickets/opps/quotes + per-account **`demo_profile`** JSON for simulated billing/M365/backup). See [docs/DEMO_SEED_DATA.md](docs/DEMO_SEED_DATA.md). Example: `http://localhost:5173/app/customers/<customer-uuid>?ai=risk` (risk AI). **Prepare review:** `/app/reviews?customer_id=<customer-uuid>`. |
 | **Platform console login** | [http://localhost:5173/platform/login](http://localhost:5173/platform/login) |
 | **Platform console** | [http://localhost:5173/platform](http://localhost:5173/platform) |
 | **Platform AI provider catalog** | [http://localhost:5173/platform/ai-providers](http://localhost:5173/platform/ai-providers) |

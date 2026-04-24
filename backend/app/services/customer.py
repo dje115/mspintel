@@ -50,6 +50,7 @@ class CustomerService:
             name=customer.name,
             status=customer.status,
             owner_name=customer.owner_name,
+            demo_profile=customer.demo_profile,
             latest_scores={
                 "risk_score": score.risk_score,
                 "attention_score": score.attention_score,

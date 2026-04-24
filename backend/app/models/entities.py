@@ -273,6 +273,7 @@ class Customer(Base, TimestampMixin):
     status: Mapped[str] = mapped_column(String(30), default="active")
     owner_name: Mapped[str | None] = mapped_column(String(120))
     external_ref: Mapped[str | None] = mapped_column(String(180), nullable=True, index=True)
+    demo_profile: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
 
 class Contact(Base, TimestampMixin):

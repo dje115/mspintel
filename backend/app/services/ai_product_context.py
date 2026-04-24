@@ -29,6 +29,8 @@ def _customer_ai_context_variables(db: Session, tenant_id: UUID, customer_id: UU
             "name": customer.name,
             "status": customer.status,
             "owner_name": customer.owner_name,
+            "external_ref": customer.external_ref,
+            "demo_profile": customer.demo_profile,
         },
         "scores": {
             "risk_score": score.risk_score if score else None,
