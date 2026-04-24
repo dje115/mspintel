@@ -34,12 +34,12 @@ All require tenant JWT and tenant context (`X-Tenant-Id` from session).
 | `/app` | `DashboardPage` | Default post-login landing; executive KPIs (click-through) + priority lists + workspace links. |
 | `/app/recommendations` | `RecommendationsPage` | Cross-account recommendation queue; per-row **Explain** calls workspace AI explanation endpoint. |
 | `/app/opportunities` | `OpportunitiesPage` | Commercial hub; optional `?tab=opportunities`, `pipeline`, or `lost`. |
-| `/app/marketing` | `MarketingPage` | MSP commercial/campaign workspace shell (lost quotes, nurture, account growth planning). |
+| `/app/marketing` | `MarketingPage` | Marketing / events / campaigns workspace: segment previews, themed **event idea board**, customer→campaign **matching placeholders**, notes area, **AI account manager guidance** compact shell (prompt keys only — no model call). |
 | `/app/at-risk` | `AtRiskAccountsPage` | At-risk account operating list. |
 | `/app/attention` | `NeedsAttentionAccountsPage` | Needs-attention (watch) operating list. |
 | `/app/service-risk` | `ServiceRiskPage` | Backup + service delivery risk overview. |
 | `/app/customers` | `CustomersPage` | Account directory. |
-| `/app/customers/:id` | `CustomerDetailPage` | Customer 360; `#workspace` opens the recommendations tab; **Overview** includes **AI insights** (account summary, risk, churn). `?ai=risk` highlights risk AI (linked from at-risk queue). |
+| `/app/customers/:id` | `CustomerDetailPage` | Customer 360; `#workspace` opens the recommendations tab; **Overview** includes **AI insights** (account summary, risk, churn). `?ai=risk` highlights risk AI (linked from at-risk queue). **Prepare review / QBR** → `/app/reviews?customer_id={id}`; **AI account manager guidance** preview shell on Overview. |
 | `/app/onboarding` | `OnboardingPage` | Workspace checklist. |
 | `/app/integrations` | `IntegrationsPage` | Connector management: add/edit connections, test, run sync, and latest run status. |
 | `/app/integrations/:id` | `IntegrationDetailPage` | Connection detail, supported entities, cadence summary, and recent sync run history. |

@@ -190,6 +190,32 @@ Audience: **MSP owner / service manager** — needs signal, prioritisation, and 
 
 ---
 
+## 13. Review & QBR prep (`/app/reviews`)
+
+**Purpose:** Account-review preparation workspace for QBRs, service reviews, and commercial check-ins — not a calendar replacement.
+
+**Above the fold:** Account selector (or `?customer_id=` deep link from Customer 360), “what to cover” summary, KPI strip when an account is loaded.
+
+**Key regions:** health KPIs; what to cover; risks & open recommendations; commercial snapshot; relationship/stakeholder placeholder; data confidence / blind spots; **AI account manager guidance** preview shell (prompt-registry keys documented, no live model call); local review agenda textarea (placeholder); suggested next steps.
+
+**APIs today:** `GET /api/v1/customers`, `GET /api/v1/customers/{id}` for live context. Future: calendar, notes sync, `customer_review_agenda.system` output.
+
+**Primary actions:** Choose account → open Customer 360; jump to recommendations / commercial hub / data quality.
+
+---
+
+## 14. Marketing, events & campaigns (`/app/marketing`)
+
+**Purpose:** MSP marketing and account-development planning — segments, event themes, and customer→campaign matching direction.
+
+**Above the fold:** Campaign-ready segment cards (mix of live links and preview copy), event idea board with theme chips, matching panel with illustrative scores.
+
+**Key regions:** segment placeholders (lost quotes, nurture, review invites, service-pain→commercial); event idea board (themes: AI intro, backup, M365, cyber, etc.); customer→event matching preview; marketing notes textarea; **AI account manager guidance** compact shell for commercial motions.
+
+**Future:** persisted idea bank, AI generation (`marketing_event_idea_generation.system`), matching (`campaign_customer_matching.system`), invite drafts (`event_invite_draft.system`).
+
+---
+
 ## Navigation IA (implemented vs planned)
 
 | Area | Route (current) | Status |
@@ -200,6 +226,9 @@ Audience: **MSP owner / service manager** — needs signal, prioritisation, and 
 | At-risk workspace | `/app/at-risk` | **Implemented** |
 | Needs attention | `/app/attention` | **Implemented** |
 | Service risk | `/app/service-risk` | **Implemented** (backup placeholder + live delivery counts) |
+| Marketing, events & campaigns | `/app/marketing` | **Partial** — product shell: segments, event board, matching previews, AM guidance placeholder |
+| Review & QBR prep | `/app/reviews` (+ optional `?customer_id=`) | **Partial** — live account context when selected; AI agenda later |
+| Data quality | `/app/data-quality` | **Implemented** (shell / sync view) |
 | Customers | `/app/customers` | **Implemented** |
 | Customer 360 | `/app/customers/:id` | **Implemented** |
 | Members | `/app/members` | **Implemented** |

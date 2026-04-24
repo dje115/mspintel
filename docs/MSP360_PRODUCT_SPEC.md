@@ -82,7 +82,7 @@ Columns: **section** · **purpose** · **key users** · **core data sources** ·
 | Needs attention | Watch list | AM, Service | Customer status | `risk_summary` | **Existing** | Same |
 | Service risk | Backup + delivery snapshot | Service | Tickets + backup placeholder | `backup_risk_summary`, `stalled_work_explanation` | **Partial** | Veeam connector |
 | Backup & recovery | Protection posture | Service, Technical | Backup jobs, workloads | `backup_gap_opportunity`, `backup_event_matching` | **Future** | Veeam + billing correlation |
-| Reviews / QBR prep | Review cadence | AM, Director | Meetings, opportunities (later) | `customer_review_agenda` | **Wireframed** | Calendar + CRM |
+| Reviews / QBR prep | Review cadence | AM, Director | Customer detail API + meetings (later) | `customer_review_agenda.system`, AM guidance keys | **Partial** (full prep workspace + `?customer_id=`; agenda AI later) | Calendar + CRM + autosave notes |
 | Members | Team & invites | Admin | Memberships | — | **Existing** | SSO |
 | Integrations | Connectors | Admin | Connections, sync runs | — | **Existing** | CW, ITQuoter, Veeam, M365… |
 | AI engines | Provider routing | Admin | `ai_providers`, routes | — | **Existing** | More adapters |
@@ -97,7 +97,7 @@ Columns: **section** · **purpose** · **key users** · **core data sources** ·
 | Win-back / lost customer | Recover dormant revenue | Sales, Marketing | Lost quotes, dormant accounts | `lost_quote_reactivation`, `campaign_customer_matching` | **Partial** | Campaign execution |
 | Revenue assurance / billing | Margin & leakage | Finance | PSA contracts, usage (later Xero) | `billing_variance_summary`, `revenue_leakage_explanation` | **Planned** | Accounting connectors |
 | M365 health & licences | Hygiene & upsell | Technical, AM | Graph/Entra (later) | `m365_hygiene_summary`, `m365_upsell_opportunity` | **Future** | Microsoft connector |
-| Marketing & campaigns | Growth programmes | Marketing | Customers, segments | `marketing_event_idea_generation`, `event_invite_draft` | **Wireframed** | Idea bank + AI refine |
+| Marketing & campaigns | Growth programmes | Marketing | Customers, segments | `marketing_event_idea_generation`, `event_invite_draft`, `campaign_customer_matching` | **Partial** (segments, event board, matching placeholders) | Idea bank DB + live matching |
 | Telephony / 3CX | Call relationship context | AM | CDR (later) | `relationship_health_summary` (augmented) | **Future** | CDR connector |
 | Security posture | Tenant customer security overview | Technical | EDR/M365 (later) | `technical_gap_summary` | **Future** | Security vendor APIs |
 | Procurement / install flow | Order→install visibility | Ops | PSA procurement (later) | `stalled_work_explanation` | **Future** | Deeper PSA |
@@ -362,6 +362,7 @@ Full **workflow automation** ( unattended emails ), **embedding-heavy** personal
 |---------|------------------|----------------|--------------|-------------|--------------|------------------|
 | Dashboard | Daily priorities | Director | PSA + canonical | *(future exec summary)* | Existing | Widgets from new domains |
 | Customer 360 | One truth | AM, Sales, Service | PSA + future M365/backup | account/risk/churn/rec explain | Partial | Enrich panels |
+| Review & QBR prep | Meeting-ready narrative | AM, Director | Customer API + calendar later | customer_review_agenda.system, account_manager_* | Partial (workspace + `?customer_id=`) | AI agenda + notes sync |
 | Stalled work | Unlock revenue in pipeline | Ops, Sales | PSA projects/quotes | stalled_work_* | Planned | PSA project sync |
 | Relationship health | Prevent silent churn | AM | Tickets, contacts, CDR | relationship_*, stakeholder_* | Planned | Activity model |
 | AM workspace | Faster better visits | AM | 360 + recs | account_manager_* | Planned | UI + prompts |
@@ -371,7 +372,7 @@ Full **workflow automation** ( unattended emails ), **embedding-heavy** personal
 | M365 health | Licence & security ROI | Technical | Graph | m365_* | Future | Connector |
 | Backup insights | Prove protection | Service | Veeam | backup_* | Future | Connector |
 | Telephony | Prove relationship effort | AM | 3CX | relationship_* (augment) | Future | CDR adapter |
-| Marketing / events | Fill rooms with right accounts | Marketing | Segments + ideas | marketing_* , event_* | Wireframed | Idea bank DB |
+| Marketing / events | Fill rooms with right accounts | Marketing | Segments + ideas | marketing_* , event_* | Partial (shell + placeholders) | Idea bank DB + live matching |
 | Data quality | Trust & fix gaps | Admin, Ops | Sync + mappings | data_gap_* , account_confidence_* | Wireframed | Coverage APIs |
 
 ---

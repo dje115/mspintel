@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useLocation, useParams, useSearchParams } from "react-router-dom";
 
 import { api } from "../../api/client";
+import { AccountManagerGuidanceShell } from "../../components/AccountManagerGuidanceShell";
 import { CustomerAiInsights } from "../../components/CustomerAiInsights";
 import type { CustomerDetailResponse, OpportunityRow, QuoteRow, RecommendationRow } from "../../api/types";
 import { ScoreMeter } from "../../components/ScoreMeter";
@@ -185,6 +186,14 @@ export function CustomerDetailPage() {
           </span>
           Owner: <strong style={{ color: "#334155" }}>{data.owner_name ?? "Unassigned"}</strong>
         </p>
+        <div className="tenant-hero-actions">
+          <Link className="tenant-btn-inline" to={`/app/reviews?customer_id=${data.id}`}>
+            Prepare review / QBR
+          </Link>
+          <Link className="tenant-btn-inline tenant-btn-inline--ghost" to="/app/marketing">
+            Marketing &amp; events
+          </Link>
+        </div>
       </header>
 
       <div className="tenant-segmented tenant-segmented--detail" role="tablist" aria-label="Account sections">
@@ -258,6 +267,8 @@ export function CustomerDetailPage() {
           </section>
 
           <CustomerAiInsights customerId={data.id} highlight={aiHighlight} />
+
+          <AccountManagerGuidanceShell contextLine={`Customer 360 · ${data.name}`} />
         </>
       ) : null}
 

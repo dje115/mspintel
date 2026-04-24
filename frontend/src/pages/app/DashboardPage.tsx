@@ -79,6 +79,43 @@ export function DashboardPage() {
       </section>
 
       <div className="tenant-two-col">
+        <section className="tenant-panel tenant-panel--accent">
+          <div className="tenant-panel-head">
+            <h2 className="tenant-panel-title">Review &amp; QBR prep</h2>
+            <Link className="tenant-panel-link" to="/app/reviews">
+              Open workspace →
+            </Link>
+          </div>
+          <div className="tenant-panel-body" style={{ padding: "1rem 1.1rem" }}>
+            <p className="muted" style={{ marginTop: 0 }}>
+              Pick an account to assemble health, commercial, relationship, and data-confidence context before customer
+              reviews. Customer 360 links here with <code className="tenant-code-inline">?customer_id=</code>.
+            </p>
+            <Link className="tenant-btn-inline" to="/app/reviews">
+              Start review prep
+            </Link>
+          </div>
+        </section>
+        <section className="tenant-panel tenant-panel--accent">
+          <div className="tenant-panel-head">
+            <h2 className="tenant-panel-title">Marketing &amp; events</h2>
+            <Link className="tenant-panel-link" to="/app/marketing">
+              Open workspace →
+            </Link>
+          </div>
+          <div className="tenant-panel-body" style={{ padding: "1rem 1.1rem" }}>
+            <p className="muted" style={{ marginTop: 0 }}>
+              Segments, event themes, and customer→campaign matching shells — ready for connector-backed ranking and
+              prompt-driven drafts.
+            </p>
+            <Link className="tenant-btn-inline" to="/app/marketing">
+              Plan campaigns
+            </Link>
+          </div>
+        </section>
+      </div>
+
+      <div className="tenant-two-col">
         <section className="tenant-panel">
           <div className="tenant-panel-head">
             <h2 className="tenant-panel-title">At-risk accounts</h2>
@@ -184,11 +221,16 @@ export function DashboardPage() {
 
       <section className="tenant-grid tenant-grid--cards-3" style={{ marginTop: "1rem" }}>
         <article className="tenant-card">
-          <h3 style={{ marginTop: 0 }}>Commercial growth</h3>
-          <p className="tenant-page-sub">Campaign-ready segments, lost quote reactivation, and nurture planning.</p>
-          <Link className="tenant-btn-inline" to="/app/marketing">
-            Open marketing workspace
-          </Link>
+          <h3 style={{ marginTop: 0 }}>Account development</h3>
+          <p className="tenant-page-sub">Pair watch-list accounts with review prep and commercial follow-up.</p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+            <Link className="tenant-btn-inline tenant-btn-inline--ghost" to="/app/attention">
+              Needs attention
+            </Link>
+            <Link className="tenant-btn-inline" to="/app/reviews">
+              Review prep
+            </Link>
+          </div>
         </article>
         <article className="tenant-card">
           <h3 style={{ marginTop: 0 }}>Integration operations</h3>

@@ -4,6 +4,8 @@ This document describes the **tenant-scoped AI engine configuration**, **task ro
 
 **Prompt key planning** for future product areas (relationship health, billing assurance, M365, backup, marketing, data quality, etc.) lives in **[MSP360_PRODUCT_SPEC.md](MSP360_PRODUCT_SPEC.md) §20** — add stable keys there (and to seed/catalog) when introducing new AI task types; avoid long hardcoded prompts in application code for user-facing templates.
 
+**Tenant UI shells:** Review & QBR prep (`/app/reviews`), Marketing (`/app/marketing`), and the **AI account manager guidance** component label placeholder surfaces with the intended `*.system` keys so product and engineering stay aligned before runtime wiring.
+
 ---
 
 ## Runtime execution (`AIExecutionService`)

@@ -15,7 +15,7 @@ const navGroups: { title: string; items: { to: string; label: string; end?: bool
       { to: "/app/at-risk", label: "At-risk" },
       { to: "/app/attention", label: "Needs attention" },
       { to: "/app/service-risk", label: "Service risk" },
-      { to: "/app/reviews", label: "QBR / reviews" }
+      { to: "/app/reviews", label: "Review & QBR prep" }
     ]
   },
   { title: "Accounts", items: [{ to: "/app/customers", label: "Accounts & customers" }] },

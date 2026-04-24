@@ -21,7 +21,7 @@ Standing rules for Docker, versioning, env vars, validation, docs, GitHub workfl
 
 ## Versioning
 
-- Current app version: **`2.1.1`** (patch: Docker frontend base image + Rollup native bindings in Compose)
+- Current app version: **`2.2.0`** (tenant UX: Review & QBR prep workspace, marketing/events shell, AM guidance placeholders)
 - Central runtime version variable: `MSPINTEL_APP_VERSION` (root `.env` and Compose → backend `MSPINTEL_APP_VERSION`)
 - Frontend display: `VITE_APP_VERSION` in `.env`, overridden in Compose from `MSPINTEL_APP_VERSION` as `VITE_APP_VERSION` for the dev container
 
@@ -80,18 +80,18 @@ The backend image runs **`alembic upgrade head` on container start**, so new mig
 | Product roadmap (placeholder hub) | [http://localhost:5173/app/roadmap](http://localhost:5173/app/roadmap) |
 | Recommendations queue | [http://localhost:5173/app/recommendations](http://localhost:5173/app/recommendations) |
 | Opportunities & quotes | [http://localhost:5173/app/opportunities](http://localhost:5173/app/opportunities) |
-| Marketing & campaigns | [http://localhost:5173/app/marketing](http://localhost:5173/app/marketing) |
 | At-risk accounts | [http://localhost:5173/app/at-risk](http://localhost:5173/app/at-risk) |
 | Needs attention | [http://localhost:5173/app/attention](http://localhost:5173/app/attention) |
 | Service risk | [http://localhost:5173/app/service-risk](http://localhost:5173/app/service-risk) |
 | Integrations | [http://localhost:5173/app/integrations](http://localhost:5173/app/integrations) |
 | Integration detail pattern | `http://localhost:5173/app/integrations/<connection-id>` |
 | Data quality | [http://localhost:5173/app/data-quality](http://localhost:5173/app/data-quality) |
-| QBR / reviews | [http://localhost:5173/app/reviews](http://localhost:5173/app/reviews) |
+| Marketing, events & campaigns | [http://localhost:5173/app/marketing](http://localhost:5173/app/marketing) |
+| Review & QBR prep | [http://localhost:5173/app/reviews](http://localhost:5173/app/reviews) (optional account context: `?customer_id=<uuid>`) |
 | Tenant AI settings | [http://localhost:5173/app/ai-settings](http://localhost:5173/app/ai-settings) |
 | Tenant prompts | [http://localhost:5173/app/prompts](http://localhost:5173/app/prompts) |
 | Tenant customers | [http://localhost:5173/app/customers](http://localhost:5173/app/customers) |
-| Customer 360 | From [customers](http://localhost:5173/app/customers), open any account row (seed: Northwind Health, Contoso Logistics, Fabrikam Retail). Example deep link: `http://localhost:5173/app/customers/<customer-uuid>?ai=risk` (highlights risk AI on the 360 overview). |
+| Customer 360 | From [customers](http://localhost:5173/app/customers), open any account row (seed: Northwind Health, Contoso Logistics, Fabrikam Retail). Example: `http://localhost:5173/app/customers/<customer-uuid>?ai=risk` (risk AI). **Prepare review:** `/app/reviews?customer_id=<customer-uuid>`. |
 | **Platform console login** | [http://localhost:5173/platform/login](http://localhost:5173/platform/login) |
 | **Platform console** | [http://localhost:5173/platform](http://localhost:5173/platform) |
 | **Platform AI provider catalog** | [http://localhost:5173/platform/ai-providers](http://localhost:5173/platform/ai-providers) |
