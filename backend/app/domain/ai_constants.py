@@ -12,6 +12,9 @@ AI_TASK_TYPES: tuple[str, ...] = (
     "knowledge_draft",
     "email_draft",
     "risk_summary",
+    "customer_review_agenda",
+    "account_manager_next_conversation",
+    "account_manager_call_script",
 )
 
 # provider_family: which vendor/protocol family
@@ -72,4 +75,11 @@ DEFAULT_PLATFORM_PROMPT_KEYS: tuple[tuple[str, str, str], ...] = (
     ("churn_explanation.system", "churn_explanation", "Churn explanation (system)"),
     ("email_draft.system", "email_draft", "Email draft (system)"),
     ("risk_summary.system", "risk_summary", "Risk summary (system)"),
+    ("customer_review_agenda.system", "customer_review_agenda", "Customer review / QBR agenda"),
+    (
+        "account_manager_next_conversation.system",
+        "account_manager_next_conversation",
+        "Account manager — next conversation plan",
+    ),
+    ("account_manager_call_script.system", "account_manager_call_script", "Account manager — call script"),
 )

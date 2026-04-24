@@ -401,7 +401,7 @@ export function ReviewsPage() {
             </div>
           </section>
 
-          <AccountManagerGuidanceShell contextLine={`Account: ${detail.name}`} />
+          <AccountManagerGuidanceShell customerId={detail.id} contextLine={`Account: ${detail.name}`} />
 
           <div className="tenant-two-col">
             <ReviewAgendaPlaceholder customerName={detail.name} />

@@ -21,7 +21,7 @@ Standing rules for Docker, versioning, env vars, validation, docs, GitHub workfl
 
 ## Versioning
 
-- Current app version: **`2.2.0`** (tenant UX: Review & QBR prep workspace, marketing/events shell, AM guidance placeholders)
+- Current app version: **`2.2.1`** (AM/QBR AI tasks wired to prompt DB + customer APIs)
 - Central runtime version variable: `MSPINTEL_APP_VERSION` (root `.env` and Compose → backend `MSPINTEL_APP_VERSION`)
 - Frontend display: `VITE_APP_VERSION` in `.env`, overridden in Compose from `MSPINTEL_APP_VERSION` as `VITE_APP_VERSION` for the dev container
 
@@ -62,7 +62,7 @@ Standing rules for Docker, versioning, env vars, validation, docs, GitHub workfl
 2. `docker compose up --build -d`
 3. `docker compose exec backend python -m app.db.seed` (first run / when you reset the DB)
 
-The backend image runs **`alembic upgrade head` on container start**, so new migrations (e.g. session metadata columns) apply automatically after `docker compose up --build`. You can still run `docker compose exec backend alembic upgrade head` manually if needed.
+The backend image runs **`alembic upgrade head` on container start**, then **idempotently ensures platform default prompt rows** (including new task keys as they ship), so new migrations and prompt stubs apply automatically after `docker compose up --build`. You can still run `docker compose exec backend alembic upgrade head` manually if needed.
 
 **Migrations without relying on container startup:** from the repo root, with Compose up, run `docker compose exec backend alembic upgrade head`. For a **local** backend venv, `cd backend`, set `DATABASE_URL` to your Postgres DSN (for the default Compose DB: `postgresql+psycopg://mspintel:mspintel@127.0.0.1:5432/mspintel`), then `python -m alembic upgrade head`.
 

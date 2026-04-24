@@ -56,6 +56,18 @@ def build_churn_explanation_variables(db: Session, tenant_id: UUID, customer_id:
     return {"task": "churn_explanation", **_customer_ai_context_variables(db, tenant_id, customer_id)}
 
 
+def build_customer_review_agenda_variables(db: Session, tenant_id: UUID, customer_id: UUID) -> dict:
+    return {"task": "customer_review_agenda", **_customer_ai_context_variables(db, tenant_id, customer_id)}
+
+
+def build_account_manager_next_conversation_variables(db: Session, tenant_id: UUID, customer_id: UUID) -> dict:
+    return {"task": "account_manager_next_conversation", **_customer_ai_context_variables(db, tenant_id, customer_id)}
+
+
+def build_account_manager_call_script_variables(db: Session, tenant_id: UUID, customer_id: UUID) -> dict:
+    return {"task": "account_manager_call_script", **_customer_ai_context_variables(db, tenant_id, customer_id)}
+
+
 def build_recommendation_explanation_variables(db: Session, tenant_id: UUID, recommendation_id: UUID) -> dict:
     wrepo = WorkspaceRepository(db)
     rec = wrepo.get_recommendation(tenant_id, recommendation_id)

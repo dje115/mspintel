@@ -479,6 +479,33 @@ export const api = {
       method: "POST",
       headers: authHeaders(accessToken, tenantId)
     }),
+  getCustomerReviewAgendaAi: (accessToken: string, tenantId: string, customerId: string) =>
+    request<AIProductBlockState>(`/api/v1/customers/${customerId}/ai/customer-review-agenda`, {
+      headers: authHeaders(accessToken, tenantId)
+    }),
+  postCustomerReviewAgendaAi: (accessToken: string, tenantId: string, customerId: string) =>
+    request<AIExecutionOutcome>(`/api/v1/customers/${customerId}/ai/customer-review-agenda`, {
+      method: "POST",
+      headers: authHeaders(accessToken, tenantId)
+    }),
+  getAccountManagerNextConversationAi: (accessToken: string, tenantId: string, customerId: string) =>
+    request<AIProductBlockState>(`/api/v1/customers/${customerId}/ai/account-manager-next-conversation`, {
+      headers: authHeaders(accessToken, tenantId)
+    }),
+  postAccountManagerNextConversationAi: (accessToken: string, tenantId: string, customerId: string) =>
+    request<AIExecutionOutcome>(`/api/v1/customers/${customerId}/ai/account-manager-next-conversation`, {
+      method: "POST",
+      headers: authHeaders(accessToken, tenantId)
+    }),
+  getAccountManagerCallScriptAi: (accessToken: string, tenantId: string, customerId: string) =>
+    request<AIProductBlockState>(`/api/v1/customers/${customerId}/ai/account-manager-call-script`, {
+      headers: authHeaders(accessToken, tenantId)
+    }),
+  postAccountManagerCallScriptAi: (accessToken: string, tenantId: string, customerId: string) =>
+    request<AIExecutionOutcome>(`/api/v1/customers/${customerId}/ai/account-manager-call-script`, {
+      method: "POST",
+      headers: authHeaders(accessToken, tenantId)
+    }),
   getRecommendationExplanationAi: (accessToken: string, tenantId: string, recommendationId: string) =>
     request<AIProductBlockState>(`/api/v1/workspace/recommendations/${recommendationId}/ai/explanation`, {
       headers: authHeaders(accessToken, tenantId)

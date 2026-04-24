@@ -164,6 +164,39 @@ def test_read_block_state_not_generated(client, db_session: Session):
     assert r.json()["status"] == "not_generated"
 
 
+@patch("app.services.ai_execution_service.execute_chat_completion")
+def test_customer_review_agenda_execute_success(mock_chat, client, db_session: Session):
+    mock_chat.return_value = ChatCompletionResult(
+        text="## Agenda\n1. Opening\n2. Service review", raw={"choices": [{"message": {"content": "## Agenda"}}]}
+    )
+    tenant = Tenant(id=uuid.uuid4(), slug="ex-ag", name="E-Ag", is_active=True)
+    db_session.add(tenant)
+    db_session.commit()
+    admin = create_user_with_membership(db_session, "ex-ag@example.com", "tenant_admin", tenant)
+    cust = Customer(id=uuid.uuid4(), tenant_id=tenant.id, name="AgendaCo", status="active", owner_name="o")
+    db_session.add(cust)
+    db_session.commit()
+    prov = _seed_min_tenant_ai(
+        db_session,
+        tenant=tenant,
+        user=admin,
+        provider_family="openai",
+        task_type="customer_review_agenda",
+        prompt_key="customer_review_agenda.system",
+    )
+    from app.core.ai_settings_crypto import encrypt_settings_payload
+
+    prov.encrypted_settings = encrypt_settings_payload({"api_key": "sk-test"})
+    db_session.commit()
+    h = auth_headers(admin, str(tenant.id))
+    r = client.post(f"/api/v1/customers/{cust.id}/ai/customer-review-agenda", headers=h)
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["status"] == AI_RUN_SUCCEEDED
+    assert "Agenda" in (body.get("text") or "")
+    mock_chat.assert_called_once()
+
+
 def test_execution_service_respects_tenant_provider(db_session: Session):
     tenant = Tenant(id=uuid.uuid4(), slug="ex5", name="E5", is_active=True)
     db_session.add(tenant)

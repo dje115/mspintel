@@ -34,7 +34,7 @@ All require tenant JWT and tenant context (`X-Tenant-Id` from session).
 | `/app` | `DashboardPage` | Default post-login landing; executive KPIs (click-through) + priority lists + workspace links. |
 | `/app/recommendations` | `RecommendationsPage` | Cross-account recommendation queue; per-row **Explain** calls workspace AI explanation endpoint. |
 | `/app/opportunities` | `OpportunitiesPage` | Commercial hub; optional `?tab=opportunities`, `pipeline`, or `lost`. |
-| `/app/marketing` | `MarketingPage` | Marketing / events / campaigns workspace: segment previews, themed **event idea board**, customer→campaign **matching placeholders**, notes area, **AI account manager guidance** compact shell (prompt keys only — no model call). |
+| `/app/marketing` | `MarketingPage` | Marketing / events / campaigns workspace: segment previews, themed **event idea board**, customer→campaign **matching placeholders**, notes area. Optional **`?customer_id=`** enables compact **AI account manager guidance** (next conversation + call script). Without it, shows prompt-key preview. |
 | `/app/at-risk` | `AtRiskAccountsPage` | At-risk account operating list. |
 | `/app/attention` | `NeedsAttentionAccountsPage` | Needs-attention (watch) operating list. |
 | `/app/service-risk` | `ServiceRiskPage` | Backup + service delivery risk overview. |

@@ -9,8 +9,11 @@ from app.schemas.ai_execution import AIExecutionOutcome, AIProductBlockState
 from app.schemas.customer import CustomerDetailResponse, CustomerListResponse
 from app.services.ai_execution_service import AIExecutionService
 from app.services.ai_product_context import (
+    build_account_manager_call_script_variables,
+    build_account_manager_next_conversation_variables,
     build_account_summary_variables,
     build_churn_explanation_variables,
+    build_customer_review_agenda_variables,
     build_risk_summary_variables,
 )
 from app.services.customer import CustomerService
@@ -99,6 +102,85 @@ def post_churn_explanation_ai(
     return AIExecutionService(db).execute(
         tenant_id=ctx.tenant.id,
         task_type="churn_explanation",
+        variables=variables,
+        actor_user_id=ctx.user.id,
+        customer_id=customer_id,
+    )
+
+
+@router.get("/{customer_id}/ai/customer-review-agenda", response_model=AIProductBlockState)
+def get_customer_review_agenda_ai_state(
+    customer_id: UUID,
+    ctx: AccessContext = Depends(require_permission("customer:read")),
+    db: Session = Depends(get_db),
+):
+    return AIExecutionService(db).read_block_state(ctx.tenant.id, "customer_review_agenda", customer_id=customer_id)
+
+
+@router.post("/{customer_id}/ai/customer-review-agenda", response_model=AIExecutionOutcome)
+def post_customer_review_agenda_ai(
+    customer_id: UUID,
+    ctx: AccessContext = Depends(require_permission("customer:read")),
+    db: Session = Depends(get_db),
+):
+    variables = build_customer_review_agenda_variables(db, ctx.tenant.id, customer_id)
+    return AIExecutionService(db).execute(
+        tenant_id=ctx.tenant.id,
+        task_type="customer_review_agenda",
+        variables=variables,
+        actor_user_id=ctx.user.id,
+        customer_id=customer_id,
+    )
+
+
+@router.get("/{customer_id}/ai/account-manager-next-conversation", response_model=AIProductBlockState)
+def get_account_manager_next_conversation_ai_state(
+    customer_id: UUID,
+    ctx: AccessContext = Depends(require_permission("customer:read")),
+    db: Session = Depends(get_db),
+):
+    return AIExecutionService(db).read_block_state(
+        ctx.tenant.id, "account_manager_next_conversation", customer_id=customer_id
+    )
+
+
+@router.post("/{customer_id}/ai/account-manager-next-conversation", response_model=AIExecutionOutcome)
+def post_account_manager_next_conversation_ai(
+    customer_id: UUID,
+    ctx: AccessContext = Depends(require_permission("customer:read")),
+    db: Session = Depends(get_db),
+):
+    variables = build_account_manager_next_conversation_variables(db, ctx.tenant.id, customer_id)
+    return AIExecutionService(db).execute(
+        tenant_id=ctx.tenant.id,
+        task_type="account_manager_next_conversation",
+        variables=variables,
+        actor_user_id=ctx.user.id,
+        customer_id=customer_id,
+    )
+
+
+@router.get("/{customer_id}/ai/account-manager-call-script", response_model=AIProductBlockState)
+def get_account_manager_call_script_ai_state(
+    customer_id: UUID,
+    ctx: AccessContext = Depends(require_permission("customer:read")),
+    db: Session = Depends(get_db),
+):
+    return AIExecutionService(db).read_block_state(
+        ctx.tenant.id, "account_manager_call_script", customer_id=customer_id
+    )
+
+
+@router.post("/{customer_id}/ai/account-manager-call-script", response_model=AIExecutionOutcome)
+def post_account_manager_call_script_ai(
+    customer_id: UUID,
+    ctx: AccessContext = Depends(require_permission("customer:read")),
+    db: Session = Depends(get_db),
+):
+    variables = build_account_manager_call_script_variables(db, ctx.tenant.id, customer_id)
+    return AIExecutionService(db).execute(
+        tenant_id=ctx.tenant.id,
+        task_type="account_manager_call_script",
         variables=variables,
         actor_user_id=ctx.user.id,
         customer_id=customer_id,

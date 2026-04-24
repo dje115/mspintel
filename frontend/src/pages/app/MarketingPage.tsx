@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 
 import { AccountManagerGuidanceShell } from "../../components/AccountManagerGuidanceShell";
 
@@ -21,6 +21,9 @@ const SAMPLE_EVENT_IDEAS = [
 ];
 
 export function MarketingPage() {
+  const [searchParams] = useSearchParams();
+  const focusCustomerId = searchParams.get("customer_id") ?? "";
+
   return (
     <div>
       <header className="tenant-page-head">
@@ -28,6 +31,14 @@ export function MarketingPage() {
         <p className="tenant-page-sub">
           Plan commercial follow-up, nurture, and event-led growth in one workspace. Segments and matching below are
           product shells — ranking and copy will later come from connector-backed data and prompt-driven AI.
+          {focusCustomerId ? (
+            <>
+              {" "}
+              <strong>Account context loaded</strong> — AM guidance below uses{" "}
+              <code className="tenant-code-inline">?customer_id=</code> for talk tracks (add this query from Customer
+              360 or review prep).
+            </>
+          ) : null}
         </p>
       </header>
 
@@ -181,7 +192,12 @@ export function MarketingPage() {
       </section>
 
       <AccountManagerGuidanceShell
-        contextLine="Commercial and marketing motions — same prompt registry as Customer 360, different task routes later."
+        customerId={focusCustomerId || undefined}
+        contextLine={
+          focusCustomerId
+            ? "Marketing workspace · account-scoped next conversation + call script"
+            : "Commercial and marketing motions — add ?customer_id= to generate talk tracks here."
+        }
         compact
       />
     </div>

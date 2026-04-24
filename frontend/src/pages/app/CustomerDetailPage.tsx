@@ -190,7 +190,7 @@ export function CustomerDetailPage() {
           <Link className="tenant-btn-inline" to={`/app/reviews?customer_id=${data.id}`}>
             Prepare review / QBR
           </Link>
-          <Link className="tenant-btn-inline tenant-btn-inline--ghost" to="/app/marketing">
+          <Link className="tenant-btn-inline tenant-btn-inline--ghost" to={`/app/marketing?customer_id=${data.id}`}>
             Marketing &amp; events
           </Link>
         </div>
@@ -268,7 +268,7 @@ export function CustomerDetailPage() {
 
           <CustomerAiInsights customerId={data.id} highlight={aiHighlight} />
 
-          <AccountManagerGuidanceShell contextLine={`Customer 360 · ${data.name}`} />
+          <AccountManagerGuidanceShell customerId={data.id} contextLine={`Customer 360 · ${data.name}`} />
         </>
       ) : null}
 

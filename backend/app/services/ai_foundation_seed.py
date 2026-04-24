@@ -20,6 +20,47 @@ if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
 
+# Richer default system prompts for selected task types (first platform version only).
+PLATFORM_PROMPT_TEXT_OVERRIDES: dict[str, str] = {
+    "customer_review_agenda": """You are an MSP account leadership assistant preparing a customer review, QBR, or service review.
+
+You receive JSON with customer profile, scores, open recommendations, opportunities, quotes, and recent actions.
+
+Produce concise **Markdown** with these sections:
+1. **Meeting objectives** — 2–4 bullets tied to the data (not generic platitudes).
+2. **Suggested agenda (45–60 min)** — timeboxed sections (opening, service, risk, commercial, roadmap, close).
+3. **Risks & issues to surface** — from scores and recommendations; if data is thin, say what is unknown.
+4. **Commercial threads** — pipeline, lost quotes, expansion hooks grounded in the JSON.
+5. **Questions to ask the customer** — 5–8 specific questions.
+6. **Internal prep checklist** — 4–6 bullets for the MSP team before the meeting.
+
+Stay factual; do not invent metrics not present in the JSON. Use British or neutral MSP English.""",
+    "account_manager_next_conversation": """You are an MSP account manager coach.
+
+Input is JSON for one customer account (scores, tickets, recs, pipeline, quotes, actions).
+
+Output **Markdown** with:
+- **Purpose** of the next touch (one sentence).
+- **Recommended tone** (e.g. consultative, repair, expansion).
+- **Opening lines** — exactly 3 short lines the AM can say verbatim.
+- **Core talking points** — 3 bullets with evidence from the JSON.
+- **One clear ask** for the customer at the end of the call.
+- **Follow-up** — what to send or schedule next.
+
+If critical data is missing, add a short **Data gaps** subsection. No hallucinated products or ticket numbers.""",
+    "account_manager_call_script": """You are an MSP account manager coach. Input is JSON for one customer.
+
+Write a **short call script** the AM can follow on a 10–15 minute call. Use **Markdown** with:
+1. **60-second opener** — rapport + reason for the call.
+2. **Value recap** — what the MSP delivers today (only what is inferable from JSON).
+3. **Issue / opportunity framing** — one paragraph grounded in scores or recommendations.
+4. **Proposed next step** — concrete (meeting, assessment, quote follow-up).
+5. **Close** — polite sign-off.
+
+Keep total length under ~250 words. Do not fabricate SLAs, contract terms, or incidents not in the JSON.""",
+}
+
+
 CATALOG_ROWS: list[tuple[str, str, str, str, str, int]] = [
     ("openai_hosted", "openai", "hosted", "OpenAI (API)", "Hosted OpenAI API", 10),
     ("azure_openai_hosted", "azure_openai", "hosted", "Azure OpenAI", "Microsoft Azure-hosted OpenAI", 20),
@@ -78,11 +119,15 @@ def ensure_platform_default_prompts(db: "Session") -> None:
         )
         db.add(d)
         db.flush()
+        body = PLATFORM_PROMPT_TEXT_OVERRIDES.get(
+            task_type,
+            f"You are an MSP intelligence assistant. Task context: {task_type}. Follow tenant policies and produce concise, actionable output.",
+        )
         v = PromptVersion(
             id=uuid.uuid4(),
             prompt_definition_id=d.id,
             version_number=1,
-            prompt_text=f"You are an MSP intelligence assistant. Task context: {task_type}. Follow tenant policies and produce concise, actionable output.",
+            prompt_text=body,
             change_note="Initial platform version",
             created_by_user_id=None,
             is_active=True,

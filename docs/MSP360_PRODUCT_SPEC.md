@@ -332,6 +332,8 @@ Each row: **purpose** · **widgets** · **actions** · **signals** · **sources*
 | `account_confidence_explanation.system` | Per-account confidence | Field presence | Explanation | 360 |
 | `missing_data_next_steps.system` | How to improve data | Gaps | Steps | Data quality, onboarding |
 
+**Wired in product (tenant):** `customer_review_agenda.system`, `account_manager_next_conversation.system`, and `account_manager_call_script.system` are registered as AI task types with `GET|POST /api/v1/customers/{id}/ai/...` and power the Review/QBR prep and Customer 360 **AI account manager guidance** panel.
+
 **Existing codebase keys** (non-exhaustive): align new keys with patterns in [AI_CONFIGURATION_AND_PROMPTS.md](AI_CONFIGURATION_AND_PROMPTS.md) and seed migrations—extend registry when adding tasks.
 
 ---

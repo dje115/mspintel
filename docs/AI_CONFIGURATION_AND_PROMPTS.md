@@ -20,6 +20,9 @@ This document describes the **tenant-scoped AI engine configuration**, **task ro
 - `GET|POST /api/v1/customers/{id}/ai/account-summary`
 - `GET|POST /api/v1/customers/{id}/ai/risk-summary`
 - `GET|POST /api/v1/customers/{id}/ai/churn-explanation`
+- `GET|POST /api/v1/customers/{id}/ai/customer-review-agenda`
+- `GET|POST /api/v1/customers/{id}/ai/account-manager-next-conversation`
+- `GET|POST /api/v1/customers/{id}/ai/account-manager-call-script`
 - `GET|POST /api/v1/workspace/recommendations/{id}/ai/explanation`
 
 **Platform observability:** `GET /api/v1/platform/ai/task-runs?limit=…`
