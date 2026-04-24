@@ -14,6 +14,7 @@ from app.domain.ai_constants import AI_TASK_TYPES
 from app.models.entities import AIProvider, TenantAiSettings, TenantAiTaskRoute
 from app.repositories.tenant_ai_config import TenantAiConfigRepository
 from app.schemas.ai_foundation import (
+    AIProviderPatchBody,
     AIProviderSafe,
     TenantAiSettingsPatch,
     TenantAiSettingsResponse,
@@ -241,3 +242,69 @@ class TenantAiApplicationService:
         )
         self.db.commit()
         return provider_to_safe(row)  # type: ignore[return-value]
+
+    def patch_tenant_provider(
+        self,
+        tenant_id: UUID,
+        actor_user_id: UUID,
+        provider_id: UUID,
+        body: AIProviderPatchBody,
+    ) -> AIProviderSafe:
+        row = self.repo.get_ai_provider(tenant_id, provider_id)
+        if not row:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="AI provider not found")
+        patch = body.model_dump(exclude_unset=True)
+        if "display_label" in patch:
+            row.display_label = patch["display_label"]
+        if "base_url" in patch:
+            row.base_url = patch["base_url"]
+        if "provider_name" in patch and patch["provider_name"]:
+            row.provider_name = str(patch["provider_name"])[:60]
+        if "is_enabled" in patch:
+            row.is_enabled = bool(patch["is_enabled"])
+        if "settings" in patch and patch["settings"] is not None:
+            row.encrypted_settings = encrypt_settings_payload(patch["settings"])
+        self.db.flush()
+        self.audit.log(
+            tenant_id=tenant_id,
+            actor_user_id=actor_user_id,
+            event_type="ai.provider.updated",
+            details={
+                "provider_id": str(row.id),
+                "is_enabled": row.is_enabled,
+                "display_label": row.display_label,
+                "base_url": row.base_url,
+                "settings": redact_settings_for_api(patch.get("settings") or {}) or {},
+            },
+        )
+        self.db.commit()
+        return provider_to_safe(row)  # type: ignore[return-value]
+
+    def delete_tenant_provider(
+        self,
+        tenant_id: UUID,
+        actor_user_id: UUID,
+        provider_id: UUID,
+    ) -> None:
+        row = self.repo.get_ai_provider(tenant_id, provider_id)
+        if not row:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="AI provider not found")
+        settings = self.repo.get_settings(tenant_id)
+        if settings:
+            if settings.default_ai_provider_id == provider_id:
+                settings.default_ai_provider_id = None
+            if settings.fallback_ai_provider_id == provider_id:
+                settings.fallback_ai_provider_id = None
+        for route in self.repo.list_task_routes(tenant_id):
+            if route.ai_provider_id == provider_id:
+                route.ai_provider_id = None
+            if route.fallback_ai_provider_id == provider_id:
+                route.fallback_ai_provider_id = None
+        self.db.delete(row)
+        self.audit.log(
+            tenant_id=tenant_id,
+            actor_user_id=actor_user_id,
+            event_type="ai.provider.deleted",
+            details={"provider_id": str(provider_id)},
+        )
+        self.db.commit()

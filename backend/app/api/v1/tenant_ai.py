@@ -7,6 +7,7 @@ from app.api.deps.access import AccessContext, require_permission
 from app.api.deps.db import get_db
 from app.schemas.ai_foundation import (
     AIProviderCreateBody,
+    AIProviderPatchBody,
     AIProviderSafe,
     ResolvedAITaskResponse,
     TenantAiSettingsPatch,
@@ -82,6 +83,34 @@ def create_tenant_provider(
         base_url=body.base_url,
         settings=body.settings,
         provider_name=name[:60],
+    )
+
+
+@router.patch("/providers/{provider_id}", response_model=AIProviderSafe)
+def patch_tenant_provider(
+    provider_id: UUID,
+    body: AIProviderPatchBody,
+    ctx: AccessContext = Depends(require_permission("ai:configure")),
+    db: Session = Depends(get_db),
+):
+    return TenantAiApplicationService(db).patch_tenant_provider(
+        ctx.tenant.id,
+        ctx.user.id,
+        provider_id,
+        body,
+    )
+
+
+@router.delete("/providers/{provider_id}", status_code=204)
+def delete_tenant_provider(
+    provider_id: UUID,
+    ctx: AccessContext = Depends(require_permission("ai:configure")),
+    db: Session = Depends(get_db),
+):
+    TenantAiApplicationService(db).delete_tenant_provider(
+        ctx.tenant.id,
+        ctx.user.id,
+        provider_id,
     )
 
 

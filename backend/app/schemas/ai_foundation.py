@@ -48,6 +48,14 @@ class AIProviderCreateBody(BaseModel):
     settings: dict | None = Field(default=None, description="Non-secret config; secrets stored encrypted server-side")
 
 
+class AIProviderPatchBody(BaseModel):
+    display_label: str | None = None
+    base_url: str | None = None
+    provider_name: str | None = None
+    is_enabled: bool | None = None
+    settings: dict | None = Field(default=None, description="Replaces encrypted settings payload when provided")
+
+
 class TenantAiSettingsResponse(BaseModel):
     tenant_id: UUID
     default_ai_provider: AIProviderSafe | None

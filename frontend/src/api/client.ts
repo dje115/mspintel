@@ -2,6 +2,7 @@ import type {
   AIExecutionOutcome,
   ConnectorCatalogItem,
   AIProductBlockState,
+  AIProviderSafe,
   AIProviderCatalogRow,
   AITaskRunRow,
   CommercialHubResponse,
@@ -353,6 +354,52 @@ export const api = {
       method: "PATCH",
       headers: authHeaders(accessToken, tenantId),
       body: JSON.stringify(body)
+    }),
+  listAiProviders: (accessToken: string, tenantId: string) =>
+    request<AIProviderSafe[]>("/api/v1/ai/providers", { headers: authHeaders(accessToken, tenantId) }),
+  createAiProvider: (
+    accessToken: string,
+    tenantId: string,
+    body: {
+      catalog_code?: string | null;
+      provider_family: string;
+      deployment_mode: string;
+      display_label?: string | null;
+      base_url?: string | null;
+      settings?: Record<string, unknown> | null;
+    }
+  ) =>
+    request<AIProviderSafe>("/api/v1/ai/providers", {
+      method: "POST",
+      headers: authHeaders(accessToken, tenantId),
+      body: JSON.stringify(body)
+    }),
+  patchAiProvider: (
+    accessToken: string,
+    tenantId: string,
+    providerId: string,
+    body: {
+      display_label?: string | null;
+      base_url?: string | null;
+      provider_name?: string | null;
+      is_enabled?: boolean;
+      settings?: Record<string, unknown> | null;
+    }
+  ) =>
+    request<AIProviderSafe>(`/api/v1/ai/providers/${providerId}`, {
+      method: "PATCH",
+      headers: authHeaders(accessToken, tenantId),
+      body: JSON.stringify(body)
+    }),
+  deleteAiProvider: (accessToken: string, tenantId: string, providerId: string) =>
+    fetch(`${API_BASE}/api/v1/ai/providers/${providerId}`, {
+      method: "DELETE",
+      headers: authHeaders(accessToken, tenantId)
+    }).then(async (res) => {
+      if (!res.ok) {
+        const body = await res.text();
+        throw new Error(formatErrorBody(res.status, body));
+      }
     }),
   resolveAiTask: (accessToken: string, tenantId: string, taskType: string) =>
     request<ResolvedAITaskResponse>(`/api/v1/ai/resolve/${encodeURIComponent(taskType)}`, {

@@ -335,3 +335,52 @@ def test_record_task_run_lineage(db_session: Session):
     assert run.status == "succeeded"
     assert run.duration_ms == 12
     assert run.run_metadata == {"k": "v"}
+
+
+def test_tenant_ai_provider_patch_and_delete(client, db_session: Session):
+    tenant = Tenant(id=uuid.uuid4(), slug="ai-prov", name="AI Prov", is_active=True)
+    db_session.add(tenant)
+    db_session.commit()
+    admin = create_user_with_membership(db_session, "ai-prov@example.com", "tenant_admin", tenant)
+    h = auth_headers(admin, str(tenant.id))
+
+    created = client.post(
+        "/api/v1/ai/providers",
+        headers=h,
+        json={
+            "provider_family": "openai_compatible",
+            "deployment_mode": "self_hosted",
+            "display_label": "Lab Gateway",
+            "base_url": "http://localhost:11434/v1",
+            "settings": {"api_key": "local-secret", "model": "llama3.1"},
+        },
+    )
+    assert created.status_code == 200, created.text
+    body = created.json()
+    assert body["has_encrypted_settings"] is True
+    provider_id = body["id"]
+
+    patched = client.patch(
+        f"/api/v1/ai/providers/{provider_id}",
+        headers=h,
+        json={
+            "display_label": "Lab Gateway 2",
+            "is_enabled": False,
+            "settings": {"api_key": "rotated-secret", "model": "llama3.2"},
+        },
+    )
+    assert patched.status_code == 200, patched.text
+    pbody = patched.json()
+    assert pbody["display_label"] == "Lab Gateway 2"
+    assert pbody["is_enabled"] is False
+    assert pbody["has_encrypted_settings"] is True
+
+    listed = client.get("/api/v1/ai/providers", headers=h)
+    assert listed.status_code == 200
+    assert all("rotated-secret" not in str(row) for row in listed.json())
+
+    deleted = client.delete(f"/api/v1/ai/providers/{provider_id}", headers=h)
+    assert deleted.status_code == 204
+    listed_after = client.get("/api/v1/ai/providers", headers=h)
+    assert listed_after.status_code == 200
+    assert all(row["id"] != provider_id for row in listed_after.json())
