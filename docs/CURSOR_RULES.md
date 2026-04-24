@@ -78,7 +78,7 @@ At the end of a phase, summarise for the user:
 
 ## 9. Master product specification (spec-first)
 
-- The **authoritative product direction** lives in **[docs/MSP360_PRODUCT_SPEC.md](MSP360_PRODUCT_SPEC.md)** (vision, **persistent tenant knowledge layer**, section matrix, data sources, prompt planning including maintainer keys §20.7, maturity, roadmap).
+- The **authoritative product direction** lives in **[docs/MSP360_PRODUCT_SPEC.md](MSP360_PRODUCT_SPEC.md)** (vision, **§3** persistent tenant knowledge layer, section matrix, data sources, prompt planning including maintainer keys **§21.7**, maturity, roadmap).
 - Before **large** implementation slices that introduce a **new product area**, **major connector**, or **new AI task family**, update the master spec (and **ROUTES_UX_MAP** / **TENANT_PRODUCT_WIREFRAMES** when routes or IA change) so the repo stays aligned with intent.
 - Small bugfixes and strictly local refactors do not require spec edits.
 
@@ -88,7 +88,7 @@ At the end of a phase, summarise for the user:
 
 - **Prompts belong in the prompt database** (platform defaults + tenant overrides, versioned)—not hardcoded in frontend or backend for **user-facing analysis templates** when a `prompt_key` and task route already exist or are being added.
 - **AI task runs** must continue to capture **lineage**: provider family/mode, model, prompt definition and **active version** ids, fallbacks, and terminal status—see [AI_CONFIGURATION_AND_PROMPTS.md](AI_CONFIGURATION_AND_PROMPTS.md) and `ai_task_runs`.
-- New AI features should define **stable `prompt_key`s** and document them in the master spec §20 (and seed/platform catalog as appropriate) before shipping broad UX.
+- New AI features should define **stable `prompt_key`s** and document them in the master spec **§21** (and seed/platform catalog as appropriate) before shipping broad UX.
 
 ---
 
@@ -105,7 +105,7 @@ At the end of a phase, summarise for the user:
 - **Keep layers separate in code and APIs:** raw/sync payloads and mappings → **canonical entities** → **derived knowledge objects** → (later) **warehouse snapshots**. Avoid writing “AI guesses” back into canonical fact tables except through explicit, validated human workflows—not implicit model output.
 - **Lineage and staleness:** persisted knowledge should record **prompt key/version**, **model/provider** (via `ai_task_runs` or equivalent), **evidence** references to canonical rows where practical, and **freshness/stale** semantics so the UI can be honest.
 - **Prefer reusable knowledge objects** for default Customer 360, QBR prep, marketing match, billing narrative, and AM guidance **when appropriate**—instead of blindly re-running full-account synthesis on every page load. One-off LLM calls remain for edge questions and missing objects.
-- **Prompt-driven maintenance** uses **database-backed `prompt_key`s and versions** (maintainer keys in the master spec §20.7)—not long hardcoded strings in jobs.
+- **Prompt-driven maintenance** uses **database-backed `prompt_key`s and versions** (maintainer keys in the master spec **§21.7**)—not long hardcoded strings in jobs.
 - **New features** in Customer 360, QBR/review prep, marketing, risk/billing, or data confidence should **explicitly decide** whether they **read from**, **trigger refresh of**, or **lint** the knowledge layer—see [MSP360_PRODUCT_SPEC.md](MSP360_PRODUCT_SPEC.md) and [AI_CONFIGURATION_AND_PROMPTS.md](AI_CONFIGURATION_AND_PROMPTS.md).
 
 ---

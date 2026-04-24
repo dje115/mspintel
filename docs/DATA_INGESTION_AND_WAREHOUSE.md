@@ -2,7 +2,7 @@
 
 This phase introduces a real connector runtime foundation with Autotask v1 and a storage model that can grow into richer analytics without re-architecting.
 
-**Strategic context:** connector priorities, per-system entity expectations, cadence philosophy, and how ingestion supports retention/commercial/billing product areas are summarised in **[MSP360_PRODUCT_SPEC.md](MSP360_PRODUCT_SPEC.md)** (especially **Persistent tenant knowledge layer**, §§17–18, and §21 roadmap). The **four conceptual tiers** below align that spec with this technical doc—keep both files aligned when the connector matrix or knowledge model changes materially.
+**Strategic context:** connector priorities, per-system entity expectations, cadence philosophy, and how ingestion supports retention/commercial/billing product areas are summarised in **[MSP360_PRODUCT_SPEC.md](MSP360_PRODUCT_SPEC.md)** (especially **§3** persistent tenant knowledge layer, **§§18–19** data sources and warehouse strategy, and **§22** roadmap). The **four conceptual tiers** below align that spec with this technical doc—keep both files aligned when the connector matrix or knowledge model changes materially.
 
 ## Architecture tiers (conceptual)
 

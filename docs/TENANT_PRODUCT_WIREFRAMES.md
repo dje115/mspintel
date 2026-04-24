@@ -90,7 +90,7 @@ Audience: **MSP owner / service manager** — needs signal, prioritisation, and 
 
 **Later:** Embedded charts, notes, support trends tab.
 
-**Direction (knowledge layer):** as the **persistent tenant knowledge base** ships (see [MSP360_PRODUCT_SPEC.md](MSP360_PRODUCT_SPEC.md)), default **overview / risk / relationship / billing / posture / confidence** copy should **read maintained knowledge objects** (with freshness and lineage) and reserve **live AI** for gaps, user questions, or stale-object fallback—not only raw RAG over synced rows.
+**Direction (knowledge layer):** as the **persistent tenant knowledge base** ships (see [MSP360_PRODUCT_SPEC.md](MSP360_PRODUCT_SPEC.md) **§3**), default **overview / risk / relationship / billing / posture / confidence** copy should **read maintained knowledge objects** (with freshness and lineage) and reserve **live AI** for gaps, user questions, or stale-object fallback—not only raw RAG over synced rows.
 
 ---
 

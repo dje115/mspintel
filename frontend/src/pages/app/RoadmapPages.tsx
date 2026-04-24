@@ -47,7 +47,7 @@ const ROADMAP_TOPICS: { slug: string; title: string; summary: string }[] = [
     slug: "campaign-matching",
     title: "Campaign matching & segments",
     summary:
-      "Match accounts to campaigns and produce segment summaries and invite drafts—prompt-driven per master spec §20."
+      "Match accounts to campaigns and produce segment summaries and invite drafts—prompt-driven per master spec §21."
   },
   {
     slug: "telephony-insights",

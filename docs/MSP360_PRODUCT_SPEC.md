@@ -6,6 +6,8 @@
 
 **Companion docs:** [CURSOR_RULES.md](CURSOR_RULES.md) (implementation discipline), [DATA_INGESTION_AND_WAREHOUSE.md](DATA_INGESTION_AND_WAREHOUSE.md), [AI_CONFIGURATION_AND_PROMPTS.md](AI_CONFIGURATION_AND_PROMPTS.md), [ROUTES_UX_MAP.md](ROUTES_UX_MAP.md), [TENANT_PRODUCT_WIREFRAMES.md](TENANT_PRODUCT_WIREFRAMES.md).
 
+**How this spec is organised:** **§1** vision · **§2** product principles · **§3** **platform architecture — persistent tenant knowledge layer** (raw vs canonical vs derived knowledge vs warehouse; maintainers; lifecycle) · **§4+** roles, product matrix, domain sections, connectors, warehouse detail, AI direction, **§21** prompt keys (including maintainer keys §21.7), roadmap **§22**, appendix **§23**, backlog **§24**.
+
 ---
 
 ## 1. Product vision
@@ -44,11 +46,13 @@ PSA (**Autotask**, **ConnectWise**), quoting (**ITQuoter**), backup (**Veeam** a
 | **Human in the loop** | AI proposes, explains, drafts; humans accept, edit, and own customer outcomes. |
 | **Action over vanity** | Prefer queues, next actions, and remediation workflows over static charts alone. |
 | **Honest uncertainty** | Surfaces confidence, missing fields, and stale sync—never silent guessing when data is insufficient. |
-| **Persistent derived knowledge** | Tenant-scoped **knowledge objects** (summaries, narratives, posture) maintained between syncs—not only ad hoc RAG or one-off model output; see **Persistent tenant knowledge layer** below. |
+| **Persistent derived knowledge** | Tenant-scoped **knowledge objects** (summaries, narratives, posture) maintained between syncs—not only ad hoc RAG or one-off model output; specified in **§3**. |
 
 ---
 
-## Persistent tenant knowledge layer (AI-maintained MSP knowledge base)
+## 3. Architecture: persistent tenant knowledge layer (AI-maintained MSP knowledge base)
+
+This section is **core platform architecture**—on par with vision (§1) and principles (§2): it defines how `mspintel` separates **facts** (external source systems and the **canonical** tenant store), **derived tenant knowledge** (refreshable objects with prompt/model lineage—not source of truth), and **historical / warehouse** analytics over time. Domain product intent from **§5** (matrix and tenant-facing detail) through the domain sections that follow, plus data wiring in **§§18–19**, should align with this model.
 
 `mspintel` must not rely **only** on ad hoc **query-time** synthesis (e.g. repeated “explain this account” over raw rows) or **raw RAG** over synced records as the long-term product model. The platform should maintain a **persistent, tenant-scoped knowledge layer**: **derived knowledge objects** that sit **between** canonical operational data and user-facing surfaces (360, QBR prep, marketing, billing integrity, AM guidance).
 
@@ -153,7 +157,7 @@ These are **not** the same as one-off user-facing answers: they **write or refre
 
 ---
 
-## 3. User roles and perspectives
+## 4. User roles and perspectives
 
 For each role: **goals** → **primary sections** → **signals** → **AI-assisted outputs** → **success in product**.
 
@@ -173,7 +177,7 @@ For each role: **goals** → **primary sections** → **signals** → **AI-assis
 
 ---
 
-## 4. Product section matrix (summary)
+## 5. Product section matrix (summary)
 
 Columns: **section** · **purpose** · **key users** · **core data sources** · **AI prompt keys (representative)** · **maturity now** · **next likely phase**.
 
@@ -181,7 +185,7 @@ Columns: **section** · **purpose** · **key users** · **core data sources** ·
 |---------|---------|-----------|-------------------|-------------------------|----------|------------|
 | Dashboard | “What needs attention today?” | Director, AM, Service | Canonical customers, recs, commercial, service-risk API | *(mostly aggregated; future exec summary)* | **Existing** | Richer widgets per roadmap |
 | Customers / directory | Account list & filters | All | `customers`, scores | — | **Existing** | Saved views, bulk assign |
-| Customer 360 | Cross-system one account | AM, Sales, Service | Canonical rows + AI endpoints; **future:** persisted **knowledge objects** (overview, posture, confidence) | `account_summary`, `risk_summary`, `churn_explanation`, `recommendation_explanation` + maintainer keys (see §20.7) | **Existing / partial** | M365, backup, billing panels; knowledge-layer reads |
+| Customer 360 | Cross-system one account | AM, Sales, Service | Canonical rows + AI endpoints; **future:** persisted **knowledge objects** (overview, posture, confidence) | `account_summary`, `risk_summary`, `churn_explanation`, `recommendation_explanation` + maintainer keys (see §21.7) | **Existing / partial** | M365, backup, billing panels; knowledge-layer reads |
 | Recommendations | Cross-account queue | Service, AM, Ops | `recommendations` | `recommendation_explanation` | **Existing** | More task types |
 | Opportunities & quotes | Pipeline & lost | Sales | PSA opps/quotes | `opportunity_detection`, `lost_quote_reactivation` | **Existing** | ITQuoter-native signals |
 | At-risk | Risk operating list | Director, Service | Customer status/scores | `churn_explanation`, `risk_summary` | **Existing** | Deeper PSA+RMM signals |
@@ -192,7 +196,7 @@ Columns: **section** · **purpose** · **key users** · **core data sources** ·
 | Members | Team & invites | Admin | Memberships | — | **Existing** | SSO |
 | Integrations | Connectors | Admin | Connections, sync runs | — | **Existing** | CW, ITQuoter, Veeam, M365… |
 | AI engines | Provider routing | Admin | `ai_providers`, routes | — | **Existing** | More adapters |
-| Prompts | Overrides & versions | Admin | `prompt_definitions`, versions | — | **Existing** | More keys from §20 |
+| Prompts | Overrides & versions | Admin | `prompt_definitions`, versions | — | **Existing** | More keys from §21 |
 | Security | Sessions | All users | Sessions | — | **Existing** | SSO |
 | Onboarding | First-run | Admin | Onboarding state | — | **Existing** | Connector wizard |
 | Data quality / gaps | Freshness & coverage | Ops, Admin | Sync runs, mapping density | `data_gap_summary`, `account_confidence_explanation` | **Wireframed** | Per-entity coverage scores |
@@ -210,16 +214,16 @@ Columns: **section** · **purpose** · **key users** · **core data sources** ·
 
 ---
 
-## 5. Tenant-facing sections — detail
+## 6. Tenant-facing sections — detail
 
-### 5.1 Core operational (existing routes)
+### 6.1 Core operational (existing routes)
 
 - **Dashboard (`/app`)** — KPIs, priority lists, deep links into workspaces. *Widgets:* executive row, at-risk/attention panels, service-risk teaser. *Actions:* click-through to queues and accounts. *Maturity:* existing.
-- **Customers & Customer 360** — Directory + tabs (overview, recs, pipeline, activity). *AI:* account summary, risk, churn, recommendation explain. *Direction:* panels should increasingly consume **maintained tenant knowledge objects** (see **Persistent tenant knowledge layer**) rather than only live synthesis. *Maturity:* existing; enrichment planned per §16.
+- **Customers & Customer 360** — Directory + tabs (overview, recs, pipeline, activity). *AI:* account summary, risk, churn, recommendation explain. *Direction:* panels should increasingly consume **maintained tenant knowledge objects** (see **§3**) rather than only live synthesis. *Maturity:* existing; enrichment planned per §17.
 - **Reviews & QBR prep (`/app/reviews`)** — Agenda and AM guidance today; *target:* combine one-off prompts with **maintained** objects such as `qbr_prep`, `relationship_health`, `risk_summary`, `billing_integrity`, `account_confidence` when the knowledge layer is implemented.
 - **Recommendations / Opportunities / At-risk / Attention / Service risk** — As implemented; see wireframes. *Maturity:* existing / service-risk backup area placeholder.
 
-### 5.2 Expanded retention, commercial, care (planned unless noted)
+### 6.2 Expanded retention, commercial, care (planned unless noted)
 
 Each row: **purpose** · **widgets** · **actions** · **signals** · **sources** · **prompts** · **maturity**.
 
@@ -253,7 +257,7 @@ Each row: **purpose** · **widgets** · **actions** · **signals** · **sources*
 
 ---
 
-## 6. Customer retention, at-risk, save-the-account
+## 7. Customer retention, at-risk, save-the-account
 
 **Detection inputs:** engagement trend (tickets, meetings, marketing responses), sentiment proxies (repeat issues, escalations), project stall flags, commercial dormancy, review/QBR recency, stakeholder breadth, backup/M365 adoption vs contracted, data confidence flags.
 
@@ -263,7 +267,7 @@ Each row: **purpose** · **widgets** · **actions** · **signals** · **sources*
 
 ---
 
-## 7. Win-back, lost commercial, drifting customers
+## 8. Win-back, lost commercial, drifting customers
 
 **Signals:** lost-quote age and value, stalled high-value opps, dormant services, SKU drop-off, former high-touch accounts gone quiet, unclaimed renewal windows.
 
@@ -271,7 +275,7 @@ Each row: **purpose** · **widgets** · **actions** · **signals** · **sources*
 
 ---
 
-## 8. Relationship health, low-contact, stakeholder coverage
+## 9. Relationship health, low-contact, stakeholder coverage
 
 **Detect:** no contact in N days; only support tickets; single known contact; no labelled economic buyer; no QBR in M months; AM task backlog; optional **low outbound call volume** vs peers once telephony exists.
 
@@ -279,7 +283,7 @@ Each row: **purpose** · **widgets** · **actions** · **signals** · **sources*
 
 ---
 
-## 9. Stalled pipeline, orders, installs, internal handoffs
+## 10. Stalled pipeline, orders, installs, internal handoffs
 
 **Entity types:** quotes, orders, projects, onboarding steps, remediation tickets, procurement→engineering handoff, accepted SOW not scheduled.
 
@@ -287,39 +291,39 @@ Each row: **purpose** · **widgets** · **actions** · **signals** · **sources*
 
 ---
 
-## 10. Microsoft 365 health, optimisation, upsell
+## 11. Microsoft 365 health, optimisation, upsell
 
 **Themes:** licence vs usage, inactive mailboxes, security baseline gaps, Teams/SharePoint sprawl (later), upsell aligned to **contracted but under-deployed** SKUs, reconciliation to **invoice line items** when finance data exists.
 
 ---
 
-## 11. Backup, recovery, managed backup, billing alignment
+## 12. Backup, recovery, managed backup, billing alignment
 
 **Themes:** job success/freshness, protected vs billable workloads, **restore test** evidence, commercial mismatch (sold GB vs used; agent count vs billed), **event** suggestions (recovery workshop).
 
 ---
 
-## 12. Billing integrity, revenue assurance, margin protection
+## 13. Billing integrity, revenue assurance, margin protection
 
 **Themes:** billed vs measured counts (seats, mailboxes, agents, storage), **accepted work not invoiced**, **active service not on invoice**, underbilling/overbilling risk, **delivery footprint > contract**, contract renewal mismatch. **Workflow:** finance queue → assign to AM/delivery → link to ticket/opportunity → track resolution. **Future:** Xero/Sage **journal** and **invoice** correlation.
 
-**Knowledge layer:** maintain **persistent** `billing_integrity`-class objects that summarise **variance**, **leakage**, **underbilling**, **remediation path**, and **confidence / gaps**—fed by canonical PSA/accounting data and **refreshed** via `billing_integrity_maintainer` (see §20.7), with lineage—not as a substitute for invoices or ledger truth.
+**Knowledge layer:** maintain **persistent** `billing_integrity`-class objects that summarise **variance**, **leakage**, **underbilling**, **remediation path**, and **confidence / gaps**—fed by canonical PSA/accounting data and **refreshed** via `billing_integrity_maintainer` (see §21.7), with lineage—not as a substitute for invoices or ledger truth.
 
 ---
 
-## 13. Account manager workspace & next-conversation engine
+## 14. Account manager workspace & next-conversation engine
 
 **Single pane:** priorities for the day per account portfolio; **talk track** (3 bullets + longer optional); **customer-safe wording** for issues; **meeting agenda** and **QBR outline**; **relationship repair** vs **commercial development** modes; **event invite** recommendation with rationale. **Implementation direction:** prefer **reading** maintained account knowledge (`customer_overview`, `relationship_health`, `stalled_work`, `risk_summary`, etc.) and **compose** user-facing prompts on top—reserve live-only synthesis for deltas or missing objects.
 
 ---
 
-## 14. Marketing, events, campaign matching
+## 15. Marketing, events, campaign matching
 
 **Flow:** marketing enters **raw event ideas** → AI **refines** for MSP positioning → system **matches accounts** (rules + embeddings later) → **segment summary** → **invite draft** per segment. Support **review campaigns**, **backup/continuity** themes, **AI governance** education events. **Persistent fit signals** (`marketing_fit`, posture objects) should **rank and explain** matches so marketers are not re-running full-account synthesis for every campaign.
 
 ---
 
-## 15. Data quality, confidence, blind spots
+## 16. Data quality, confidence, blind spots
 
 **Detect missing:** account owner, primary contact, economic buyer, billing/contract link, quote history, M365 telemetry, backup coverage, call history, review history, service plan coverage.
 
@@ -327,7 +331,7 @@ Each row: **purpose** · **widgets** · **actions** · **signals** · **sources*
 
 ---
 
-## 16. Customer 360 as cross-system workspace (target end-state)
+## 17. Customer 360 as cross-system workspace (target end-state)
 
 **Tabs / regions (incremental build):** account summary; service summary; risk; recommendations; opportunities & lost quotes; backup/protection; Microsoft posture; finance/billing summary; relationship/stakeholder map; data confidence; QBR/review prep; action history; **unified AI summary** with citations to internal rows and last sync times.
 
@@ -335,7 +339,7 @@ Each row: **purpose** · **widgets** · **actions** · **signals** · **sources*
 
 ---
 
-## 17. Data sources & connector mapping
+## 18. Data sources & connector mapping
 
 | Source | Entities ingested (typical) | Product areas enriched | Signals enabled | Cadence | Current vs historical |
 |--------|----------------------------|--------------------------|-----------------|---------|------------------------|
@@ -352,7 +356,7 @@ Each row: **purpose** · **widgets** · **actions** · **signals** · **sources*
 
 ---
 
-## 18. Warehouse & ingestion strategy
+## 19. Warehouse & ingestion strategy
 
 **Conceptual stack** (maps to [DATA_INGESTION_AND_WAREHOUSE.md](DATA_INGESTION_AND_WAREHOUSE.md)):
 
@@ -360,7 +364,7 @@ Each row: **purpose** · **widgets** · **actions** · **signals** · **sources*
 |------|------|
 | **A. Raw / synced source** | Payloads from connectors; encrypted config; sync run metadata; `source_entity_mappings`. |
 | **B. Canonical operational** | Current-state tenant tables (`customers`, `tickets`, …) — **system of record** for CRM/service/commercial facts. |
-| **C. Derived knowledge objects** | **Persistent**, refreshable tenant narratives/summaries/postures (see **Persistent tenant knowledge layer**) — **not** source of truth; **governed** by maintainer prompts and `ai_task_runs`. |
+| **C. Derived knowledge objects** | **Persistent**, refreshable tenant narratives/summaries/postures (see **§3**) — **not** source of truth; **governed** by maintainer prompts and `ai_task_runs`. |
 | **D. Scores & recs (today)** | Rule/score engines and `recommendations` — may **feed** knowledge maintainers and 360 until layer C is fully populated. |
 | **E. Historical / warehouse / analytics** | Append-only snapshots (future): e.g. daily scores, quote stage events — for reporting without overloading B. |
 
@@ -370,7 +374,7 @@ Each row: **purpose** · **widgets** · **actions** · **signals** · **sources*
 
 ---
 
-## 19. AI engine configuration (direction)
+## 20. AI engine configuration (direction)
 
 - **Per-tenant** provider/model selection and **fallback** chains.  
 - **Provider families:** hosted OpenAI-compatible, OpenRouter, self-hosted (**Ollama**, vLLM, LM Studio), **Microsoft / Copilot** path as first-class when adapter exists; others explicit unsupported/stub until dedicated adapter.  
@@ -379,11 +383,11 @@ Each row: **purpose** · **widgets** · **actions** · **signals** · **sources*
 
 ---
 
-## 20. Prompt keys for the prompt database
+## 21. Prompt keys for the prompt database
 
 **Rule:** Product-facing templates for the areas below should use these **stable keys** (suffix convention `*.system` or domain-specific as already used in codebase). Do **not** hardcode long system prompts in TS/Python when a prompt row is expected.
 
-### 20.1 Relationship / account management
+### 21.1 Relationship / account management
 
 | Key | Purpose | Likely inputs | Output | Where used |
 |-----|---------|----------------|--------|--------------|
@@ -393,7 +397,7 @@ Each row: **purpose** · **widgets** · **actions** · **signals** · **sources*
 | `customer_review_agenda.system` | QBR outline | Commercial + service summary | Agenda sections | Reviews, 360 |
 | `stakeholder_gap_explanation.system` | Explain DM/coverage gaps | Contacts, roles | Gap list + suggested actions | 360, relationship |
 
-### 20.2 Risk / recommendations / stalled
+### 21.2 Risk / recommendations / stalled
 
 | Key | Purpose | Inputs | Output | Where |
 |-----|---------|--------|--------|-------|
@@ -403,7 +407,7 @@ Each row: **purpose** · **widgets** · **actions** · **signals** · **sources*
 | `stalled_work_explanation.system` | Why stalled | Stage history | Explanation | Stalled work queue |
 | `stalled_work_next_action.system` | Next step | Entity type | Action list | Same |
 
-### 20.3 Commercial / marketing
+### 21.3 Commercial / marketing
 
 | Key | Purpose | Inputs | Output | Where |
 |-----|---------|--------|--------|-------|
@@ -416,7 +420,7 @@ Each row: **purpose** · **widgets** · **actions** · **signals** · **sources*
 | `marketing_idea_refinement.system` | Refine marketer text | Raw idea | Polished copy | Marketing |
 | `next_best_commercial_conversation.system` | Commercial angle | Pipeline | Talk track | AM workspace |
 
-### 20.4 Billing / finance / leakage
+### 21.4 Billing / finance / leakage
 
 | Key | Purpose | Inputs | Output | Where |
 |-----|---------|--------|--------|-------|
@@ -425,7 +429,7 @@ Each row: **purpose** · **widgets** · **actions** · **signals** · **sources*
 | `billing_remediation_next_action.system` | What to do next | Issue type | Tasks | Same |
 | `underbilling_opportunity.system` | Upside cases | Signals | List | Same |
 
-### 20.5 Microsoft / backup / technical
+### 21.5 Microsoft / backup / technical
 
 | Key | Purpose | Inputs | Output | Where |
 |-----|---------|--------|--------|-------|
@@ -436,7 +440,7 @@ Each row: **purpose** · **widgets** · **actions** · **signals** · **sources*
 | `backup_event_matching.system` | Workshop fit | Backup gaps | Event suggestion | Marketing |
 | `technical_gap_summary.system` | Cross-domain gaps | M365+backup+RMM | Narrative | 360, technical |
 
-### 20.6 Data quality / confidence
+### 21.6 Data quality / confidence
 
 | Key | Purpose | Inputs | Output | Where |
 |-----|---------|--------|--------|-------|
@@ -448,9 +452,9 @@ Each row: **purpose** · **widgets** · **actions** · **signals** · **sources*
 
 **Existing codebase keys** (non-exhaustive): align new keys with patterns in [AI_CONFIGURATION_AND_PROMPTS.md](AI_CONFIGURATION_AND_PROMPTS.md) and seed migrations—extend registry when adding tasks.
 
-### 20.7 Maintainer / knowledge-object refresh keys
+### 21.7 Maintainer / knowledge-object refresh keys
 
-These keys are for **scheduled or sync-triggered** runs that **create or refresh persisted knowledge objects** (tenant-scoped, auditable). They are **distinct** from on-demand user keys in §§20.1–20.6: maintainers **write** layer-3 objects; user-facing keys **read** canonical + knowledge + small context windows.
+These keys are for **scheduled or sync-triggered** runs that **create or refresh persisted knowledge objects** (tenant-scoped, auditable). They are **distinct** from on-demand user keys in §§21.1–21.6: maintainers **write** layer-3 objects; user-facing keys **read** canonical + knowledge + small context windows.
 
 | Maintainer `prompt_key` (planned) | Primary object type | Often pairs with user-facing key |
 |-----------------------------------|---------------------|----------------------------------|
@@ -467,16 +471,16 @@ These keys are for **scheduled or sync-triggered** runs that **create or refresh
 | `opportunity_summary_maintainer.system` | `opportunity_summary` | `opportunity_detection.system`, `next_best_commercial_conversation.system` |
 | `service_summary_maintainer.system` | `service_summary` | *(future service-facing summary keys)* |
 
-Full conceptual model: **Persistent tenant knowledge layer** (earlier in this doc). Runtime wiring: [AI_CONFIGURATION_AND_PROMPTS.md](AI_CONFIGURATION_AND_PROMPTS.md) § “Knowledge object maintenance”.
+Full conceptual model: **§3** (this document). Runtime wiring: [AI_CONFIGURATION_AND_PROMPTS.md](AI_CONFIGURATION_AND_PROMPTS.md) § “Knowledge object maintenance”.
 
 ---
 
-## 21. Implementation maturity & roadmap sequencing
+## 22. Implementation maturity & roadmap sequencing
 
-### 21.1 Suggested sequencing (high level)
+### 22.1 Suggested sequencing (high level)
 
 1. **Connector expansion** — ConnectWise, deepen Autotask, ITQuoter, Veeam scaffolds to live sync.  
-2. **Persistent knowledge layer (foundation)** — Storage model for tenant-scoped knowledge objects; refresh after sync; staleness/lint; maintainer prompt keys (§20.7) registered and executed as `ai_task_runs`; product reads with freshness badges.  
+2. **Persistent knowledge layer (foundation)** — Storage model for tenant-scoped knowledge objects; refresh after sync; staleness/lint; maintainer prompt keys (§21.7) registered and executed as `ai_task_runs`; product reads with freshness badges.  
 3. **Customer 360 enrichment** — Panels per new data domains; **prefer** maintained knowledge objects for default narratives; single AI “overview” with lineage where live calls remain.  
 4. **Billing integrity & revenue assurance** — Rules + finance connector phase 1; **`billing_integrity`** object consumers.  
 5. **Microsoft 365 insights** — Read-only hygiene first, then optimisation.  
@@ -486,13 +490,13 @@ Full conceptual model: **Persistent tenant knowledge layer** (earlier in this do
 9. **Richer AM workflows** — Save-the-account state, tasks, playbook library.  
 10. **Observability & prompt tooling** — Compare prompt versions, offline eval hooks, safer rollouts.
 
-### 21.2 Intentionally later
+### 22.2 Intentionally later
 
 Full **workflow automation** ( unattended emails ), **embedding-heavy** personalisation at scale without governance UI, and **multi-tenant data pooling** for ML—out of scope until ethics and legal review.
 
 ---
 
-## 22. Appendix — feature matrix (implementation planning)
+## 23. Appendix — feature matrix (implementation planning)
 
 | section | key value to MSP | main user role | data sources | prompt keys | maturity now | next build phase |
 |---------|------------------|----------------|--------------|-------------|--------------|------------------|
@@ -510,11 +514,11 @@ Full **workflow automation** ( unattended emails ), **embedding-heavy** personal
 | Telephony | Prove relationship effort | AM | 3CX | relationship_* (augment) | Future | CDR adapter |
 | Marketing / events | Fill rooms with right accounts | Marketing | Segments + ideas | marketing_* , event_* | Partial (shell + placeholders) | Idea bank DB + live matching |
 | Data quality | Trust & fix gaps | Admin, Ops | Sync + mappings | data_gap_* , account_confidence_* | Wireframed | Coverage APIs |
-| **Tenant knowledge layer** | Persisted derived narratives / posture per account | All major surfaces | Canonical + connector coverage | **Maintainer** keys §20.7 + `ai_task_runs` | **Specified** | Schema, refresh jobs, UI freshness |
+| **Tenant knowledge layer** | Persisted derived narratives / posture per account | All major surfaces | Canonical + connector coverage | **Maintainer** keys §21.7 + `ai_task_runs` | **Specified** | Schema, refresh jobs, UI freshness |
 
 ---
 
-## 23. Additional product ideas (backlog)
+## 24. Additional product ideas (backlog)
 
 - **Prompt A/B and shadow mode** — run alternate prompt versions logged-only for evaluation.  
 - **“Explain this score”** everywhere a score appears, with lineage to source rows.  
