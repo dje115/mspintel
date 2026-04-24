@@ -181,6 +181,30 @@ export function DashboardPage() {
           </div>
         </div>
       </section>
+
+      <section className="tenant-grid tenant-grid--cards-3" style={{ marginTop: "1rem" }}>
+        <article className="tenant-card">
+          <h3 style={{ marginTop: 0 }}>Commercial growth</h3>
+          <p className="tenant-page-sub">Campaign-ready segments, lost quote reactivation, and nurture planning.</p>
+          <Link className="tenant-btn-inline" to="/app/marketing">
+            Open marketing workspace
+          </Link>
+        </article>
+        <article className="tenant-card">
+          <h3 style={{ marginTop: 0 }}>Integration operations</h3>
+          <p className="tenant-page-sub">Manage Autotask connector health, test credentials, and trigger syncs.</p>
+          <Link className="tenant-btn-inline" to="/app/integrations">
+            Open integrations
+          </Link>
+        </article>
+        <article className="tenant-card">
+          <h3 style={{ marginTop: 0 }}>Data quality</h3>
+          <p className="tenant-page-sub">Review sync freshness and connector coverage for downstream product trust.</p>
+          <Link className="tenant-btn-inline" to="/app/data-quality">
+            Open data quality
+          </Link>
+        </article>
+      </section>
     </div>
   );
 }

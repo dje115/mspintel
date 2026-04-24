@@ -1,6 +1,6 @@
 # mspintel
 
-mspintel is a secure, AI-assisted MSP intelligence platform for MSPs. Release **`v2.0`** wires the **first real AI runtime** (resolve → render → provider adapter → `ai_task_runs` lifecycle) into **Customer 360 AI insights**, **recommendation explanations**, and **at-risk deep-links** to risk AI — plus a read-only **`/platform/ai-task-runs`** operator view. See [docs/AI_CONFIGURATION_AND_PROMPTS.md](docs/AI_CONFIGURATION_AND_PROMPTS.md). **`v1.9`** added **per-tenant AI engine configuration**, **versioned prompts**, **task routing**, and **`/app/ai-settings`** / **`/app/prompts`**. **`v1.8`** shipped the **tenant operational workspace** (recommendations queue, commercial hub, at-risk / needs-attention views, service-risk overview, dashboard drill-through, richer customer 360) backed by **`/api/v1/workspace/*`** APIs. **`v1.7`** added **platform-admin MFA recovery codes** (hashed at rest, one-time use, regeneration invalidates unused batches), **Redis-backed rate limiting** on platform password and MFA steps ([docs/PLATFORM_AUTH_HARDENING.md](docs/PLATFORM_AUTH_HARDENING.md)), and bumps deploy/UI defaults to **1.7**. **`v1.6`** hardened **platform-operator TOTP MFA** (validated **`MFA_TOTP_ENCRYPTION_KEY`**, non-sensitive MFA audit metadata, shared OTPAuth URI parsing in the SPA, **`get_totp_secret_crypto`** naming). **`v1.5`** introduced **`user_mfa_methods`** with Fernet-wrapped secrets, the two-step **`/platform/login`** flow (challenge JWT, then `POST /auth/platform/login/mfa`), optional **`PLATFORM_MFA_REQUIRED`**, QR enrolment on **`/platform/security`**, and platform-scoped MFA audits (see [docs/PLATFORM_MFA.md](docs/PLATFORM_MFA.md)). **`v1.4`** hardened **platform-operator** access: separate **tenant vs platform JWT/session TTLs**, `user_sessions.auth_mode`, scoped session list/revoke/logout-all, nullable **`audit_events.tenant_id`** for first-class platform audit rows, `/platform/security`, and a documented extension point for future MFA on platform login. **`v1.3`** introduced the separate platform console (`/platform/login`, JWT `am`, platform APIs). **`v1.2`** added tenant lifecycle controls on top of the v1.1 baseline (invitations, refresh rotation, audit, Mailpit).
+mspintel is a secure, AI-assisted MSP intelligence platform for MSPs. Release **`v2.1`** adds the first tenant-scoped connector framework and **Autotask adapter v1** (connection test + sync runs + canonical mappings), upgrades integrations into a real operating page (`/app/integrations` + detail), adds warehouse/cadence direction docs ([docs/DATA_INGESTION_AND_WAREHOUSE.md](docs/DATA_INGESTION_AND_WAREHOUSE.md)), and expands tenant product coverage with marketing/reviews/data-quality shells. **`v2.0`** wired the first real AI runtime (resolve → render → provider adapter → `ai_task_runs` lifecycle) into Customer 360 AI insights, recommendation explanations, and at-risk deep-links to risk AI.
 
 ## Implementation guidance (Cursor / contributors)
 
@@ -19,7 +19,7 @@ Standing rules for Docker, versioning, env vars, validation, docs, GitHub workfl
 
 ## Versioning
 
-- Current app version: **`2.0`**
+- Current app version: **`2.1`**
 - Central runtime version variable: `MSPINTEL_APP_VERSION` (root `.env` and Compose → backend `MSPINTEL_APP_VERSION`)
 - Frontend display: `VITE_APP_VERSION` in `.env`, overridden in Compose from `MSPINTEL_APP_VERSION` as `VITE_APP_VERSION` for the dev container
 
@@ -75,9 +75,14 @@ The backend image runs **`alembic upgrade head` on container start**, so new mig
 | Tenant dashboard (after login) | [http://localhost:5173/app](http://localhost:5173/app) |
 | Recommendations queue | [http://localhost:5173/app/recommendations](http://localhost:5173/app/recommendations) |
 | Opportunities & quotes | [http://localhost:5173/app/opportunities](http://localhost:5173/app/opportunities) |
+| Marketing & campaigns | [http://localhost:5173/app/marketing](http://localhost:5173/app/marketing) |
 | At-risk accounts | [http://localhost:5173/app/at-risk](http://localhost:5173/app/at-risk) |
 | Needs attention | [http://localhost:5173/app/attention](http://localhost:5173/app/attention) |
 | Service risk | [http://localhost:5173/app/service-risk](http://localhost:5173/app/service-risk) |
+| Integrations | [http://localhost:5173/app/integrations](http://localhost:5173/app/integrations) |
+| Integration detail pattern | `http://localhost:5173/app/integrations/<connection-id>` |
+| Data quality | [http://localhost:5173/app/data-quality](http://localhost:5173/app/data-quality) |
+| QBR / reviews | [http://localhost:5173/app/reviews](http://localhost:5173/app/reviews) |
 | Tenant AI settings | [http://localhost:5173/app/ai-settings](http://localhost:5173/app/ai-settings) |
 | Tenant prompts | [http://localhost:5173/app/prompts](http://localhost:5173/app/prompts) |
 | Tenant customers | [http://localhost:5173/app/customers](http://localhost:5173/app/customers) |
@@ -128,6 +133,13 @@ The backend image runs **`alembic upgrade head` on container start**, so new mig
   - `PATCH /api/v1/workspace/recommendations/{recommendation_id}` — body `{"status":"open"|"accepted"|"rejected"|"completed"}`; requires **`membership:write`** (typically `tenant_admin`)
   - `GET /api/v1/workspace/commercial` — opportunities + lost + open/draft quotes for the commercial hub
   - `GET /api/v1/workspace/service-risk` — backup placeholder section + live delivery metrics (e.g. open tickets, at-risk count)
+  - `GET /api/v1/integrations/catalog` — connector catalog with supported entities + default cadence
+  - `GET /api/v1/integrations/connections` — tenant-scoped connection list
+  - `POST /api/v1/integrations/connections` — create connector config (**membership:write**)
+  - `PATCH /api/v1/integrations/connections/{connection_id}` — update connector config (**membership:write**)
+  - `POST /api/v1/integrations/connections/{connection_id}/test` — test credentials/config safely (**membership:write**)
+  - `POST /api/v1/integrations/connections/{connection_id}/sync` — trigger manual sync run (**membership:write**)
+  - `GET /api/v1/integrations/connections/{connection_id}/runs` — list recent sync run history
 
 ## Tenant membership updates
 

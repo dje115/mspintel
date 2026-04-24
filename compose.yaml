@@ -7,7 +7,7 @@ services:
     env_file:
       - .env
     environment:
-      VITE_APP_VERSION: ${MSPINTEL_APP_VERSION:-2.0}
+      VITE_APP_VERSION: ${MSPINTEL_APP_VERSION:-2.1}
       # Same-origin API via Vite proxy (avoids browser CORS). Overrides host .env for Compose.
       VITE_API_BASE_URL: ""
       API_PROXY_TARGET: http://backend:8000
@@ -29,7 +29,7 @@ services:
     env_file:
       - .env
     environment:
-      MSPINTEL_APP_VERSION: ${MSPINTEL_APP_VERSION:-2.0}
+      MSPINTEL_APP_VERSION: ${MSPINTEL_APP_VERSION:-2.1}
       # Reliable local UI access when .env is wrong or missing (browser Origin is localhost:5173).
       ENVIRONMENT: development
       BACKEND_CORS_ORIGINS: '["http://localhost:5173","http://127.0.0.1:5173"]'
@@ -50,7 +50,7 @@ services:
     env_file:
       - .env
     environment:
-      MSPINTEL_APP_VERSION: ${MSPINTEL_APP_VERSION:-2.0}
+      MSPINTEL_APP_VERSION: ${MSPINTEL_APP_VERSION:-2.1}
     volumes:
       - ./worker:/app
     depends_on:

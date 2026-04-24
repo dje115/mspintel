@@ -11,9 +11,11 @@ const navGroups: { title: string; items: { to: string; label: string; end?: bool
     items: [
       { to: "/app/recommendations", label: "Recommendations" },
       { to: "/app/opportunities", label: "Opportunities" },
+      { to: "/app/marketing", label: "Marketing & growth" },
       { to: "/app/at-risk", label: "At-risk" },
       { to: "/app/attention", label: "Needs attention" },
-      { to: "/app/service-risk", label: "Service risk" }
+      { to: "/app/service-risk", label: "Service risk" },
+      { to: "/app/reviews", label: "QBR / reviews" }
     ]
   },
   { title: "Accounts", items: [{ to: "/app/customers", label: "Accounts & customers" }] },
@@ -22,6 +24,7 @@ const navGroups: { title: string; items: { to: string; label: string; end?: bool
     items: [
       { to: "/app/members", label: "Members" },
       { to: "/app/integrations", label: "Integrations" },
+      { to: "/app/data-quality", label: "Data quality" },
       { to: "/app/onboarding", label: "Onboarding" }
     ]
   },

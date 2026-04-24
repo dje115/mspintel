@@ -1,9 +1,11 @@
 import type {
   AIExecutionOutcome,
+  ConnectorCatalogItem,
   AIProductBlockState,
   AIProviderCatalogRow,
   AITaskRunRow,
   CommercialHubResponse,
+  IntegrationSyncRun,
   CustomerDetailResponse,
   CustomerListResponse,
   ExecutiveDashboardResponse,
@@ -267,6 +269,61 @@ export const api = {
     request<SystemStatus>("/api/v1/system/status", { headers: authHeaders(accessToken, tenantId) }),
   integrations: (accessToken: string, tenantId: string) =>
     request<SourceConnection[]>("/api/v1/integrations/connections", {
+      headers: authHeaders(accessToken, tenantId)
+    }),
+  integrationCatalog: (accessToken: string, tenantId: string) =>
+    request<ConnectorCatalogItem[]>("/api/v1/integrations/catalog", {
+      headers: authHeaders(accessToken, tenantId)
+    }),
+  createIntegrationConnection: (
+    accessToken: string,
+    tenantId: string,
+    body: {
+      system_type: string;
+      display_name: string;
+      base_url?: string | null;
+      auth_mode?: string;
+      is_enabled?: boolean;
+      sync_cadence_minutes?: number;
+      config?: Record<string, unknown>;
+    }
+  ) =>
+    request<SourceConnection>("/api/v1/integrations/connections", {
+      method: "POST",
+      headers: authHeaders(accessToken, tenantId),
+      body: JSON.stringify(body)
+    }),
+  updateIntegrationConnection: (
+    accessToken: string,
+    tenantId: string,
+    connectionId: string,
+    body: {
+      system_type: string;
+      display_name: string;
+      base_url?: string | null;
+      auth_mode?: string;
+      is_enabled?: boolean;
+      sync_cadence_minutes?: number;
+      config?: Record<string, unknown>;
+    }
+  ) =>
+    request<SourceConnection>(`/api/v1/integrations/connections/${connectionId}`, {
+      method: "PATCH",
+      headers: authHeaders(accessToken, tenantId),
+      body: JSON.stringify(body)
+    }),
+  testIntegrationConnection: (accessToken: string, tenantId: string, connectionId: string) =>
+    request<SourceConnection>(`/api/v1/integrations/connections/${connectionId}/test`, {
+      method: "POST",
+      headers: authHeaders(accessToken, tenantId)
+    }),
+  syncIntegrationConnection: (accessToken: string, tenantId: string, connectionId: string) =>
+    request<IntegrationSyncRun>(`/api/v1/integrations/connections/${connectionId}/sync`, {
+      method: "POST",
+      headers: authHeaders(accessToken, tenantId)
+    }),
+  integrationRuns: (accessToken: string, tenantId: string, connectionId: string, limit = 20) =>
+    request<IntegrationSyncRun[]>(`/api/v1/integrations/connections/${connectionId}/runs?limit=${limit}`, {
       headers: authHeaders(accessToken, tenantId)
     }),
   platformOverview: (accessToken: string) =>

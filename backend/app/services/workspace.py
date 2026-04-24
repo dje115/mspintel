@@ -80,7 +80,7 @@ class WorkspaceService:
     def commercial_hub(self, tenant_id: UUID) -> CommercialHubResponse:
         opps: list[OpportunityRow] = []
         for opp, cname in self.repo.list_opportunities(tenant_id):
-            label = "Open opportunity" if opp.status == "open" else f"Opportunity ({opp.status})"
+            label = opp.title or ("Open opportunity" if opp.status == "open" else f"Opportunity ({opp.status})")
             opps.append(
                 OpportunityRow(
                     id=opp.id,
@@ -88,7 +88,7 @@ class WorkspaceService:
                     customer_name=cname,
                     title=label,
                     status=opp.status,
-                    value_cents=None,
+                    value_cents=opp.value_cents,
                     revisit_reason=None,
                     suggested_next_action="Advance or close in PSA",
                     created_at=opp.created_at,
@@ -101,9 +101,9 @@ class WorkspaceService:
                     id=q.id,
                     customer_id=q.customer_id,
                     customer_name=cname,
-                    title="Lost quote — revisit",
+                    title=q.title or "Lost quote — revisit",
                     status=q.status,
-                    value_cents=None,
+                    value_cents=q.value_cents,
                     revisit_reason="Commercial signal: lost stage",
                     suggested_next_action="Re-engage stakeholder; check pricing fit",
                     created_at=q.created_at,
@@ -116,9 +116,9 @@ class WorkspaceService:
                     id=q.id,
                     customer_id=q.customer_id,
                     customer_name=cname,
-                    title="Active quote" if q.status == "open" else "Draft quote",
+                    title=q.title or ("Active quote" if q.status == "open" else "Draft quote"),
                     status=q.status,
-                    value_cents=None,
+                    value_cents=q.value_cents,
                     revisit_reason=None,
                     suggested_next_action="Move to won or document loss reason",
                     created_at=q.created_at,
@@ -156,9 +156,9 @@ class WorkspaceService:
                     id=opp.id,
                     customer_id=opp.customer_id,
                     customer_name=cname,
-                    title="Open opportunity" if opp.status == "open" else f"Opportunity ({opp.status})",
+                    title=opp.title or ("Open opportunity" if opp.status == "open" else f"Opportunity ({opp.status})"),
                     status=opp.status,
-                    value_cents=None,
+                    value_cents=opp.value_cents,
                     revisit_reason=None,
                     suggested_next_action="Advance or close in PSA",
                     created_at=opp.created_at,
@@ -171,9 +171,9 @@ class WorkspaceService:
                     id=q.id,
                     customer_id=q.customer_id,
                     customer_name=cname,
-                    title=f"Quote ({q.status})",
+                    title=q.title or f"Quote ({q.status})",
                     status=q.status,
-                    value_cents=None,
+                    value_cents=q.value_cents,
                     revisit_reason="Lost — revisit" if q.status == "lost" else None,
                     suggested_next_action="Revisit pricing" if q.status == "lost" else "Update stage in PSA",
                     created_at=q.created_at,

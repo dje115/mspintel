@@ -66,9 +66,47 @@ export type SubscriptionResponse = {
 export type SourceConnection = {
   id: string;
   system_type: string;
+  provider_family: string;
   display_name: string;
+  base_url: string | null;
+  auth_mode: string;
   status: string;
+  is_enabled: boolean;
+  health_status: string;
+  test_status: string | null;
+  test_message: string | null;
+  last_error: string | null;
+  sync_cadence_minutes: number;
+  sync_mode: string;
+  connector_version: string;
+  connection_metadata: Record<string, unknown> | null;
+  safe_config: Record<string, unknown> | null;
+  last_tested_at: string | null;
+  last_attempted_sync_at: string | null;
+  last_successful_sync_at: string | null;
+  last_failed_sync_at: string | null;
   last_sync_at: string | null;
+};
+
+export type ConnectorCatalogItem = {
+  system_type: string;
+  display_name: string;
+  supports_entities: string[];
+  default_cadence_minutes: number;
+  connector_version: string;
+};
+
+export type IntegrationSyncRun = {
+  id: string;
+  source_connection_id: string;
+  trigger_mode: string;
+  status: string;
+  records_processed: number;
+  started_at: string | null;
+  completed_at: string | null;
+  error_summary: string | null;
+  sync_cursor: string | null;
+  stats_json: Record<string, unknown> | null;
 };
 
 export type ExecutiveDashboardResponse = {

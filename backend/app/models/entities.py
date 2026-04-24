@@ -198,9 +198,26 @@ class SourceSystemConnection(Base, TimestampMixin):
         Uuid(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), index=True
     )
     system_type: Mapped[str] = mapped_column(String(50))
+    provider_family: Mapped[str] = mapped_column(String(50), default="generic")
     display_name: Mapped[str] = mapped_column(String(120))
+    base_url: Mapped[str | None] = mapped_column(String(500))
+    auth_mode: Mapped[str] = mapped_column(String(40), default="api_key")
+    encrypted_config: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="disconnected")
+    is_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    health_status: Mapped[str] = mapped_column(String(20), default="unknown")
+    test_status: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    test_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    last_tested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_attempted_sync_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_successful_sync_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_failed_sync_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     last_sync_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    sync_cadence_minutes: Mapped[int] = mapped_column(Integer, default=60)
+    sync_mode: Mapped[str] = mapped_column(String(20), default="manual_and_scheduled")
+    connector_version: Mapped[str] = mapped_column(String(40), default="v1")
+    connection_metadata: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
 
 class IntegrationSyncRun(Base, TimestampMixin):
@@ -211,8 +228,39 @@ class IntegrationSyncRun(Base, TimestampMixin):
     source_connection_id: Mapped[uuid.UUID] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("source_system_connections.id"), index=True
     )
+    trigger_mode: Mapped[str] = mapped_column(String(20), default="manual")
     status: Mapped[str] = mapped_column(String(20))
     records_processed: Mapped[int] = mapped_column(Integer, default=0)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    error_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    sync_cursor: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    stats_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+
+
+class SourceEntityMapping(Base, TimestampMixin):
+    __tablename__ = "source_entity_mappings"
+    __table_args__ = (
+        UniqueConstraint(
+            "tenant_id",
+            "source_connection_id",
+            "entity_type",
+            "source_id",
+            name="uq_source_entity_mapping_key",
+        ),
+        Index("ix_source_entity_mapping_tenant_type", "tenant_id", "entity_type"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("tenants.id"), index=True)
+    source_connection_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("source_system_connections.id"), index=True
+    )
+    entity_type: Mapped[str] = mapped_column(String(40))
+    source_id: Mapped[str] = mapped_column(String(180))
+    canonical_entity_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True))
+    source_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    mapping_metadata: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
 
 class Customer(Base, TimestampMixin):
@@ -224,6 +272,7 @@ class Customer(Base, TimestampMixin):
     name: Mapped[str] = mapped_column(String(180), index=True)
     status: Mapped[str] = mapped_column(String(30), default="active")
     owner_name: Mapped[str | None] = mapped_column(String(120))
+    external_ref: Mapped[str | None] = mapped_column(String(180), nullable=True, index=True)
 
 
 class Contact(Base, TimestampMixin):
@@ -234,6 +283,7 @@ class Contact(Base, TimestampMixin):
     customer_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("customers.id"), index=True)
     name: Mapped[str] = mapped_column(String(120))
     email: Mapped[str | None] = mapped_column(String(320))
+    external_ref: Mapped[str | None] = mapped_column(String(180), nullable=True, index=True)
 
 
 class Ticket(Base, TimestampMixin):
@@ -243,6 +293,8 @@ class Ticket(Base, TimestampMixin):
     tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("tenants.id"), index=True)
     customer_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("customers.id"), index=True)
     status: Mapped[str] = mapped_column(String(30), default="open")
+    subject: Mapped[str | None] = mapped_column(String(240), nullable=True)
+    external_ref: Mapped[str | None] = mapped_column(String(180), nullable=True, index=True)
 
 
 class Opportunity(Base, TimestampMixin):
@@ -252,6 +304,9 @@ class Opportunity(Base, TimestampMixin):
     tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("tenants.id"), index=True)
     customer_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("customers.id"), index=True)
     status: Mapped[str] = mapped_column(String(30), default="open")
+    title: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    value_cents: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    external_ref: Mapped[str | None] = mapped_column(String(180), nullable=True, index=True)
 
 
 class Quote(Base, TimestampMixin):
@@ -261,6 +316,10 @@ class Quote(Base, TimestampMixin):
     tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("tenants.id"), index=True)
     customer_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("customers.id"), index=True)
     status: Mapped[str] = mapped_column(String(30), default="draft")
+    title: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    value_cents: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    source_system: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    external_ref: Mapped[str | None] = mapped_column(String(180), nullable=True, index=True)
 
 
 class AccountScore(Base, TimestampMixin):

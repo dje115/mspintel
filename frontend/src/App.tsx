@@ -13,13 +13,17 @@ import { CustomerDetailPage } from "./pages/app/CustomerDetailPage";
 import { CustomersPage } from "./pages/app/CustomersPage";
 import { DashboardPage } from "./pages/app/DashboardPage";
 import { IntegrationsPage } from "./pages/app/IntegrationsPage";
+import { IntegrationDetailPage } from "./pages/app/IntegrationDetailPage";
+import { MarketingPage } from "./pages/app/MarketingPage";
 import { MembersPage } from "./pages/app/MembersPage";
 import { OpportunitiesPage } from "./pages/app/OpportunitiesPage";
 import { RecommendationsPage } from "./pages/app/RecommendationsPage";
+import { ReviewsPage } from "./pages/app/ReviewsPage";
 import { SecurityPage } from "./pages/app/SecurityPage";
 import { ServiceRiskPage } from "./pages/app/ServiceRiskPage";
 import { OnboardingPage } from "./pages/app/OnboardingPage";
 import { PromptsPage } from "./pages/app/PromptsPage";
+import { DataQualityPage } from "./pages/app/DataQualityPage";
 import { AcceptInvitationPage } from "./pages/auth/AcceptInvitationPage";
 import { LoginPage } from "./pages/auth/LoginPage";
 import { SignupPage } from "./pages/auth/SignupPage";
@@ -66,7 +70,11 @@ function App() {
           <Route path="customers/:id" element={<CustomerDetailPage />} />
           <Route path="onboarding" element={<OnboardingPage />} />
           <Route path="integrations" element={<IntegrationsPage />} />
+          <Route path="integrations/:id" element={<IntegrationDetailPage />} />
           <Route path="members" element={<MembersPage />} />
+          <Route path="marketing" element={<MarketingPage />} />
+          <Route path="reviews" element={<ReviewsPage />} />
+          <Route path="data-quality" element={<DataQualityPage />} />
           <Route path="security" element={<SecurityPage />} />
           <Route path="ai-settings" element={<AiSettingsPage />} />
           <Route path="prompts" element={<PromptsPage />} />

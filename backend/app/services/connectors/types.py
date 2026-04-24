@@ -1,0 +1,53 @@
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from datetime import datetime
+
+
+@dataclass
+class ConnectorTestResult:
+    ok: bool
+    message: str
+    checked_at: datetime
+    metadata: dict | None = None
+
+
+@dataclass
+class ConnectorSyncStats:
+    customers_upserted: int = 0
+    contacts_upserted: int = 0
+    tickets_upserted: int = 0
+    opportunities_upserted: int = 0
+    quotes_upserted: int = 0
+    mappings_written: int = 0
+    warnings: list[str] = field(default_factory=list)
+
+    def as_dict(self) -> dict:
+        return {
+            "customers_upserted": self.customers_upserted,
+            "contacts_upserted": self.contacts_upserted,
+            "tickets_upserted": self.tickets_upserted,
+            "opportunities_upserted": self.opportunities_upserted,
+            "quotes_upserted": self.quotes_upserted,
+            "mappings_written": self.mappings_written,
+            "warnings": self.warnings,
+        }
+
+    @property
+    def records_processed(self) -> int:
+        return (
+            self.customers_upserted
+            + self.contacts_upserted
+            + self.tickets_upserted
+            + self.opportunities_upserted
+            + self.quotes_upserted
+        )
+
+
+@dataclass
+class ConnectorSyncResult:
+    ok: bool
+    message: str
+    completed_at: datetime
+    next_cursor: str | None
+    stats: ConnectorSyncStats

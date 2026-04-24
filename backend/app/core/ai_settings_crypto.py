@@ -34,7 +34,16 @@ def redact_settings_for_api(payload: dict | None) -> dict | None:
     """Strip secret-like keys before returning to clients."""
     if not payload:
         return None
-    blocked = {"api_key", "api_secret", "client_secret", "password", "token", "anthropic_api_key", "openai_api_key"}
+    blocked = {
+        "api_key",
+        "api_secret",
+        "client_secret",
+        "password",
+        "token",
+        "secret",
+        "anthropic_api_key",
+        "openai_api_key",
+    }
     out = {}
     for k, v in payload.items():
         lk = str(k).lower()
