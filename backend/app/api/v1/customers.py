@@ -9,12 +9,17 @@ from app.schemas.ai_execution import AIExecutionOutcome, AIProductBlockState
 from app.schemas.customer import CustomerDetailResponse, CustomerListResponse
 from app.services.ai_execution_service import AIExecutionService
 from app.services.ai_product_context import (
+    build_account_confidence_explanation_variables,
     build_account_manager_call_script_variables,
     build_account_manager_next_conversation_variables,
     build_account_summary_variables,
+    build_billing_remediation_next_action_variables,
+    build_billing_variance_summary_variables,
     build_churn_explanation_variables,
     build_customer_review_agenda_variables,
+    build_revenue_leakage_explanation_variables,
     build_risk_summary_variables,
+    build_underbilling_opportunity_variables,
 )
 from app.services.customer import CustomerService
 
@@ -194,3 +199,128 @@ def get_customer(
     db: Session = Depends(get_db),
 ):
     return CustomerService(db).get_customer_detail(ctx.tenant.id, customer_id)
+
+
+@router.get("/{customer_id}/ai/billing-variance-summary", response_model=AIProductBlockState)
+def get_billing_variance_summary_ai_state(
+    customer_id: UUID,
+    ctx: AccessContext = Depends(require_permission("customer:read")),
+    db: Session = Depends(get_db),
+):
+    return AIExecutionService(db).read_block_state(ctx.tenant.id, "billing_variance_summary", customer_id=customer_id)
+
+
+@router.post("/{customer_id}/ai/billing-variance-summary", response_model=AIExecutionOutcome)
+def post_billing_variance_summary_ai(
+    customer_id: UUID,
+    ctx: AccessContext = Depends(require_permission("customer:read")),
+    db: Session = Depends(get_db),
+):
+    variables = build_billing_variance_summary_variables(db, ctx.tenant.id, customer_id)
+    return AIExecutionService(db).execute(
+        tenant_id=ctx.tenant.id,
+        task_type="billing_variance_summary",
+        variables=variables,
+        actor_user_id=ctx.user.id,
+        customer_id=customer_id,
+    )
+
+
+@router.get("/{customer_id}/ai/revenue-leakage-explanation", response_model=AIProductBlockState)
+def get_revenue_leakage_explanation_ai_state(
+    customer_id: UUID,
+    ctx: AccessContext = Depends(require_permission("customer:read")),
+    db: Session = Depends(get_db),
+):
+    return AIExecutionService(db).read_block_state(ctx.tenant.id, "revenue_leakage_explanation", customer_id=customer_id)
+
+
+@router.post("/{customer_id}/ai/revenue-leakage-explanation", response_model=AIExecutionOutcome)
+def post_revenue_leakage_explanation_ai(
+    customer_id: UUID,
+    ctx: AccessContext = Depends(require_permission("customer:read")),
+    db: Session = Depends(get_db),
+):
+    variables = build_revenue_leakage_explanation_variables(db, ctx.tenant.id, customer_id)
+    return AIExecutionService(db).execute(
+        tenant_id=ctx.tenant.id,
+        task_type="revenue_leakage_explanation",
+        variables=variables,
+        actor_user_id=ctx.user.id,
+        customer_id=customer_id,
+    )
+
+
+@router.get("/{customer_id}/ai/billing-remediation-next-action", response_model=AIProductBlockState)
+def get_billing_remediation_next_action_ai_state(
+    customer_id: UUID,
+    ctx: AccessContext = Depends(require_permission("customer:read")),
+    db: Session = Depends(get_db),
+):
+    return AIExecutionService(db).read_block_state(ctx.tenant.id, "billing_remediation_next_action", customer_id=customer_id)
+
+
+@router.post("/{customer_id}/ai/billing-remediation-next-action", response_model=AIExecutionOutcome)
+def post_billing_remediation_next_action_ai(
+    customer_id: UUID,
+    ctx: AccessContext = Depends(require_permission("customer:read")),
+    db: Session = Depends(get_db),
+):
+    variables = build_billing_remediation_next_action_variables(db, ctx.tenant.id, customer_id)
+    return AIExecutionService(db).execute(
+        tenant_id=ctx.tenant.id,
+        task_type="billing_remediation_next_action",
+        variables=variables,
+        actor_user_id=ctx.user.id,
+        customer_id=customer_id,
+    )
+
+
+@router.get("/{customer_id}/ai/underbilling-opportunity", response_model=AIProductBlockState)
+def get_underbilling_opportunity_ai_state(
+    customer_id: UUID,
+    ctx: AccessContext = Depends(require_permission("customer:read")),
+    db: Session = Depends(get_db),
+):
+    return AIExecutionService(db).read_block_state(ctx.tenant.id, "underbilling_opportunity", customer_id=customer_id)
+
+
+@router.post("/{customer_id}/ai/underbilling-opportunity", response_model=AIExecutionOutcome)
+def post_underbilling_opportunity_ai(
+    customer_id: UUID,
+    ctx: AccessContext = Depends(require_permission("customer:read")),
+    db: Session = Depends(get_db),
+):
+    variables = build_underbilling_opportunity_variables(db, ctx.tenant.id, customer_id)
+    return AIExecutionService(db).execute(
+        tenant_id=ctx.tenant.id,
+        task_type="underbilling_opportunity",
+        variables=variables,
+        actor_user_id=ctx.user.id,
+        customer_id=customer_id,
+    )
+
+
+@router.get("/{customer_id}/ai/account-confidence-explanation", response_model=AIProductBlockState)
+def get_account_confidence_explanation_ai_state(
+    customer_id: UUID,
+    ctx: AccessContext = Depends(require_permission("customer:read")),
+    db: Session = Depends(get_db),
+):
+    return AIExecutionService(db).read_block_state(ctx.tenant.id, "account_confidence_explanation", customer_id=customer_id)
+
+
+@router.post("/{customer_id}/ai/account-confidence-explanation", response_model=AIExecutionOutcome)
+def post_account_confidence_explanation_ai(
+    customer_id: UUID,
+    ctx: AccessContext = Depends(require_permission("customer:read")),
+    db: Session = Depends(get_db),
+):
+    variables = build_account_confidence_explanation_variables(db, ctx.tenant.id, customer_id)
+    return AIExecutionService(db).execute(
+        tenant_id=ctx.tenant.id,
+        task_type="account_confidence_explanation",
+        variables=variables,
+        actor_user_id=ctx.user.id,
+        customer_id=customer_id,
+    )

@@ -5,6 +5,7 @@ import type {
   AIProviderSafe,
   AIProviderCatalogRow,
   AITaskRunRow,
+  BillingIntegrityWorkspaceResponse,
   CommercialHubResponse,
   IntegrationSyncRun,
   CustomerDetailResponse,
@@ -260,6 +261,10 @@ export const api = {
     }),
   workspaceCommercial: (accessToken: string, tenantId: string) =>
     request<CommercialHubResponse>("/api/v1/workspace/commercial", {
+      headers: authHeaders(accessToken, tenantId)
+    }),
+  billingIntegrityWorkspace: (accessToken: string, tenantId: string) =>
+    request<BillingIntegrityWorkspaceResponse>("/api/v1/workspace/billing-integrity", {
       headers: authHeaders(accessToken, tenantId)
     }),
   workspaceServiceRisk: (accessToken: string, tenantId: string) =>

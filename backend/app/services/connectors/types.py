@@ -20,6 +20,9 @@ class ConnectorSyncStats:
     opportunities_upserted: int = 0
     quotes_upserted: int = 0
     mappings_written: int = 0
+    finance_billing_accounts_upserted: int = 0
+    finance_invoices_upserted: int = 0
+    finance_snapshots_upserted: int = 0
     warnings: list[str] = field(default_factory=list)
 
     def as_dict(self) -> dict:
@@ -30,6 +33,9 @@ class ConnectorSyncStats:
             "opportunities_upserted": self.opportunities_upserted,
             "quotes_upserted": self.quotes_upserted,
             "mappings_written": self.mappings_written,
+            "finance_billing_accounts_upserted": self.finance_billing_accounts_upserted,
+            "finance_invoices_upserted": self.finance_invoices_upserted,
+            "finance_snapshots_upserted": self.finance_snapshots_upserted,
             "warnings": self.warnings,
         }
 

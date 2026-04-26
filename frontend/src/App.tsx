@@ -24,6 +24,7 @@ import { ServiceRiskPage } from "./pages/app/ServiceRiskPage";
 import { OnboardingPage } from "./pages/app/OnboardingPage";
 import { PromptsPage } from "./pages/app/PromptsPage";
 import { DataQualityPage } from "./pages/app/DataQualityPage";
+import { BillingIntegrityPage } from "./pages/app/BillingIntegrityPage";
 import { RoadmapHubPage, RoadmapTopicPage } from "./pages/app/RoadmapPages";
 import { AcceptInvitationPage } from "./pages/auth/AcceptInvitationPage";
 import { LoginPage } from "./pages/auth/LoginPage";
@@ -75,6 +76,7 @@ function App() {
           <Route path="members" element={<MembersPage />} />
           <Route path="marketing" element={<MarketingPage />} />
           <Route path="reviews" element={<ReviewsPage />} />
+          <Route path="billing-integrity" element={<BillingIntegrityPage />} />
           <Route path="data-quality" element={<DataQualityPage />} />
           <Route path="security" element={<SecurityPage />} />
           <Route path="ai-settings" element={<AiSettingsPage />} />

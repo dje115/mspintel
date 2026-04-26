@@ -15,6 +15,11 @@ AI_TASK_TYPES: tuple[str, ...] = (
     "customer_review_agenda",
     "account_manager_next_conversation",
     "account_manager_call_script",
+    "billing_variance_summary",
+    "revenue_leakage_explanation",
+    "billing_remediation_next_action",
+    "underbilling_opportunity",
+    "account_confidence_explanation",
 )
 
 # provider_family: which vendor/protocol family
@@ -82,4 +87,9 @@ DEFAULT_PLATFORM_PROMPT_KEYS: tuple[tuple[str, str, str], ...] = (
         "Account manager — next conversation plan",
     ),
     ("account_manager_call_script.system", "account_manager_call_script", "Account manager — call script"),
+    ("billing_variance_summary.system", "billing_variance_summary", "Billing variance summary"),
+    ("revenue_leakage_explanation.system", "revenue_leakage_explanation", "Revenue leakage explanation"),
+    ("billing_remediation_next_action.system", "billing_remediation_next_action", "Billing remediation next action"),
+    ("underbilling_opportunity.system", "underbilling_opportunity", "Underbilling opportunity"),
+    ("account_confidence_explanation.system", "account_confidence_explanation", "Account data confidence (finance)"),
 )

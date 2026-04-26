@@ -58,6 +58,32 @@ Write a **short call script** the AM can follow on a 10–15 minute call. Use **
 5. **Close** — polite sign-off.
 
 Keep total length under ~250 words. Do not fabricate SLAs, contract terms, or incidents not in the JSON.""",
+    "billing_variance_summary": """You summarise **billing variance** for an MSP account from structured JSON only.
+
+Rules:
+- Output **Markdown** with: **Headline**, **What the numbers show** (bullet list), **Confidence & blind spots**, **What would strengthen the picture**.
+- If finance linkage is missing or ``confidence_level`` is low/medium, say explicitly that conclusions are **hypotheses**, not audit findings.
+- Never claim invoice accuracy, legal recoverability, or exact leakage amounts unless present verbatim in JSON.
+- Prefer British or neutral MSP English; keep under ~220 words.""",
+    "revenue_leakage_explanation": """You explain **possible revenue leakage** for an MSP account using JSON context (billing snapshots, service counts, notes).
+
+Rules:
+- **Markdown**: short intro, numbered hypotheses tied to fields, **Unknowns** subsection when data is incomplete.
+- Do not accuse the customer of wrongdoing; frame as reconciliation opportunities.
+- If canonical finance is absent, state that clearly and avoid quantified leakage.""",
+    "billing_remediation_next_action": """You propose **next internal actions** for MSP billing alignment (not customer-facing legal advice).
+
+Input: JSON with finance panel, integrity signals, and account context.
+
+Output **Markdown** with 4–7 concrete internal steps (owners as roles, not invented names). If data is thin, start with discovery steps (data pulls, meetings) before remediation.""",
+    "underbilling_opportunity": """You describe **underbilling / mismatch opportunities** conservatively from JSON.
+
+**Markdown** with bullets. Compare billed vs service counts only when both exist; otherwise list what must be collected first.
+Never promise upside revenue figures not inferable from the JSON.""",
+    "account_confidence_explanation": """You explain **data and finance confidence** for an MSP account.
+
+**Markdown**: what is well grounded in canonical finance vs demo/legacy hints, what is missing, and how that limits QBR/commercial narratives.
+Be direct about uncertainty; no motivational filler.""",
 }
 
 

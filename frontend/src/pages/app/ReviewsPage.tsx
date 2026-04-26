@@ -7,6 +7,54 @@ import { AccountManagerGuidanceShell } from "../../components/AccountManagerGuid
 import { useSession } from "../../state/session";
 import { formatUsdFromCents } from "../../utils/formatWorkspace";
 
+function FinanceReviewStrip({ detail }: { detail: CustomerDetailResponse }) {
+  const fin = detail.finance;
+  if (!fin) return null;
+  return (
+    <section className="tenant-panel" style={{ marginBottom: "1rem" }}>
+      <div className="tenant-panel-head">
+        <h2 className="tenant-panel-title">Finance &amp; billing (QBR context)</h2>
+        <Link className="tenant-panel-link" to="/app/billing-integrity">
+          Billing integrity workspace
+        </Link>
+      </div>
+      <div className="tenant-panel-body" style={{ padding: "1rem 1.1rem" }}>
+        {fin.finance_linked ? (
+          <>
+            <p className="muted" style={{ marginTop: 0, fontSize: "0.88rem" }}>
+              Canonical snapshot {fin.snapshot_effective_date ?? "—"} · confidence{" "}
+              <strong>{fin.confidence_level ?? "—"}</strong>
+            </p>
+            <p className="muted" style={{ fontSize: "0.88rem" }}>
+              Billed vs service mailboxes: <strong>{fin.billed_mailboxes ?? "—"}</strong> vs{" "}
+              <strong>{fin.service_active_mailboxes ?? "—"}</strong> · payment friction{" "}
+              <strong>{fin.payment_status_summary ?? "—"}</strong>
+            </p>
+            {fin.integrity_highlights.length > 0 ? (
+              <ul className="tenant-list-plain" style={{ marginBottom: 0 }}>
+                {fin.integrity_highlights.map((h) => (
+                  <li key={h} className="tenant-rec-card">
+                    {h}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="muted" style={{ marginBottom: 0 }}>
+                No mismatch flags on the latest snapshot — still reconcile with finance before commitments.
+              </p>
+            )}
+          </>
+        ) : (
+          <p className="muted" style={{ marginTop: 0, marginBottom: 0, fontSize: "0.88rem" }}>
+            No canonical finance linkage for this account. Keep commercial discussion qualitative until accounting data is
+            connected.
+          </p>
+        )}
+      </div>
+    </section>
+  );
+}
+
 function lostQuotesCount(quotes: CustomerDetailResponse["quotes"]) {
   return quotes.filter((q) => (q.status ?? "").toLowerCase() === "lost").length;
 }
@@ -108,6 +156,15 @@ export function ReviewsPage() {
     if (lost > 0) {
       lines.push(`${lost} lost quote(s) — decide whether to revisit with a win-back angle.`);
     }
+    const fin = detail.finance;
+    if (fin?.finance_linked) {
+      lines.push(
+        `Billing alignment: canonical finance linked (confidence ${fin.confidence_level ?? "unknown"}) — review billed vs service mailboxes before the meeting.`
+      );
+      fin.integrity_highlights.slice(0, 2).forEach((h) => lines.push(`Billing signal: ${h}`));
+    } else if (fin) {
+      lines.push("Billing alignment: no canonical finance linkage yet — treat commercial numbers as incomplete.");
+    }
     if (lines.length === 0) {
       lines.push("Light-touch account: confirm value narrative, roadmap, and any latent expansion signals.");
     }
@@ -122,7 +179,12 @@ export function ReviewsPage() {
       gaps.push("Limited operational signals in-app — deepen PSA sync for ticket and recommendation coverage.");
     }
     if (!detail.latest_scores) gaps.push("Score snapshot missing — scoring engine may still be warming for this tenant.");
-    gaps.push("Microsoft 365, backup telemetry, telephony, and finance connectors will strengthen confidence (planned).");
+    if (!detail.finance?.finance_linked) {
+      gaps.push("Canonical finance not linked — QBR commercial narrative should stay high-level until accounting sync improves.");
+    } else if ((detail.finance.confidence_level ?? "").toLowerCase().includes("low")) {
+      gaps.push("Finance confidence is low on-file — validate figures with finance before committing to targets.");
+    }
+    gaps.push("Microsoft 365, backup telemetry, telephony, and deeper accounting reads will strengthen confidence over time.");
     return gaps;
   }, [detail]);
 
@@ -233,6 +295,8 @@ export function ReviewsPage() {
 
       {customerId && detail ? (
         <>
+          <FinanceReviewStrip detail={detail} />
+
           <div className="tenant-review-kpi-row" aria-label="Account health at a glance">
             <div className="tenant-review-kpi">
               <p className="tenant-review-kpi-label">Risk</p>

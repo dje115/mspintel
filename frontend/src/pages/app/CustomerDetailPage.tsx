@@ -234,6 +234,80 @@ export function CustomerDetailPage() {
             </article>
           </section>
 
+          {data.finance ? (
+            <section className="tenant-panel" style={{ marginTop: "1rem" }}>
+              <div className="tenant-panel-head">
+                <h2 className="tenant-panel-title">Finance &amp; billing alignment</h2>
+                <span className={`tenant-badge ${data.finance.finance_linked ? "tenant-badge--active" : "tenant-badge--muted"}`}>
+                  {data.finance.finance_linked ? "Canonical finance linked" : "No canonical finance link"}
+                </span>
+              </div>
+              <div className="tenant-panel-body tenant-op-grid">
+                <div>
+                  <div className="tenant-kpi-label">Snapshot</div>
+                  <div className="tenant-kpi-value tenant-kpi-value--inline">{data.finance.snapshot_effective_date ?? "—"}</div>
+                  <p className="muted" style={{ fontSize: "0.82rem", marginTop: "0.35rem" }}>
+                    {data.finance.display_name ?? "Billing account"}
+                    {data.finance.currency_code ? ` · ${data.finance.currency_code}` : ""}
+                  </p>
+                </div>
+                <div>
+                  <div className="tenant-kpi-label">Mailboxes billed / service</div>
+                  <div className="tenant-kpi-value tenant-kpi-value--inline">
+                    {data.finance.billed_mailboxes ?? "—"} / {data.finance.service_active_mailboxes ?? "—"}
+                  </div>
+                  <p className="muted" style={{ fontSize: "0.82rem", marginTop: "0.35rem" }}>
+                    Users billed / licensed: {data.finance.billed_users ?? "—"} / {data.finance.service_licensed_users ?? "—"}
+                  </p>
+                </div>
+                <div>
+                  <div className="tenant-kpi-label">Confidence</div>
+                  <div className="tenant-kpi-value tenant-kpi-value--inline">{data.finance.confidence_level ?? "—"}</div>
+                  <p className="muted" style={{ fontSize: "0.82rem", marginTop: "0.35rem" }}>
+                    Payment friction: {data.finance.payment_status_summary ?? "—"}
+                    {data.finance.aged_outstanding_cents != null && data.finance.aged_outstanding_cents > 0
+                      ? ` · Aged outstanding ${formatUsdFromCents(data.finance.aged_outstanding_cents)}`
+                      : ""}
+                  </p>
+                </div>
+              </div>
+              {data.finance.integrity_highlights.length > 0 ? (
+                <div className="tenant-panel-body" style={{ paddingTop: 0 }}>
+                  <p className="tenant-kpi-label">Integrity highlights</p>
+                  <ul className="tenant-list-plain">
+                    {data.finance.integrity_highlights.map((h) => (
+                      <li key={h} className="tenant-rec-card">
+                        {h}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+              {data.finance.confidence_notes.length > 0 ? (
+                <div className="tenant-panel-body" style={{ paddingTop: 0 }}>
+                  <p className="tenant-kpi-label">Blind spots &amp; notes</p>
+                  <ul className="tenant-list-plain">
+                    {data.finance.confidence_notes.map((n) => (
+                      <li key={n} className="tenant-rec-card muted">
+                        {n}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+              <div className="tenant-panel-body" style={{ paddingTop: 0 }}>
+                <p className="muted" style={{ fontSize: "0.85rem", margin: 0 }}>
+                  <strong>Next commercial move:</strong> {data.finance.next_commercial_action_placeholder}
+                </p>
+                <p style={{ marginTop: "0.75rem" }}>
+                  <Link className="tenant-btn-inline tenant-btn-inline--ghost" to="/app/billing-integrity">
+                    Open billing integrity workspace
+                  </Link>
+                </p>
+              </div>
+            </section>
+          ) : null}
+
           {data.demo_profile && (data.demo_profile as { synthetic?: boolean }).synthetic ? (
             <section className="tenant-panel" style={{ marginTop: "1rem" }}>
               <div className="tenant-panel-head">

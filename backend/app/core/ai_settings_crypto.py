@@ -43,6 +43,7 @@ def redact_settings_for_api(payload: dict | None) -> dict | None:
         "secret",
         "anthropic_api_key",
         "openai_api_key",
+        "refresh_token",
     }
     out = {}
     for k, v in payload.items():

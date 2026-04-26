@@ -39,12 +39,13 @@ All require tenant JWT and tenant context (`X-Tenant-Id` from session).
 | `/app/attention` | `NeedsAttentionAccountsPage` | Needs-attention (watch) operating list. |
 | `/app/service-risk` | `ServiceRiskPage` | Backup + service delivery risk overview. |
 | `/app/customers` | `CustomersPage` | Account directory. |
-| `/app/customers/:id` | `CustomerDetailPage` | Customer 360; `#workspace` opens the recommendations tab; **Overview** includes **AI insights** (account summary, risk, churn). `?ai=risk` highlights risk AI (linked from at-risk queue). **Prepare review / QBR** → `/app/reviews?customer_id={id}`; **AI account manager guidance** preview shell on Overview. |
+| `/app/customers/:id` | `CustomerDetailPage` | Customer 360; `#workspace` opens the recommendations tab; **Overview** includes **AI insights** (account summary, risk, churn) and a **Finance & billing alignment** panel when canonical finance exists. `?ai=risk` highlights risk AI (linked from at-risk queue). **Prepare review / QBR** → `/app/reviews?customer_id={id}`; **AI account manager guidance** preview shell on Overview. |
 | `/app/onboarding` | `OnboardingPage` | Workspace checklist. |
 | `/app/integrations` | `IntegrationsPage` | Connector management: add/edit connections, test, run sync, and latest run status. |
 | `/app/integrations/:id` | `IntegrationDetailPage` | Connection detail, supported entities, cadence summary, and recent sync run history. |
 | `/app/data-quality` | `DataQualityPage` | Sync/data-quality shell for freshness and connector coverage monitoring. |
-| `/app/reviews` | `ReviewsPage` | QBR/customer-review prep shell for account-development workflows. |
+| `/app/reviews` | `ReviewsPage` | QBR/customer-review prep: service/commercial panels plus **finance & billing context** when canonical finance is linked. |
+| `/app/billing-integrity` | `BillingIntegrityPage` | **Revenue assurance workspace** — portfolio summary of finance linkage, under/overbilling heuristics, payment-friction counts, per-account signals (`GET /api/v1/workspace/billing-integrity`). |
 | `/app/members` | `MembersPage` | Team + invitations. |
 | `/app/security` | `SecurityPage` | Sessions. |
 | `/app/ai-settings` | `AiSettingsPage` | Tenant AI defaults, task routing table, provider/deployment badges; warnings for behavioural impact. |

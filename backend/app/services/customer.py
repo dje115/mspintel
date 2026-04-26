@@ -4,7 +4,9 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.repositories.customers import CustomerRepository
+from app.schemas.billing_integrity import FinanceCustomerPanel
 from app.schemas.customer import CustomerDetailResponse, CustomerListItem, CustomerListResponse
+from app.services.billing_integrity_service import BillingIntegrityService
 from app.services.workspace import WorkspaceService
 
 
@@ -45,12 +47,17 @@ class CustomerService:
         actions = self.repo.recent_actions(tenant_id, customer_id)
         rec_rows, opp_rows, quote_rows = self.workspace.customer_workspace_slices(tenant_id, customer_id)
 
+        fin_raw = BillingIntegrityService(self.repo.db).customer_finance_panel(tenant_id, customer_id)
+        fin_raw.pop("error", None)
+        finance_panel = FinanceCustomerPanel(**fin_raw)
+
         return CustomerDetailResponse(
             id=customer.id,
             name=customer.name,
             status=customer.status,
             owner_name=customer.owner_name,
             demo_profile=customer.demo_profile,
+            finance=finance_panel,
             latest_scores={
                 "risk_score": score.risk_score,
                 "attention_score": score.attention_score,

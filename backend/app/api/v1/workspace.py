@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.api.deps.access import AccessContext, require_permission
 from app.api.deps.db import get_db
 from app.schemas.ai_execution import AIExecutionOutcome, AIProductBlockState
+from app.schemas.billing_integrity import BillingIntegrityWorkspaceResponse
 from app.schemas.workspace import (
     CommercialHubResponse,
     RecommendationListResponse,
@@ -15,6 +16,7 @@ from app.schemas.workspace import (
 )
 from app.services.ai_execution_service import AIExecutionService
 from app.services.ai_product_context import build_recommendation_explanation_variables
+from app.services.billing_integrity_service import BillingIntegrityService
 from app.services.workspace import WorkspaceService
 
 router = APIRouter(prefix="/api/v1/workspace", tags=["workspace"])
@@ -97,3 +99,17 @@ def service_risk(
 ):
     """Backup and service-delivery risk overview (placeholder + live counts where available)."""
     return WorkspaceService(db).service_risk(ctx.tenant.id)
+
+
+@router.get("/billing-integrity", response_model=BillingIntegrityWorkspaceResponse)
+def billing_integrity_workspace(
+    ctx: AccessContext = Depends(require_permission("customer:read")),
+    db: Session = Depends(get_db),
+):
+    """Revenue assurance workspace: canonical finance coverage and mismatch heuristics."""
+    raw = BillingIntegrityService(db).build_workspace(ctx.tenant.id)
+    return BillingIntegrityWorkspaceResponse(
+        summary=raw["summary"],
+        coverage_notes=raw["coverage_notes"],
+        accounts=raw["accounts"],
+    )

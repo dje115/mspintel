@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.repositories.customers import CustomerRepository
 from app.repositories.workspace import WorkspaceRepository
+from app.services.billing_integrity_service import BillingIntegrityService
 from app.services.workspace import WorkspaceService
 
 
@@ -23,6 +24,9 @@ def _customer_ai_context_variables(db: Session, tenant_id: UUID, customer_id: UU
     actions = repo.recent_actions(tenant_id, customer_id)
     ws = WorkspaceService(db)
     rec_rows, opp_rows, quote_rows = ws.customer_workspace_slices(tenant_id, customer_id)
+    fin = BillingIntegrityService(db).customer_finance_panel(tenant_id, customer_id)
+    if fin.get("error") == "not_found":
+        fin = {}
     return {
         "customer": {
             "id": str(customer.id),
@@ -31,6 +35,7 @@ def _customer_ai_context_variables(db: Session, tenant_id: UUID, customer_id: UU
             "owner_name": customer.owner_name,
             "external_ref": customer.external_ref,
             "demo_profile": customer.demo_profile,
+            "finance_panel": fin,
         },
         "scores": {
             "risk_score": score.risk_score if score else None,
@@ -68,6 +73,26 @@ def build_account_manager_next_conversation_variables(db: Session, tenant_id: UU
 
 def build_account_manager_call_script_variables(db: Session, tenant_id: UUID, customer_id: UUID) -> dict:
     return {"task": "account_manager_call_script", **_customer_ai_context_variables(db, tenant_id, customer_id)}
+
+
+def build_billing_variance_summary_variables(db: Session, tenant_id: UUID, customer_id: UUID) -> dict:
+    return {"task": "billing_variance_summary", **_customer_ai_context_variables(db, tenant_id, customer_id)}
+
+
+def build_revenue_leakage_explanation_variables(db: Session, tenant_id: UUID, customer_id: UUID) -> dict:
+    return {"task": "revenue_leakage_explanation", **_customer_ai_context_variables(db, tenant_id, customer_id)}
+
+
+def build_billing_remediation_next_action_variables(db: Session, tenant_id: UUID, customer_id: UUID) -> dict:
+    return {"task": "billing_remediation_next_action", **_customer_ai_context_variables(db, tenant_id, customer_id)}
+
+
+def build_underbilling_opportunity_variables(db: Session, tenant_id: UUID, customer_id: UUID) -> dict:
+    return {"task": "underbilling_opportunity", **_customer_ai_context_variables(db, tenant_id, customer_id)}
+
+
+def build_account_confidence_explanation_variables(db: Session, tenant_id: UUID, customer_id: UUID) -> dict:
+    return {"task": "account_confidence_explanation", **_customer_ai_context_variables(db, tenant_id, customer_id)}
 
 
 def build_recommendation_explanation_variables(db: Session, tenant_id: UUID, recommendation_id: UUID) -> dict:

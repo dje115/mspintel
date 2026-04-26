@@ -6,9 +6,11 @@ from app.services.connectors.constants import (
     CONNECTOR_SYSTEM_CONNECTWISE,
     CONNECTOR_SYSTEM_ITQUOTER,
     CONNECTOR_SYSTEM_VEEAM,
+    CONNECTOR_SYSTEM_XERO,
 )
 from app.services.connectors.providers.autotask import AutotaskConnectorAdapter
 from app.services.connectors.providers.stubs import UnsupportedConnectorAdapter
+from app.services.connectors.providers.xero import XeroConnectorAdapter
 
 
 class ConnectorRegistry:
@@ -33,6 +35,7 @@ class ConnectorRegistry:
                 supports_entities=("activity", "service", "backup"),
                 message="Veeam adapter is planned for service/backup ingestion in a future release.",
             ),
+            CONNECTOR_SYSTEM_XERO: XeroConnectorAdapter(),
         }
 
     def get(self, system_type: str) -> ConnectorAdapter:

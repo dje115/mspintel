@@ -21,7 +21,7 @@ Standing rules for Docker, versioning, env vars, validation, docs, GitHub workfl
 
 ## Versioning
 
-- Current app version: **`2.2.1`** (AM/QBR AI tasks wired to prompt DB + customer APIs)
+- Current app version: **`2.3.0`** (Finance Phase 0: canonical billing tables, Xero demo connector, billing integrity workspace, Customer 360 / QBR finance context, finance AI task keys in prompt DB)
 - Central runtime version variable: `MSPINTEL_APP_VERSION` (root `.env` and Compose → backend `MSPINTEL_APP_VERSION`)
 - Frontend display: `VITE_APP_VERSION` in `.env`, overridden in Compose from `MSPINTEL_APP_VERSION` as `VITE_APP_VERSION` for the dev container
 

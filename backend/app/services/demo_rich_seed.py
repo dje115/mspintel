@@ -14,6 +14,7 @@ from uuid import UUID
 from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
+from app.core.ai_settings_crypto import encrypt_settings_payload
 from app.models.entities import (
     AccountScore,
     Action,
@@ -29,6 +30,7 @@ from app.models.entities import (
     Tenant,
     Ticket,
 )
+from app.services.finance_canonical import upsert_finance_for_customer
 
 DEMO_TENANT_SLUG = "demo-msp"
 
@@ -1433,6 +1435,11 @@ def _seed_connectors_and_sync(db: Session, tenant_id: UUID) -> list[SourceSystem
             stats_json={"demo": True, "entities": "customers,contacts,tickets,opportunities,quotes"},
         )
         db.add(run)
+    for c in conns:
+        if c.system_type == "xero":
+            c.encrypted_config = encrypt_settings_payload({"demo_mode": True})
+            c.auth_mode = "sandbox"
+    db.flush()
     return conns
 
 
@@ -1486,6 +1493,16 @@ def replace_demo_tenant_workspace(db: Session, tenant_id: UUID) -> int:
         )
         db.add(cust)
         db.flush()
+        xero_conn = conn_by_type.get("xero")
+        upsert_finance_for_customer(
+            db,
+            tenant_id=tenant_id,
+            customer_id=cust.id,
+            customer_name=name,
+            demo_profile=profile,
+            source_connection_id=xero_conn.id if xero_conn else None,
+            provenance="demo_seed",
+        )
         db.add(
             SourceEntityMapping(
                 id=uuid.uuid4(),

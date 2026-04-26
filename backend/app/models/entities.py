@@ -1,7 +1,8 @@
 import uuid
-from datetime import datetime
+from datetime import date, datetime
+from decimal import Decimal
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, JSON, String, Text, UniqueConstraint, Uuid
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Index, Integer, JSON, Numeric, String, Text, UniqueConstraint, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
 
@@ -274,6 +275,82 @@ class Customer(Base, TimestampMixin):
     owner_name: Mapped[str | None] = mapped_column(String(120))
     external_ref: Mapped[str | None] = mapped_column(String(180), nullable=True, index=True)
     demo_profile: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+
+
+class FinanceBillingAccount(Base, TimestampMixin):
+    """Tenant-scoped billing / finance account linked to a customer when known."""
+
+    __tablename__ = "finance_billing_accounts"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "external_billing_account_id", name="uq_finance_billing_account_ext"),
+        Index("ix_finance_billing_accounts_tenant_customer", "tenant_id", "customer_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), index=True)
+    customer_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("customers.id", ondelete="CASCADE"), index=True, nullable=True
+    )
+    source_connection_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("source_system_connections.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    external_billing_account_id: Mapped[str] = mapped_column(String(200), nullable=False)
+    display_name: Mapped[str] = mapped_column(String(220), nullable=False)
+    currency_code: Mapped[str | None] = mapped_column(String(12), nullable=True)
+    linkage_status: Mapped[str] = mapped_column(String(40), default="linked", nullable=False)
+    coverage_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    extra: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+
+
+class FinanceInvoice(Base, TimestampMixin):
+    __tablename__ = "finance_invoices"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "billing_account_id", "external_invoice_id", name="uq_finance_invoice_per_account"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), index=True)
+    billing_account_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("finance_billing_accounts.id", ondelete="CASCADE"), index=True
+    )
+    source_connection_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("source_system_connections.id", ondelete="SET NULL"), nullable=True
+    )
+    external_invoice_id: Mapped[str] = mapped_column(String(200), nullable=False)
+    status: Mapped[str] = mapped_column(String(40), nullable=False)
+    total_cents: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    outstanding_cents: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    currency_code: Mapped[str | None] = mapped_column(String(12), nullable=True)
+    issue_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    due_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    extra: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+
+
+class FinanceBillingSnapshot(Base, TimestampMixin):
+    __tablename__ = "finance_billing_snapshots"
+    __table_args__ = (Index("ix_finance_snapshots_account_effective", "billing_account_id", "effective_date"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), index=True)
+    billing_account_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("finance_billing_accounts.id", ondelete="CASCADE"), index=True
+    )
+    source_connection_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("source_system_connections.id", ondelete="SET NULL"), nullable=True
+    )
+    effective_date: Mapped[date] = mapped_column(Date, nullable=False)
+    billed_users: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    billed_mailboxes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    billed_devices: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    billed_storage_tb: Mapped[Decimal | None] = mapped_column(Numeric(14, 4), nullable=True)
+    service_licensed_users: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    service_active_mailboxes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    mrr_cents: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    payment_status_summary: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    aged_outstanding_cents: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    confidence_level: Mapped[str] = mapped_column(String(20), default="medium", nullable=False)
+    coverage_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    extra: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
 
 class Contact(Base, TimestampMixin):

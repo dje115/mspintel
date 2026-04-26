@@ -197,6 +197,55 @@ export type ServiceRiskResponse = {
   service_delivery: ServiceRiskSection;
 };
 
+export type FinanceCustomerPanel = {
+  finance_linked: boolean;
+  billing_account_id: string | null;
+  display_name: string | null;
+  currency_code: string | null;
+  snapshot_effective_date: string | null;
+  billed_mailboxes: number | null;
+  service_active_mailboxes: number | null;
+  billed_users: number | null;
+  service_licensed_users: number | null;
+  payment_status_summary: string | null;
+  aged_outstanding_cents: number | null;
+  confidence_level: string | null;
+  integrity_highlights: string[];
+  confidence_notes: string[];
+  next_commercial_action_placeholder: string;
+  provenance?: Record<string, unknown> | null;
+};
+
+export type BillingIntegritySummary = {
+  customer_count: number;
+  finance_linked_count: number;
+  missing_finance_link_count: number;
+  orphan_billing_account_count: number;
+  underbilling_candidate_count: number;
+  overbilling_risk_count: number;
+  payment_friction_count: number;
+};
+
+export type BillingIntegrityAccountRow = {
+  customer_id: string;
+  customer_name: string;
+  finance_linked: boolean;
+  billed_mailboxes: number | null;
+  service_mailboxes: number | null;
+  billed_users: number | null;
+  service_licensed_users: number | null;
+  payment_friction: string | null;
+  aged_outstanding_cents: number | null;
+  confidence_level: string | null;
+  signals: string[];
+};
+
+export type BillingIntegrityWorkspaceResponse = {
+  summary: BillingIntegritySummary;
+  coverage_notes: string[];
+  accounts: BillingIntegrityAccountRow[];
+};
+
 export type CustomerDetailResponse = {
   id: string;
   name: string;
@@ -204,6 +253,7 @@ export type CustomerDetailResponse = {
   owner_name: string | null;
   /** Present on `demo-msp` seeded accounts: synthetic UK MSP scenario JSON for AI/testing. */
   demo_profile?: Record<string, unknown> | null;
+  finance?: FinanceCustomerPanel | null;
   latest_scores: { risk_score: number; attention_score: number; growth_score: number } | null;
   open_tickets_count: number;
   open_opportunities_count: number;

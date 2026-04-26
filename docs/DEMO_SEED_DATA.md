@@ -6,8 +6,8 @@ Synthetic, **tenant-scoped** data for the **`demo-msp`** workspace. All companie
 
 On every `seed_all` run (`python -m app.db.seed` or Docker entrypoint seed), for **`tenants.slug = demo-msp`** only:
 
-- **Deleted** for that tenant: customers, contacts, tickets, opportunities, quotes, account scores, recommendations, actions, `ai_task_runs`, `source_entity_mappings`, `integration_sync_runs`, `source_system_connections`.
-- **Recreated**: multi-connector **simulation** rows (Autotask, ConnectWise label, ITQuoter, Veeam, Microsoft 365, Xero, Sage), **31 customers**, related PSA-style entities, and per-customer **`demo_profile`** JSON (billing / M365 / backup / relationship / data-quality narratives).
+- **Deleted** for that tenant: customers, contacts, tickets, opportunities, quotes, account scores, recommendations, actions, `ai_task_runs`, `source_entity_mappings`, `integration_sync_runs`, `source_system_connections` (canonical **`finance_*`** rows cascade with customers).
+- **Recreated**: multi-connector **simulation** rows (Autotask, ConnectWise label, ITQuoter, Veeam, Microsoft 365, Xero, Sage), **31 customers**, related PSA-style entities, per-customer **`demo_profile`** JSON (billing / M365 / backup / relationship / data-quality narratives), and **canonical finance** rows (`finance_billing_accounts`, `finance_billing_snapshots`, `finance_invoices`) materialised from each profile. The seeded **Xero** connection stores `demo_mode: true` so **Integrations → Sync** can refresh the same canonical slice without live Xero API calls.
 
 **Not** wiped: users, memberships, plans, subscriptions, onboarding state, AI providers (a default OpenAI row is ensured if missing), prompt definitions, tenant AI routes.
 

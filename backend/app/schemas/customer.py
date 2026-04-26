@@ -4,6 +4,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from app.schemas.billing_integrity import FinanceCustomerPanel
 from app.schemas.workspace import OpportunityRow, QuoteRow, RecommendationRow
 
 
@@ -31,6 +32,7 @@ class CustomerDetailResponse(BaseModel):
     status: str
     owner_name: str | None
     demo_profile: dict[str, Any] | None = None
+    finance: FinanceCustomerPanel | None = None
     latest_scores: dict[str, int] | None
     open_tickets_count: int
     open_opportunities_count: int
