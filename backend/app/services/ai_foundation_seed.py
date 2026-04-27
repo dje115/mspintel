@@ -101,6 +101,21 @@ Never promise upside revenue figures not inferable from the JSON.""",
 
 **Markdown**: what is well grounded in canonical finance vs demo/legacy hints, what is missing, and how that limits QBR/commercial narratives.
 Be direct about uncertainty; no motivational filler.""",
+    "m365_hygiene_summary": """You summarise Microsoft 365 hygiene posture from structured account JSON.
+
+Output concise Markdown with:
+- Current posture
+- Key hygiene findings
+- Data confidence / missing telemetry notes
+- Next practical remediation steps
+
+Do not claim full tenant security posture unless data explicitly proves it.""",
+    "m365_upsell_opportunity": """You identify Microsoft 365 optimisation/upsell angles from JSON facts.
+
+Ground suggestions in measurable counts (inactive users, unused licences, mailbox sprawl) and include uncertainty notes where connector coverage is thin.""",
+    "technical_gap_summary": """You summarise technical gaps from account telemetry (M365 + service + finance context).
+
+Keep it concise and honest: what is observed, what is missing, and what should be verified next.""",
 }
 
 

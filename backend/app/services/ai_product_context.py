@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.repositories.customers import CustomerRepository
 from app.repositories.workspace import WorkspaceRepository
 from app.services.billing_integrity_service import BillingIntegrityService
+from app.services.m365_health_service import M365HealthService
 from app.services.risk_engine_v1 import RiskEngineV1Service
 from app.services.workspace import WorkspaceService
 
@@ -26,6 +27,7 @@ def _customer_ai_context_variables(db: Session, tenant_id: UUID, customer_id: UU
     ws = WorkspaceService(db)
     rec_rows, opp_rows, quote_rows = ws.customer_workspace_slices(tenant_id, customer_id)
     fin = BillingIntegrityService(db).customer_finance_panel(tenant_id, customer_id)
+    m365 = M365HealthService(db).customer_panel(tenant_id, customer_id)
     risk = RiskEngineV1Service(db).latest_score_for_customer(tenant_id, customer_id)
     if fin.get("error") == "not_found":
         fin = {}
@@ -38,6 +40,7 @@ def _customer_ai_context_variables(db: Session, tenant_id: UUID, customer_id: UU
             "external_ref": customer.external_ref,
             "demo_profile": customer.demo_profile,
             "finance_panel": fin,
+            "m365_panel": m365,
             "risk_engine": {
                 "risk_score": risk.risk_score,
                 "attention_score": risk.attention_score,

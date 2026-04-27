@@ -287,6 +287,55 @@ export type BillingIntegrityWorkspaceResponse = {
   accounts: BillingIntegrityAccountRow[];
 };
 
+export type M365WorkspaceSummary = {
+  customer_count: number;
+  linked_count: number;
+  licensed_users_total: number;
+  active_users_total: number;
+  inactive_users_total: number;
+  mailbox_total: number;
+  shared_mailbox_total: number;
+  optimisation_candidate_count: number;
+};
+
+export type M365WorkspaceRow = {
+  customer_id: string;
+  customer_name: string;
+  confidence_level: string;
+  licensed_users: number | null;
+  active_users_30d: number | null;
+  inactive_users_30d: number | null;
+  mailbox_count: number | null;
+  shared_mailbox_count: number | null;
+  unused_licences: number | null;
+  mfa_coverage_pct: number | null;
+  hygiene_findings: string[];
+  optimisation_findings: string[];
+  coverage_notes: string[];
+};
+
+export type M365WorkspaceResponse = {
+  summary: M365WorkspaceSummary;
+  coverage_notes: string[];
+  customers: M365WorkspaceRow[];
+};
+
+export type M365CustomerPanel = {
+  linked: boolean;
+  confidence_level: string;
+  licensed_users: number | null;
+  active_users_30d: number | null;
+  inactive_users_30d: number | null;
+  mailbox_count: number | null;
+  shared_mailbox_count: number | null;
+  unused_licences: number | null;
+  mfa_coverage_pct: number | null;
+  hygiene_findings: string[];
+  optimisation_findings: string[];
+  confidence_notes: string[];
+  next_action_placeholder: string;
+};
+
 export type CustomerDetailResponse = {
   id: string;
   name: string;
@@ -295,6 +344,7 @@ export type CustomerDetailResponse = {
   /** Present on `demo-msp` seeded accounts: synthetic UK MSP scenario JSON for AI/testing. */
   demo_profile?: Record<string, unknown> | null;
   finance?: FinanceCustomerPanel | null;
+  m365?: M365CustomerPanel | null;
   risk_engine?: {
     scoring_version: string;
     calculated_at: string | null;

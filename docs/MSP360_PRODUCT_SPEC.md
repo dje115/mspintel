@@ -185,7 +185,7 @@ Columns: **section** · **purpose** · **key users** · **core data sources** ·
 |---------|---------|-----------|-------------------|-------------------------|----------|------------|
 | Dashboard | “What needs attention today?” | Director, AM, Service | Canonical customers, recs, commercial, service-risk API | *(mostly aggregated; future exec summary)* | **Existing** | Richer widgets per roadmap |
 | Customers / directory | Account list & filters | All | `customers`, scores | — | **Existing** | Saved views, bulk assign |
-| Customer 360 | Cross-system one account | AM, Sales, Service | Canonical rows + AI endpoints; **future:** persisted **knowledge objects** (overview, posture, confidence) | `account_summary`, `risk_summary`, `churn_explanation`, `recommendation_explanation` + maintainer keys (see §21.7) | **Existing / partial** | M365, backup, billing panels; knowledge-layer reads |
+| Customer 360 | Cross-system one account | AM, Sales, Service | Canonical rows + AI endpoints; **future:** persisted **knowledge objects** (overview, posture, confidence) | `account_summary`, `risk_summary`, `churn_explanation`, `recommendation_explanation` + maintainer keys (see §21.7) | **Existing / partial** | Deeper M365/backup signals + knowledge-layer reads |
 | Recommendations | Cross-account queue | Service, AM, Ops | `recommendations` | `recommendation_explanation` | **Existing** | More task types |
 | Opportunities & quotes | Pipeline & lost | Sales | PSA opps/quotes | `opportunity_detection`, `lost_quote_reactivation` | **Existing** | ITQuoter-native signals |
 | At-risk | Risk operating list | Director, Service | Customer status/scores | `churn_explanation`, `risk_summary` | **Existing** | Deeper PSA+RMM signals |
@@ -205,8 +205,8 @@ Columns: **section** · **purpose** · **key users** · **core data sources** ·
 | AM workspace / next conversation | Cadence & talk track | AM | 360 + recs + commercial | `account_manager_next_conversation`, `account_manager_call_script` | **Planned** | Prompt + UI bundle |
 | Retention / save-the-account | Rescue workflows | AM, Director | At-risk + playbooks | `churn_explanation` + save-plan templates | **Planned** | Workflow state machine |
 | Win-back / lost customer | Recover dormant revenue | Sales, Marketing | Lost quotes, dormant accounts | `lost_quote_reactivation`, `campaign_customer_matching` | **Partial** | Campaign execution |
-| Revenue assurance / billing | Margin & leakage | Finance | PSA contracts, usage (later Xero) | `billing_variance_summary`, `revenue_leakage_explanation` | **Planned** | Accounting connectors |
-| M365 health & licences | Hygiene & upsell | Technical, AM | Graph/Entra (later) | `m365_hygiene_summary`, `m365_upsell_opportunity` | **Future** | Microsoft connector |
+| Revenue assurance / billing | Margin & leakage | Finance | Finance canonical + service telemetry | `billing_variance_summary`, `revenue_leakage_explanation` | **Partial** | Broader accounting/live reconciliation depth |
+| M365 health & licences | Hygiene & upsell | Technical, AM | Canonical `m365_customer_postures` (demo-backed sync in v1) | `m365_hygiene_summary`, `m365_upsell_opportunity` | **Partial (v1 thin slice)** | Live Graph depth + richer posture signals |
 | Marketing & campaigns | Growth programmes | Marketing | Customers, segments | `marketing_event_idea_generation`, `event_invite_draft`, `campaign_customer_matching` | **Partial** (segments, event board, matching placeholders) | Idea bank DB + live matching |
 | Telephony / 3CX | Call relationship context | AM | CDR (later) | `relationship_health_summary` (augmented) | **Future** | CDR connector |
 | Security posture | Tenant customer security overview | Technical | EDR/M365 (later) | `technical_gap_summary` | **Future** | Security vendor APIs |
@@ -241,7 +241,7 @@ Each row: **purpose** · **widgets** · **actions** · **signals** · **sources*
 
 **Revenue assurance / billing checks** — Users vs billed, mailboxes, backup storage/workloads, active uninvoiced services, under/overbilling, contract vs delivery footprint; later Xero/Sage reconciliation. *Prompts:* `billing_variance_summary`, `revenue_leakage_explanation`, `billing_remediation_next_action`, `underbilling_opportunity`. *Direction:* persistent **`billing_integrity`** (and related) knowledge objects for variance, leakage, remediation path, and confidence—see knowledge layer. *Maturity:* **planned**.
 
-**Microsoft 365 health & licence optimisation** — Unused/stale users, licence mismatch, MFA posture (later), Teams/SP governance (later), billing vs usage. *Prompts:* `m365_hygiene_summary`, `m365_upsell_opportunity`. *Maturity:* **future** (connector).
+**Microsoft 365 health & licence optimisation** — Unused/stale users, licence mismatch, MFA coverage snapshot (where available), and billing-vs-usage directionals. v1 uses canonical `m365_customer_postures` with explicit coverage notes; not a full Microsoft management/compliance suite. *Prompts:* `m365_hygiene_summary`, `m365_upsell_opportunity`, `technical_gap_summary`. *Maturity:* **partial (v1 thin slice)**.
 
 **Backup billing & protection** — Coverage gaps, failed/stale jobs, restore-test gaps, unprotected workloads, storage vs billed, recovery readiness, workshop/event ideas. *Prompts:* `backup_risk_summary`, `backup_gap_opportunity`, `backup_event_matching`. *Maturity:* **future**.
 

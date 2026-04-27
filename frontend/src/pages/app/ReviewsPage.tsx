@@ -172,6 +172,15 @@ export function ReviewsPage() {
     } else if (fin) {
       lines.push("Billing alignment: no canonical finance linkage yet — treat commercial numbers as incomplete.");
     }
+    if (detail.m365?.linked) {
+      lines.push(
+        `Microsoft 365 hygiene: ${detail.m365.active_users_30d ?? "—"} active users, ${detail.m365.inactive_users_30d ?? "—"} inactive, ${detail.m365.unused_licences ?? "—"} unused licences.`
+      );
+      detail.m365.hygiene_findings.slice(0, 1).forEach((h) => lines.push(`M365 hygiene note: ${h}`));
+      detail.m365.optimisation_findings.slice(0, 1).forEach((h) => lines.push(`M365 optimisation note: ${h}`));
+    } else if (detail.m365) {
+      lines.push("Microsoft 365 hygiene view is not linked — keep technical posture statements conservative.");
+    }
     if (lines.length === 0) {
       lines.push("Light-touch account: confirm value narrative, roadmap, and any latent expansion signals.");
     }
@@ -195,6 +204,9 @@ export function ReviewsPage() {
       gaps.push("Risk Engine snapshot missing — run risk recompute before finalising review priorities.");
     } else if ((detail.risk_engine.confidence_level ?? "").toLowerCase().includes("low")) {
       gaps.push("Risk confidence is low — treat watch-outs as heuristic until coverage improves.");
+    }
+    if (!detail.m365?.linked) {
+      gaps.push("M365 connector not linked — hygiene/licence optimisation points may be incomplete.");
     }
     gaps.push("Microsoft 365, backup telemetry, telephony, and deeper accounting reads will strengthen confidence over time.");
     return gaps;

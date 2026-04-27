@@ -37,7 +37,7 @@ export function IntegrationsPage() {
     selectedCatalog.config_fields.forEach((f) => {
       cfg[f.key] = "";
     });
-    if (selectedCatalog.system_type === "xero") cfg.demo_mode = "true";
+    if (selectedCatalog.system_type === "xero" || selectedCatalog.system_type === "microsoft_365") cfg.demo_mode = "true";
     setCreateConfig(cfg);
   }, [selectedCatalog]);
 

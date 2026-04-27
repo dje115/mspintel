@@ -9,7 +9,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.entities import Customer, FinanceBillingAccount, FinanceBillingSnapshot
+from app.models.entities import Customer, FinanceBillingAccount, FinanceBillingSnapshot, M365CustomerPosture
 
 
 @dataclass
@@ -90,6 +90,21 @@ class BillingIntegrityService:
                         payment_friction.append(c.id)
                 if aged and aged > 0:
                     signals.append("Aged outstanding balance recorded on latest snapshot.")
+            m365 = self.db.scalars(
+                select(M365CustomerPosture).where(
+                    M365CustomerPosture.tenant_id == tenant_id,
+                    M365CustomerPosture.customer_id == c.id,
+                )
+            ).first()
+            if m365:
+                if bu is not None and m365.active_users_30d is not None and m365.active_users_30d > bu + 2:
+                    signals.append("M365 active users exceed billed users — possible M365 underbilling opportunity.")
+                    underbilling.append(c.id)
+                if bm is not None and m365.mailbox_count is not None and m365.mailbox_count > bm + 2:
+                    signals.append("M365 mailbox count exceeds billed mailboxes — verify Microsoft SKU alignment.")
+                    underbilling.append(c.id)
+                if (m365.unused_licences or 0) >= 5:
+                    signals.append("Unused Microsoft licences indicate optimisation headroom.")
             elif c.demo_profile and (c.demo_profile.get("billing") or {}).get("billed_m365_seats") is not None:
                 signals.append("Billing hints exist only in legacy demo_profile JSON — link accounting for canonical finance.")
             else:
@@ -185,6 +200,17 @@ class BillingIntegrityService:
 
         if (acct.extra or {}).get("provenance") == "demo_seed":
             notes.append("Data materialised from synthetic demo seed, not a live accounting export.")
+        m365 = self.db.scalars(
+            select(M365CustomerPosture).where(
+                M365CustomerPosture.tenant_id == tenant_id,
+                M365CustomerPosture.customer_id == customer_id,
+            )
+        ).first()
+        if m365:
+            if snap and snap.billed_users is not None and m365.active_users_30d is not None and m365.active_users_30d > snap.billed_users + 2:
+                highlights.append("M365 active user count is above billed users on latest finance snapshot.")
+            if (m365.unused_licences or 0) > 0:
+                highlights.append(f"M365 unused licence count: {m365.unused_licences} (optimisation candidate).")
 
         return {
             "finance_linked": True,

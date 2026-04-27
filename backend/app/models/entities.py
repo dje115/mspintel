@@ -353,6 +353,40 @@ class FinanceBillingSnapshot(Base, TimestampMixin):
     extra: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
 
+class M365CustomerPosture(Base, TimestampMixin):
+    __tablename__ = "m365_customer_postures"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "customer_id", name="uq_m365_customer_posture_tenant_customer"),
+        Index("ix_m365_customer_postures_tenant_measured", "tenant_id", "measured_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), index=True)
+    customer_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("customers.id", ondelete="CASCADE"), index=True
+    )
+    source_connection_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("source_system_connections.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    external_tenant_ref: Mapped[str | None] = mapped_column(String(180), nullable=True)
+    tenant_display_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    domain_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    licensed_users: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    active_users_30d: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    inactive_users_30d: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    mailbox_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    shared_mailbox_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    unused_licences: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    mfa_coverage_pct: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
+    licence_summary_json: Mapped[list[dict] | None] = mapped_column(JSON, nullable=True)
+    hygiene_findings: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
+    optimisation_findings: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
+    confidence_level: Mapped[str] = mapped_column(String(20), default="medium", nullable=False)
+    coverage_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    measured_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    extra: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+
+
 class Contact(Base, TimestampMixin):
     __tablename__ = "contacts"
 

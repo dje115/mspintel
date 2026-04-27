@@ -20,7 +20,7 @@ This phase introduces a real connector runtime foundation with Autotask v1 and a
 
 1. Tenant admin configures a source connection in `/app/integrations`.
 2. Config is encrypted at rest in `source_system_connections.encrypted_config`.
-3. Connector runtime resolves an adapter by `system_type` via the in-repo plugin registry (`ConnectorRegistry` + `ConnectorManifest`).
+3. Connector runtime resolves an adapter by `system_type` via the in-repo plugin registry (`ConnectorRegistry` + `ConnectorManifest`), including M365 v1 posture ingestion.
 4. Sync run writes lifecycle into `integration_sync_runs` and updates connection health/status timestamps.
 5. Adapter upserts canonical operational entities (`customers`, `contacts`, `tickets`, `opportunities`, optional `quotes`).
 6. Source-to-canonical lineage is persisted in `source_entity_mappings`.
@@ -39,6 +39,7 @@ This phase introduces a real connector runtime foundation with Autotask v1 and a
 
 - **Canonical operational layer**  
   `customers`, `contacts`, `tickets`, `opportunities`, `quotes` continue as tenant-facing current-state records (now with optional `external_ref`; opportunities/quotes also carry title/value fields).
+  Finance and M365 thin-slice canonical tables (`finance_*`, `m365_customer_postures`) support billing integrity, M365 health, Customer 360, and QBR context.
 
 - **Derived knowledge layer (planned)**  
   Tenant-scoped **knowledge objects** (typed summaries linked to `customer_id` or tenant aggregates) **downstream of** canonical upserts. Populated by **maintainer** prompt runs, not by mutating tier 3 to “look like” AI output. **Ingestion’s role:** emit events or flags so refreshes run **after** data lands; **lint** jobs can compare objects to canonical facts for drift.

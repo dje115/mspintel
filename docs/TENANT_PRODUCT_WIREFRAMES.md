@@ -218,6 +218,20 @@ Audience: **MSP owner / service manager** — needs signal, prioritisation, and 
 
 ---
 
+## 15. Microsoft 365 health (`/app/m365-health`)
+
+**Purpose:** Thin, honest M365 posture workspace for hygiene/licence optimisation and account-prioritisation support.
+
+**Above the fold:** portfolio KPIs (linked accounts, licensed vs active users, inactive users, mailbox/shared mailbox counts), optimisation candidate count.
+
+**Key regions:** per-customer posture table (licensed/active/inactive, mailbox footprint, unused licences, MFA coverage where available), hygiene findings, optimisation findings, and explicit coverage/confidence notes.
+
+**Primary actions:** drill into Customer 360; cross-check with Billing Integrity and Review/QBR prep.
+
+**Important honesty rule:** this is directional v1 data, not full Microsoft tenant governance/compliance reporting.
+
+---
+
 ## Navigation IA (implemented vs planned)
 
 | Area | Route (current) | Status |
@@ -230,6 +244,7 @@ Audience: **MSP owner / service manager** — needs signal, prioritisation, and 
 | Service risk | `/app/service-risk` | **Implemented** (backup placeholder + live delivery counts) |
 | Marketing, events & campaigns | `/app/marketing` | **Partial** — product shell: segments, event board, matching previews, AM guidance placeholder |
 | Review & QBR prep | `/app/reviews` (+ optional `?customer_id=`) | **Partial** — live account context when selected; AI agenda later |
+| Microsoft 365 health | `/app/m365-health` | **Implemented (v1 thin slice)** — posture + optimisation + coverage notes |
 | Data quality | `/app/data-quality` | **Implemented** (shell / sync view) |
 | Customers | `/app/customers` | **Implemented** |
 | Customer 360 | `/app/customers/:id` | **Implemented** |

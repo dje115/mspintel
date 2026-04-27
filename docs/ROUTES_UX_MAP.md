@@ -39,13 +39,14 @@ All require tenant JWT and tenant context (`X-Tenant-Id` from session).
 | `/app/attention` | `NeedsAttentionAccountsPage` | **Risk Engine v1** attention queue (`attention_score`, reasons, confidence notes, owner, next-step placeholder) with drill-through to Customer 360. |
 | `/app/service-risk` | `ServiceRiskPage` | Backup + service delivery risk overview. |
 | `/app/customers` | `CustomersPage` | Account directory. |
-| `/app/customers/:id` | `CustomerDetailPage` | Customer 360; `#workspace` opens the recommendations tab; **Overview** includes **AI insights** (account summary, risk, churn) and a **Finance & billing alignment** panel when canonical finance exists. `?ai=risk` highlights risk AI (linked from at-risk queue). **Prepare review / QBR** → `/app/reviews?customer_id={id}`; **AI account manager guidance** preview shell on Overview. |
+| `/app/customers/:id` | `CustomerDetailPage` | Customer 360; `#workspace` opens the recommendations tab; **Overview** includes **AI insights** (account summary, risk, churn), **Finance & billing alignment**, and **Microsoft 365 posture** panels when canonical data exists. `?ai=risk` highlights risk AI (linked from at-risk queue). **Prepare review / QBR** → `/app/reviews?customer_id={id}`; **AI account manager guidance** preview shell on Overview. |
 | `/app/onboarding` | `OnboardingPage` | Workspace checklist. |
 | `/app/integrations` | `IntegrationsPage` | Connector management: add/edit connections, test, run sync, and latest run status. |
 | `/app/integrations/:id` | `IntegrationDetailPage` | Connection detail, supported entities, cadence summary, and recent sync run history. |
 | `/app/data-quality` | `DataQualityPage` | Sync/data-quality shell for freshness and connector coverage monitoring. |
-| `/app/reviews` | `ReviewsPage` | QBR/customer-review prep: service/commercial panels plus **finance & billing context** when canonical finance is linked. |
+| `/app/reviews` | `ReviewsPage` | QBR/customer-review prep: service/commercial panels plus **finance & billing** and **M365 hygiene/optimisation** context when linked. |
 | `/app/billing-integrity` | `BillingIntegrityPage` | **Revenue assurance workspace** — portfolio summary of finance linkage, under/overbilling heuristics, payment-friction counts, per-account signals (`GET /api/v1/workspace/billing-integrity`). |
+| `/app/m365-health` | `M365HealthPage` | **Microsoft 365 Health workspace** — licensed/active/inactive users, mailbox/shared mailbox counts, hygiene + optimisation findings, and coverage notes (`GET /api/v1/workspace/m365-health`). |
 | `/app/members` | `MembersPage` | Team + invitations. |
 | `/app/security` | `SecurityPage` | Sessions. |
 | `/app/ai-settings` | `AiSettingsPage` | Tenant AI defaults, task routing table, provider/deployment badges; warnings for behavioural impact. |

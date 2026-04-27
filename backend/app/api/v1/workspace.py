@@ -7,6 +7,7 @@ from app.api.deps.access import AccessContext, require_permission
 from app.api.deps.db import get_db
 from app.schemas.ai_execution import AIExecutionOutcome, AIProductBlockState
 from app.schemas.billing_integrity import BillingIntegrityWorkspaceResponse
+from app.schemas.m365 import M365WorkspaceResponse
 from app.schemas.workspace import (
     CommercialHubResponse,
     RecommendationListResponse,
@@ -19,6 +20,7 @@ from app.schemas.workspace import (
 from app.services.ai_execution_service import AIExecutionService
 from app.services.ai_product_context import build_recommendation_explanation_variables
 from app.services.billing_integrity_service import BillingIntegrityService
+from app.services.m365_health_service import M365HealthService
 from app.services.workspace import WorkspaceService
 
 router = APIRouter(prefix="/api/v1/workspace", tags=["workspace"])
@@ -115,6 +117,15 @@ def billing_integrity_workspace(
         coverage_notes=raw["coverage_notes"],
         accounts=raw["accounts"],
     )
+
+
+@router.get("/m365-health", response_model=M365WorkspaceResponse)
+def m365_health_workspace(
+    ctx: AccessContext = Depends(require_permission("customer:read")),
+    db: Session = Depends(get_db),
+):
+    raw = M365HealthService(db).build_workspace(ctx.tenant.id)
+    return M365WorkspaceResponse(summary=raw["summary"], coverage_notes=raw["coverage_notes"], customers=raw["customers"])
 
 
 @router.get("/risk-queue", response_model=RiskQueueResponse)

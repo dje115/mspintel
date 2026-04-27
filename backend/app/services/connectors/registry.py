@@ -32,6 +32,7 @@ from app.services.connectors.constants import (
     CONNECTOR_SYSTEM_XERO,
 )
 from app.services.connectors.providers.autotask import AutotaskConnectorAdapter
+from app.services.connectors.providers.microsoft_365 import Microsoft365ConnectorAdapter
 from app.services.connectors.providers.stubs import UnsupportedConnectorAdapter
 from app.services.connectors.providers.xero import XeroConnectorAdapter
 
@@ -77,15 +78,7 @@ class ConnectorRegistry:
                 auth_modes=("oauth2", "api_key"),
                 sync_modes=("manual", "delta"),
             ),
-            CONNECTOR_SYSTEM_MICROSOFT_365: UnsupportedConnectorAdapter(
-                system_type=CONNECTOR_SYSTEM_MICROSOFT_365,
-                display_name="Microsoft 365",
-                supports_entities=(CAP_USERS, CAP_LICENCES, CAP_MAILBOXES, CAP_STORAGE),
-                message="Microsoft 365 connector is planned for future product telemetry phases.",
-                maturity="planned",
-                auth_modes=("oauth2",),
-                sync_modes=("manual", "delta"),
-            ),
+            CONNECTOR_SYSTEM_MICROSOFT_365: Microsoft365ConnectorAdapter(),
             CONNECTOR_SYSTEM_ENTRA: UnsupportedConnectorAdapter(
                 system_type=CONNECTOR_SYSTEM_ENTRA,
                 display_name="Entra ID",

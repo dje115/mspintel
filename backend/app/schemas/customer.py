@@ -5,6 +5,7 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from app.schemas.billing_integrity import FinanceCustomerPanel
+from app.schemas.m365 import M365CustomerPanel
 from app.schemas.workspace import OpportunityRow, QuoteRow, RecommendationRow
 
 
@@ -33,6 +34,7 @@ class CustomerDetailResponse(BaseModel):
     owner_name: str | None
     demo_profile: dict[str, Any] | None = None
     finance: FinanceCustomerPanel | None = None
+    m365: M365CustomerPanel | None = None
     risk_engine: dict[str, Any] | None = None
     latest_scores: dict[str, int] | None
     open_tickets_count: int

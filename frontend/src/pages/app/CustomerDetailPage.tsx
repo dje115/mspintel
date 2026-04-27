@@ -362,6 +362,74 @@ export function CustomerDetailPage() {
             </section>
           ) : null}
 
+          {data.m365 ? (
+            <section className="tenant-panel" style={{ marginTop: "1rem" }}>
+              <div className="tenant-panel-head">
+                <h2 className="tenant-panel-title">Microsoft 365 posture</h2>
+                <span className={`tenant-badge ${data.m365.linked ? "tenant-badge--active" : "tenant-badge--muted"}`}>
+                  {data.m365.linked ? "M365 posture linked" : "No M365 posture sync"}
+                </span>
+              </div>
+              <div className="tenant-panel-body tenant-op-grid">
+                <div>
+                  <div className="tenant-kpi-label">Licensed / active / inactive</div>
+                  <div className="tenant-kpi-value tenant-kpi-value--inline">
+                    {data.m365.licensed_users ?? "—"} / {data.m365.active_users_30d ?? "—"} / {data.m365.inactive_users_30d ?? "—"}
+                  </div>
+                </div>
+                <div>
+                  <div className="tenant-kpi-label">Mailboxes</div>
+                  <div className="tenant-kpi-value tenant-kpi-value--inline">
+                    {data.m365.mailbox_count ?? "—"} (shared {data.m365.shared_mailbox_count ?? "—"})
+                  </div>
+                </div>
+                <div>
+                  <div className="tenant-kpi-label">MFA / confidence</div>
+                  <div className="tenant-kpi-value tenant-kpi-value--inline">
+                    {data.m365.mfa_coverage_pct ?? "—"}% · {data.m365.confidence_level}
+                  </div>
+                  <p className="muted" style={{ fontSize: "0.82rem", marginTop: "0.35rem" }}>
+                    Unused licences: {data.m365.unused_licences ?? "—"}
+                  </p>
+                </div>
+              </div>
+              {[...data.m365.hygiene_findings, ...data.m365.optimisation_findings].length > 0 ? (
+                <div className="tenant-panel-body" style={{ paddingTop: 0 }}>
+                  <p className="tenant-kpi-label">Hygiene & optimisation highlights</p>
+                  <ul className="tenant-list-plain">
+                    {[...data.m365.hygiene_findings, ...data.m365.optimisation_findings].map((h) => (
+                      <li key={h} className="tenant-rec-card">
+                        {h}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+              {data.m365.confidence_notes.length > 0 ? (
+                <div className="tenant-panel-body" style={{ paddingTop: 0 }}>
+                  <p className="tenant-kpi-label">Coverage notes</p>
+                  <ul className="tenant-list-plain">
+                    {data.m365.confidence_notes.map((n) => (
+                      <li key={n} className="tenant-rec-card muted">
+                        {n}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+              <div className="tenant-panel-body" style={{ paddingTop: 0 }}>
+                <p className="muted" style={{ fontSize: "0.85rem", margin: 0 }}>
+                  <strong>Next technical/commercial step:</strong> {data.m365.next_action_placeholder}
+                </p>
+                <p style={{ marginTop: "0.75rem" }}>
+                  <Link className="tenant-btn-inline tenant-btn-inline--ghost" to="/app/m365-health">
+                    Open M365 health workspace
+                  </Link>
+                </p>
+              </div>
+            </section>
+          ) : null}
+
           {data.demo_profile && (data.demo_profile as { synthetic?: boolean }).synthetic ? (
             <section className="tenant-panel" style={{ marginTop: "1rem" }}>
               <div className="tenant-panel-head">

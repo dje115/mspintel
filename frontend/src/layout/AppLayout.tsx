@@ -16,7 +16,8 @@ const navGroups: { title: string; items: { to: string; label: string; end?: bool
       { to: "/app/attention", label: "Needs attention" },
       { to: "/app/service-risk", label: "Service risk" },
       { to: "/app/reviews", label: "Review & QBR prep" },
-      { to: "/app/billing-integrity", label: "Billing integrity" }
+      { to: "/app/billing-integrity", label: "Billing integrity" },
+      { to: "/app/m365-health", label: "M365 health" }
     ]
   },
   { title: "Accounts", items: [{ to: "/app/customers", label: "Accounts & customers" }] },

@@ -6,6 +6,7 @@ import type {
   AIProviderCatalogRow,
   AITaskRunRow,
   BillingIntegrityWorkspaceResponse,
+  M365WorkspaceResponse,
   CommercialHubResponse,
   IntegrationSyncRun,
   CustomerDetailResponse,
@@ -266,6 +267,10 @@ export const api = {
     }),
   billingIntegrityWorkspace: (accessToken: string, tenantId: string) =>
     request<BillingIntegrityWorkspaceResponse>("/api/v1/workspace/billing-integrity", {
+      headers: authHeaders(accessToken, tenantId)
+    }),
+  m365HealthWorkspace: (accessToken: string, tenantId: string) =>
+    request<M365WorkspaceResponse>("/api/v1/workspace/m365-health", {
       headers: authHeaders(accessToken, tenantId)
     }),
   riskQueue: (

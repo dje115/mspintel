@@ -20,6 +20,9 @@ AI_TASK_TYPES: tuple[str, ...] = (
     "billing_remediation_next_action",
     "underbilling_opportunity",
     "account_confidence_explanation",
+    "m365_hygiene_summary",
+    "m365_upsell_opportunity",
+    "technical_gap_summary",
 )
 
 # provider_family: which vendor/protocol family
@@ -92,4 +95,7 @@ DEFAULT_PLATFORM_PROMPT_KEYS: tuple[tuple[str, str, str], ...] = (
     ("billing_remediation_next_action.system", "billing_remediation_next_action", "Billing remediation next action"),
     ("underbilling_opportunity.system", "underbilling_opportunity", "Underbilling opportunity"),
     ("account_confidence_explanation.system", "account_confidence_explanation", "Account data confidence (finance)"),
+    ("m365_hygiene_summary.system", "m365_hygiene_summary", "Microsoft 365 hygiene summary"),
+    ("m365_upsell_opportunity.system", "m365_upsell_opportunity", "Microsoft 365 optimisation / upsell"),
+    ("technical_gap_summary.system", "technical_gap_summary", "Technical gap summary"),
 )

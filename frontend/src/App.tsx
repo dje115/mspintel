@@ -25,6 +25,7 @@ import { OnboardingPage } from "./pages/app/OnboardingPage";
 import { PromptsPage } from "./pages/app/PromptsPage";
 import { DataQualityPage } from "./pages/app/DataQualityPage";
 import { BillingIntegrityPage } from "./pages/app/BillingIntegrityPage";
+import { M365HealthPage } from "./pages/app/M365HealthPage";
 import { RoadmapHubPage, RoadmapTopicPage } from "./pages/app/RoadmapPages";
 import { AcceptInvitationPage } from "./pages/auth/AcceptInvitationPage";
 import { LoginPage } from "./pages/auth/LoginPage";
@@ -77,6 +78,7 @@ function App() {
           <Route path="marketing" element={<MarketingPage />} />
           <Route path="reviews" element={<ReviewsPage />} />
           <Route path="billing-integrity" element={<BillingIntegrityPage />} />
+          <Route path="m365-health" element={<M365HealthPage />} />
           <Route path="data-quality" element={<DataQualityPage />} />
           <Route path="security" element={<SecurityPage />} />
           <Route path="ai-settings" element={<AiSettingsPage />} />

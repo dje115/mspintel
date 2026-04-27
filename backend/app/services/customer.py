@@ -7,6 +7,7 @@ from app.repositories.customers import CustomerRepository
 from app.schemas.billing_integrity import FinanceCustomerPanel
 from app.schemas.customer import CustomerDetailResponse, CustomerListItem, CustomerListResponse
 from app.services.billing_integrity_service import BillingIntegrityService
+from app.services.m365_health_service import M365HealthService
 from app.services.risk_engine_v1 import RiskEngineV1Service
 from app.services.workspace import WorkspaceService
 
@@ -53,6 +54,7 @@ class CustomerService:
         fin_raw = BillingIntegrityService(self.repo.db).customer_finance_panel(tenant_id, customer_id)
         fin_raw.pop("error", None)
         finance_panel = FinanceCustomerPanel(**fin_raw)
+        m365_panel = M365HealthService(self.repo.db).customer_panel(tenant_id, customer_id)
 
         return CustomerDetailResponse(
             id=customer.id,
@@ -61,6 +63,7 @@ class CustomerService:
             owner_name=customer.owner_name,
             demo_profile=customer.demo_profile,
             finance=finance_panel,
+            m365=m365_panel,
             risk_engine={
                 "scoring_version": risk.scoring_version,
                 "calculated_at": risk.calculated_at.isoformat() if risk.calculated_at else None,
