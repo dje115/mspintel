@@ -4,11 +4,12 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.ai_settings_crypto import decrypt_settings_payload, encrypt_settings_payload, redact_settings_for_api
-from app.models.entities import IntegrationSyncRun, SourceSystemConnection
+from app.models.entities import ConnectorMappingReview, IntegrationSyncRun, SourceEntityMapping, SourceSystemConnection
+from app.services.connectors.onboarding import LIFECYCLE_STATES, SYNC_BEHAVIORS
 from app.services.connectors.registry import ConnectorRegistry
 
 
@@ -85,6 +86,10 @@ class ConnectorRuntimeService:
                 health_status="unknown",
                 sync_mode="manual_and_scheduled",
                 sync_cadence_minutes=max(5, sync_cadence_minutes),
+                lifecycle_state="configured",
+                sync_behavior="manual_sync_only",
+                is_paused=False,
+                import_scope_mode="all",
                 connector_version=manifest.connector_version,
                 connection_metadata={
                     "supports_entities": list(manifest.capabilities),
@@ -103,6 +108,9 @@ class ConnectorRuntimeService:
             row.sync_cadence_minutes = max(5, sync_cadence_minutes)
             row.provider_family = system_type
             row.connector_version = manifest.connector_version
+            row.lifecycle_state = row.lifecycle_state or "configured"
+            row.sync_behavior = row.sync_behavior or "manual_sync_only"
+            row.import_scope_mode = row.import_scope_mode or "all"
             row.connection_metadata = {
                 "supports_entities": list(manifest.capabilities),
                 "maturity": manifest.maturity,
@@ -157,6 +165,7 @@ class ConnectorRuntimeService:
         row.test_message = result.message
         row.health_status = "healthy" if result.ok else "error"
         row.status = "connected" if result.ok else "disconnected"
+        row.lifecycle_state = "tested" if result.ok and row.lifecycle_state == "configured" else row.lifecycle_state
         row.last_error = None if result.ok else result.message
         self.db.flush()
         return row
@@ -165,6 +174,10 @@ class ConnectorRuntimeService:
         connection = self.get_connection(tenant_id, connection_id)
         if not connection.is_enabled:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Connection is disabled")
+        if connection.is_paused:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Connection sync is paused")
+        if trigger_mode != "manual" and connection.sync_behavior == "manual_sync_only":
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Connection is manual-sync-only")
         now = datetime.now(UTC)
         run = IntegrationSyncRun(
             tenant_id=tenant_id,
@@ -214,6 +227,8 @@ class ConnectorRuntimeService:
             connection.status = "connected"
             connection.health_status = "healthy"
             connection.last_error = None
+            if connection.lifecycle_state in {"configured", "tested", "paused"}:
+                connection.lifecycle_state = "active"
             meta = dict(connection.connection_metadata or {})
             meta["last_cursor"] = result.next_cursor
             connection.connection_metadata = meta
@@ -222,8 +237,63 @@ class ConnectorRuntimeService:
             connection.health_status = "error"
             connection.last_error = result.message
             connection.status = "degraded"
+            connection.lifecycle_state = "error"
         self.db.flush()
         return run
+
+    def update_lifecycle(
+        self,
+        tenant_id: UUID,
+        connection_id: UUID,
+        *,
+        actor_user_id: UUID | None,
+        lifecycle_state: str | None,
+        is_enabled: bool | None,
+        is_paused: bool | None,
+        sync_behavior: str | None,
+        note: str | None,
+    ) -> SourceSystemConnection:
+        row = self.get_connection(tenant_id, connection_id)
+        if lifecycle_state is not None and lifecycle_state not in LIFECYCLE_STATES:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported lifecycle_state")
+        if sync_behavior is not None and sync_behavior not in SYNC_BEHAVIORS:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported sync_behavior")
+        if is_enabled is not None:
+            row.is_enabled = is_enabled
+        if is_paused is not None:
+            row.is_paused = is_paused
+        if lifecycle_state is not None:
+            row.lifecycle_state = lifecycle_state
+        if sync_behavior is not None:
+            row.sync_behavior = sync_behavior
+        row.last_lifecycle_changed_at = datetime.now(UTC)
+        row.last_lifecycle_note = note
+        return row
+
+    def update_import_scope(
+        self,
+        tenant_id: UUID,
+        connection_id: UUID,
+        *,
+        actor_user_id: UUID | None,
+        import_scope_mode: str,
+        filters: dict,
+    ) -> SourceSystemConnection:
+        row = self.get_connection(tenant_id, connection_id)
+        adapter = self._adapter_for_system(row.system_type)
+        manifest = adapter.describe()
+        if import_scope_mode not in manifest.import_scope_modes:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Import scope mode '{import_scope_mode}' not supported by connector '{row.system_type}'",
+            )
+        unknown_keys = [k for k in (filters or {}).keys() if k not in set(manifest.import_scope_filter_keys)]
+        if unknown_keys:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Unsupported import scope filters: {', '.join(unknown_keys)}")
+        row.import_scope_mode = import_scope_mode
+        row.import_scope_filters = filters or {}
+        row.last_lifecycle_changed_at = datetime.now(UTC)
+        return row
 
     def list_sync_runs(self, tenant_id: UUID, connection_id: UUID, limit: int = 20) -> list[IntegrationSyncRun]:
         self.get_connection(tenant_id, connection_id)
@@ -237,3 +307,56 @@ class ConnectorRuntimeService:
             .limit(limit)
         )
         return list(self.db.scalars(stmt).all())
+
+    def coverage_summary(self, tenant_id: UUID) -> dict:
+        connections = self.list_connections(tenant_id)
+        items: list[dict] = []
+        unresolved_total = 0
+        weak_total = 0
+        phased = 0
+        for c in connections:
+            linked = self.db.scalar(
+                select(func.count(func.distinct(SourceEntityMapping.canonical_entity_id))).where(
+                    SourceEntityMapping.tenant_id == tenant_id,
+                    SourceEntityMapping.source_connection_id == c.id,
+                    SourceEntityMapping.entity_type == "customer",
+                )
+            ) or 0
+            unresolved = self.db.scalar(
+                select(func.count()).where(
+                    ConnectorMappingReview.tenant_id == tenant_id,
+                    ConnectorMappingReview.source_connection_id == c.id,
+                    ConnectorMappingReview.status == "pending",
+                )
+            ) or 0
+            weak = self.db.scalar(
+                select(func.count()).where(
+                    ConnectorMappingReview.tenant_id == tenant_id,
+                    ConnectorMappingReview.source_connection_id == c.id,
+                    ConnectorMappingReview.suggested_confidence == "medium",
+                    ConnectorMappingReview.status == "pending",
+                )
+            ) or 0
+            unresolved_total += int(unresolved)
+            weak_total += int(weak)
+            if c.import_scope_mode != "all":
+                phased += 1
+            items.append(
+                {
+                    "source_connection_id": c.id,
+                    "source_connection_name": c.display_name,
+                    "system_type": c.system_type,
+                    "lifecycle_state": c.lifecycle_state,
+                    "import_scope_mode": c.import_scope_mode,
+                    "linked_customers": int(linked),
+                    "unresolved_mappings": int(unresolved),
+                    "weak_mappings": int(weak),
+                }
+            )
+        return {
+            "connected_systems": len(connections),
+            "unresolved_mappings": unresolved_total,
+            "weak_mappings": weak_total,
+            "phased_onboarding_connections": phased,
+            "items": items,
+        }

@@ -219,6 +219,13 @@ class SourceSystemConnection(Base, TimestampMixin):
     sync_mode: Mapped[str] = mapped_column(String(20), default="manual_and_scheduled")
     connector_version: Mapped[str] = mapped_column(String(40), default="v1")
     connection_metadata: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    lifecycle_state: Mapped[str] = mapped_column(String(40), default="configured")
+    sync_behavior: Mapped[str] = mapped_column(String(40), default="manual_sync_only")
+    is_paused: Mapped[bool] = mapped_column(Boolean, default=False)
+    import_scope_mode: Mapped[str] = mapped_column(String(40), default="all")
+    import_scope_filters: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    last_lifecycle_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_lifecycle_note: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class IntegrationSyncRun(Base, TimestampMixin):
@@ -262,6 +269,45 @@ class SourceEntityMapping(Base, TimestampMixin):
     canonical_entity_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True))
     source_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     mapping_metadata: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+
+
+class ConnectorMappingReview(Base, TimestampMixin):
+    __tablename__ = "connector_mapping_reviews"
+    __table_args__ = (
+        UniqueConstraint(
+            "tenant_id",
+            "source_connection_id",
+            "entity_type",
+            "source_external_id",
+            name="uq_connector_mapping_review_key",
+        ),
+        Index("ix_connector_mapping_reviews_tenant_status", "tenant_id", "status"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), index=True)
+    source_connection_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("source_system_connections.id", ondelete="CASCADE"), index=True
+    )
+    entity_type: Mapped[str] = mapped_column(String(60))
+    source_external_id: Mapped[str] = mapped_column(String(240))
+    source_display_name: Mapped[str | None] = mapped_column(String(240), nullable=True)
+    source_domain: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    suggested_customer_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("customers.id", ondelete="SET NULL"), nullable=True
+    )
+    suggested_confidence: Mapped[str] = mapped_column(String(20), default="low")
+    suggested_score: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
+    suggested_reasons: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
+    status: Mapped[str] = mapped_column(String(30), default="pending")
+    mapped_customer_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("customers.id", ondelete="SET NULL"), nullable=True
+    )
+    reviewed_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class Customer(Base, TimestampMixin):

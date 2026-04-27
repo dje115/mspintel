@@ -2,7 +2,7 @@ import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { api } from "../../api/client";
-import type { ConnectorCatalogItem, IntegrationSyncRun, SourceConnection } from "../../api/types";
+import type { ConnectorCatalogItem, IntegrationCoverageResponse, IntegrationSyncRun, SourceConnection } from "../../api/types";
 import { useSession } from "../../state/session";
 
 export function IntegrationsPage() {
@@ -11,6 +11,7 @@ export function IntegrationsPage() {
   const [catalog, setCatalog] = useState<ConnectorCatalogItem[]>([]);
   const [runs, setRuns] = useState<Record<string, IntegrationSyncRun[]>>({});
   const [busyById, setBusyById] = useState<Record<string, string>>({});
+  const [coverage, setCoverage] = useState<IntegrationCoverageResponse | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [createForm, setCreateForm] = useState({
     system_type: "autotask",
@@ -45,12 +46,14 @@ export function IntegrationsPage() {
     if (!accessToken || !currentTenantId) return;
     setErr(null);
     try {
-      const [connections, providerCatalog] = await Promise.all([
+      const [connections, providerCatalog, coverageRows] = await Promise.all([
         api.integrations(accessToken, currentTenantId),
-        api.integrationCatalog(accessToken, currentTenantId)
+        api.integrationCatalog(accessToken, currentTenantId),
+        api.integrationCoverage(accessToken, currentTenantId)
       ]);
       setRows(connections);
       setCatalog(providerCatalog);
+      setCoverage(coverageRows);
       const runPairs = await Promise.all(
         connections.map(async (c) => [c.id, await api.integrationRuns(accessToken, currentTenantId, c.id, 8)] as const)
       );
@@ -80,6 +83,19 @@ export function IntegrationsPage() {
     } finally {
       setBusyById((m) => ({ ...m, [connectionId]: "" }));
     }
+  };
+
+  const updateLifecycle = async (connectionId: string, patch: { lifecycle_state?: string; is_paused?: boolean; sync_behavior?: string; is_enabled?: boolean }) => {
+    if (!accessToken || !currentTenantId) return;
+    await api.updateIntegrationLifecycle(accessToken, currentTenantId, connectionId, patch);
+    await load();
+  };
+
+  const updateScope = async (row: SourceConnection, mode: string) => {
+    if (!accessToken || !currentTenantId) return;
+    const defaultFilters: Record<string, unknown> = mode === "sample_limit" ? { sample_limit: 20 } : {};
+    await api.updateIntegrationImportScope(accessToken, currentTenantId, row.id, { import_scope_mode: mode, filters: defaultFilters });
+    await load();
   };
 
   const createConnection = async () => {
@@ -115,6 +131,22 @@ export function IntegrationsPage() {
         </p>
       </header>
       {err ? <p className="tenant-error">{err}</p> : null}
+      {coverage ? (
+        <section className="tenant-grid tenant-grid--cards-3" style={{ marginBottom: "1rem" }}>
+          <article className="tenant-card">
+            <h3 style={{ marginTop: 0 }}>Connected systems</h3>
+            <p className="tenant-metric-big">{coverage.connected_systems}</p>
+          </article>
+          <article className="tenant-card">
+            <h3 style={{ marginTop: 0 }}>Unresolved mappings</h3>
+            <p className="tenant-metric-big">{coverage.unresolved_mappings}</p>
+          </article>
+          <article className="tenant-card">
+            <h3 style={{ marginTop: 0 }}>Phased onboarding</h3>
+            <p className="tenant-metric-big">{coverage.phased_onboarding_connections}</p>
+          </article>
+        </section>
+      ) : null}
 
       <section className="tenant-panel" style={{ marginBottom: "1rem" }}>
         <div className="tenant-panel-head">
@@ -234,7 +266,8 @@ export function IntegrationsPage() {
                   <tr>
                     <th>System</th>
                     <th>Display name</th>
-                    <th>Status</th>
+                    <th>Lifecycle</th>
+                    <th>Scope</th>
                     <th>Last sync</th>
                     <th>Health</th>
                     <th>Actions</th>
@@ -246,9 +279,8 @@ export function IntegrationsPage() {
                     <tr>
                       <td>{row.system_type}</td>
                       <td>{row.display_name}</td>
-                      <td>
-                        <span className="tenant-badge tenant-badge--muted">{row.status}</span>
-                      </td>
+                      <td><span className="tenant-badge tenant-badge--muted">{row.lifecycle_state}</span></td>
+                      <td>{row.import_scope_mode}</td>
                       <td style={{ color: "#64748b" }}>{row.last_sync_at ?? "—"}</td>
                       <td style={{ color: "#64748b" }}>{row.health_status}</td>
                       <td>
@@ -271,12 +303,28 @@ export function IntegrationsPage() {
                         <Link to={`/app/integrations/${row.id}`} className="tenant-btn-inline tenant-btn-inline--ghost">
                           Detail
                         </Link>
+                        <button type="button" className="tenant-btn-ghost" onClick={() => void updateLifecycle(row.id, { is_paused: !row.is_paused, lifecycle_state: !row.is_paused ? "paused" : "active" })}>
+                          {row.is_paused ? "Resume" : "Pause"}
+                        </button>
+                        <button type="button" className="tenant-btn-ghost" onClick={() => void updateLifecycle(row.id, { is_enabled: !row.is_enabled, lifecycle_state: row.is_enabled ? "disabled" : "active" })}>
+                          {row.is_enabled ? "Disable" : "Enable"}
+                        </button>
+                        <button type="button" className="tenant-btn-ghost" onClick={() => void updateLifecycle(row.id, { sync_behavior: row.sync_behavior === "manual_sync_only" ? "scheduled_sync_enabled" : "manual_sync_only" })}>
+                          {row.sync_behavior === "manual_sync_only" ? "Scheduled mode" : "Manual mode"}
+                        </button>
+                        <select className="tenant-select" value={row.import_scope_mode} onChange={(e) => void updateScope(row, e.target.value)}>
+                          {(catalog.find((c) => c.system_type === row.system_type)?.import_scope_modes ?? ["all"]).map((m) => (
+                            <option key={m} value={m}>
+                              {m}
+                            </option>
+                          ))}
+                        </select>
                       </td>
                     </tr>
 
                     {(runs[row.id] ?? []).slice(0, 1).map((run) => (
                       <tr key={`${row.id}-${run.id}`} className="tenant-table-subrow">
-                        <td colSpan={6} style={{ background: "rgba(15, 23, 42, 0.03)" }}>
+                        <td colSpan={7} style={{ background: "rgba(15, 23, 42, 0.03)" }}>
                           Last run: {run.status} · {run.records_processed} records · {run.completed_at ?? "running"}
                           {run.error_summary ? ` · ${run.error_summary}` : ""}
                         </td>

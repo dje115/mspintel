@@ -91,4 +91,7 @@ The v2.1 model intentionally keeps the current app in a **canonical operational 
   - sync modes
   - config field schema (required + secret flags)
 - Runtime validates auth mode and required config fields using the connector manifest before persisting connection records.
+- Runtime also validates connector-scoped import onboarding controls (scope mode + filters) against manifest-declared support.
+- Connection runtime state now includes explicit lifecycle/sync behavior controls (`configured`/`tested`/`active`/`paused`/`disabled`/`error`, plus manual vs scheduled mode intent).
+- Identity resolution includes a deterministic mapping-review layer (`connector_mapping_reviews`) for suggested customer matches, confidence levels, and auditable manual overrides.
 - Integrations catalog can consume this metadata directly for honest UX, docs, and future feature gating.

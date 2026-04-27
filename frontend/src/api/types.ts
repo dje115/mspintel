@@ -81,6 +81,13 @@ export type SourceConnection = {
   connector_version: string;
   connection_metadata: Record<string, unknown> | null;
   safe_config: Record<string, unknown> | null;
+  lifecycle_state: string;
+  sync_behavior: string;
+  is_paused: boolean;
+  import_scope_mode: string;
+  import_scope_filters: Record<string, unknown> | null;
+  last_lifecycle_changed_at: string | null;
+  last_lifecycle_note: string | null;
   last_tested_at: string | null;
   last_attempted_sync_at: string | null;
   last_successful_sync_at: string | null;
@@ -101,6 +108,8 @@ export type ConnectorCatalogItem = {
   default_cadence_minutes: number;
   connector_version: string;
   ui_help_text?: string | null;
+  import_scope_modes: string[];
+  import_scope_filter_keys: string[];
   config_fields: {
     key: string;
     label: string;
@@ -122,6 +131,45 @@ export type IntegrationSyncRun = {
   error_summary: string | null;
   sync_cursor: string | null;
   stats_json: Record<string, unknown> | null;
+};
+
+export type MappingReviewRow = {
+  id: string;
+  source_connection_id: string;
+  source_connection_name: string | null;
+  entity_type: string;
+  source_external_id: string;
+  source_display_name: string | null;
+  source_domain: string | null;
+  suggested_customer_id: string | null;
+  suggested_customer_name: string | null;
+  suggested_confidence: string;
+  suggested_score: number | null;
+  suggested_reasons: string[];
+  status: string;
+  mapped_customer_id: string | null;
+  mapped_customer_name: string | null;
+  reviewed_at: string | null;
+  notes: string | null;
+};
+
+export type IntegrationCoverageItem = {
+  source_connection_id: string;
+  source_connection_name: string;
+  system_type: string;
+  lifecycle_state: string;
+  import_scope_mode: string;
+  linked_customers: number;
+  unresolved_mappings: number;
+  weak_mappings: number;
+};
+
+export type IntegrationCoverageResponse = {
+  connected_systems: number;
+  unresolved_mappings: number;
+  weak_mappings: number;
+  phased_onboarding_connections: number;
+  items: IntegrationCoverageItem[];
 };
 
 export type ExecutiveDashboardResponse = {
@@ -345,6 +393,12 @@ export type CustomerDetailResponse = {
   demo_profile?: Record<string, unknown> | null;
   finance?: FinanceCustomerPanel | null;
   m365?: M365CustomerPanel | null;
+  connector_coverage?: {
+    connected_systems: string[];
+    missing_systems: string[];
+    unresolved_mapping_count: number;
+    confidence_note: string;
+  } | null;
   risk_engine?: {
     scoring_version: string;
     calculated_at: string | null;

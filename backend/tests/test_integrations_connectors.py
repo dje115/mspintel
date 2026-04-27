@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.entities import Customer, SourceEntityMapping, SourceSystemConnection, Tenant
+from app.models.entities import AuditEvent, ConnectorMappingReview, Customer, SourceEntityMapping, SourceSystemConnection, Tenant
 from app.services.connectors.providers.autotask import AutotaskConnectorAdapter
 from tests.helpers import auth_headers, create_user_with_membership
 
@@ -185,3 +185,142 @@ def test_autotask_sync_writes_customers_mappings_and_run(monkeypatch, client, db
     assert conn.last_sync_at is not None
     assert conn.last_successful_sync_at is not None
     assert datetime.fromisoformat(conn.connection_metadata["last_cursor"].replace("Z", "+00:00")).tzinfo == UTC
+
+
+def test_lifecycle_and_import_scope_updates_are_audited(client, db_session: Session):
+    tenant = _make_tenant(db_session, slug="life", name="Lifecycle MSP")
+    admin = create_user_with_membership(db_session, "admin-life@example.com", "tenant_admin", tenant)
+    create = client.post(
+        "/api/v1/integrations/connections",
+        headers=auth_headers(admin, str(tenant.id)),
+        json={
+            "system_type": "microsoft_365",
+            "display_name": "M365 staged",
+            "auth_mode": "sandbox",
+            "sync_cadence_minutes": 60,
+            "config": {"demo_mode": True},
+        },
+    )
+    assert create.status_code == 201, create.text
+    cid = create.json()["id"]
+    life = client.patch(
+        f"/api/v1/integrations/connections/{cid}/lifecycle",
+        headers=auth_headers(admin, str(tenant.id)),
+        json={"lifecycle_state": "paused", "is_paused": True, "sync_behavior": "manual_sync_only"},
+    )
+    assert life.status_code == 200, life.text
+    assert life.json()["lifecycle_state"] == "paused"
+    scope = client.patch(
+        f"/api/v1/integrations/connections/{cid}/import-scope",
+        headers=auth_headers(admin, str(tenant.id)),
+        json={"import_scope_mode": "sample_limit", "filters": {"sample_limit": 10}},
+    )
+    assert scope.status_code == 200, scope.text
+    assert scope.json()["import_scope_mode"] == "sample_limit"
+    events = db_session.scalars(select(AuditEvent).where(AuditEvent.tenant_id == tenant.id)).all()
+    assert any(e.event_type == "connector_lifecycle_updated" for e in events)
+    assert any(e.event_type == "connector_import_scope_updated" for e in events)
+
+
+def test_mapping_review_action_remap_and_unlink(client, db_session: Session):
+    tenant = _make_tenant(db_session, slug="mapq", name="Mapping Queue MSP")
+    admin = create_user_with_membership(db_session, "admin-mapq@example.com", "tenant_admin", tenant)
+    create = client.post(
+        "/api/v1/integrations/connections",
+        headers=auth_headers(admin, str(tenant.id)),
+        json={
+            "system_type": "autotask",
+            "display_name": "Auto",
+            "base_url": "https://example.autotask.net/ATServicesRest",
+            "sync_cadence_minutes": 30,
+            "config": {"username": "api", "integration_code": "code", "secret": "sec"},
+        },
+    )
+    assert create.status_code == 201, create.text
+    cid = uuid.UUID(create.json()["id"])
+    customer = Customer(tenant_id=tenant.id, name="Acme Ltd", status="active")
+    db_session.add(customer)
+    db_session.flush()
+    review = ConnectorMappingReview(
+        tenant_id=tenant.id,
+        source_connection_id=cid,
+        entity_type="customer",
+        source_external_id="ext-123",
+        source_display_name="Acme Limited",
+        suggested_customer_id=customer.id,
+        suggested_confidence="medium",
+        status="pending",
+    )
+    db_session.add(review)
+    db_session.commit()
+
+    rows = client.get("/api/v1/integrations/mappings", headers=auth_headers(admin, str(tenant.id)))
+    assert rows.status_code == 200
+    assert len(rows.json()) >= 1
+    action = client.post(
+        f"/api/v1/integrations/mappings/{review.id}/action",
+        headers=auth_headers(admin, str(tenant.id)),
+        json={"action": "remap", "customer_id": str(customer.id)},
+    )
+    assert action.status_code == 200, action.text
+    assert action.json()["status"] == "remapped"
+    unlink = client.post(
+        f"/api/v1/integrations/mappings/{review.id}/action",
+        headers=auth_headers(admin, str(tenant.id)),
+        json={"action": "unlink"},
+    )
+    assert unlink.status_code == 200, unlink.text
+    assert unlink.json()["status"] == "unlinked"
+    mapping = db_session.scalars(
+        select(SourceEntityMapping).where(
+            SourceEntityMapping.tenant_id == tenant.id, SourceEntityMapping.source_id == "ext-123"
+        )
+    ).first()
+    assert mapping is None
+
+
+def test_integration_coverage_endpoint_shapes_counts(client, db_session: Session):
+    tenant = _make_tenant(db_session, slug="cov", name="Coverage MSP")
+    admin = create_user_with_membership(db_session, "admin-cov@example.com", "tenant_admin", tenant)
+    create = client.post(
+        "/api/v1/integrations/connections",
+        headers=auth_headers(admin, str(tenant.id)),
+        json={
+            "system_type": "microsoft_365",
+            "display_name": "M365",
+            "auth_mode": "sandbox",
+            "sync_cadence_minutes": 60,
+            "config": {"demo_mode": True},
+        },
+    )
+    assert create.status_code == 201, create.text
+    cid = uuid.UUID(create.json()["id"])
+    customer = Customer(tenant_id=tenant.id, name="Coverage Co", status="active")
+    db_session.add(customer)
+    db_session.flush()
+    db_session.add(
+        SourceEntityMapping(
+            tenant_id=tenant.id,
+            source_connection_id=cid,
+            entity_type="customer",
+            source_id="cov-1",
+            canonical_entity_id=customer.id,
+        )
+    )
+    db_session.add(
+        ConnectorMappingReview(
+            tenant_id=tenant.id,
+            source_connection_id=cid,
+            entity_type="customer",
+            source_external_id="cov-pending",
+            suggested_confidence="medium",
+            status="pending",
+        )
+    )
+    db_session.commit()
+    res = client.get("/api/v1/integrations/coverage", headers=auth_headers(admin, str(tenant.id)))
+    assert res.status_code == 200, res.text
+    body = res.json()
+    assert body["connected_systems"] == 1
+    assert body["unresolved_mappings"] == 1
+    assert body["items"][0]["linked_customers"] == 1

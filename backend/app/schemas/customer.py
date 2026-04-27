@@ -35,6 +35,7 @@ class CustomerDetailResponse(BaseModel):
     demo_profile: dict[str, Any] | None = None
     finance: FinanceCustomerPanel | None = None
     m365: M365CustomerPanel | None = None
+    connector_coverage: dict[str, Any] | None = None
     risk_engine: dict[str, Any] | None = None
     latest_scores: dict[str, int] | None
     open_tickets_count: int

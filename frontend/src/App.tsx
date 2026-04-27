@@ -13,6 +13,7 @@ import { CustomerDetailPage } from "./pages/app/CustomerDetailPage";
 import { CustomersPage } from "./pages/app/CustomersPage";
 import { DashboardPage } from "./pages/app/DashboardPage";
 import { IntegrationsPage } from "./pages/app/IntegrationsPage";
+import { IntegrationMappingsPage } from "./pages/app/IntegrationMappingsPage";
 import { IntegrationDetailPage } from "./pages/app/IntegrationDetailPage";
 import { MarketingPage } from "./pages/app/MarketingPage";
 import { MembersPage } from "./pages/app/MembersPage";
@@ -73,6 +74,7 @@ function App() {
           <Route path="customers/:id" element={<CustomerDetailPage />} />
           <Route path="onboarding" element={<OnboardingPage />} />
           <Route path="integrations" element={<IntegrationsPage />} />
+          <Route path="integrations/mappings" element={<IntegrationMappingsPage />} />
           <Route path="integrations/:id" element={<IntegrationDetailPage />} />
           <Route path="members" element={<MembersPage />} />
           <Route path="marketing" element={<MarketingPage />} />

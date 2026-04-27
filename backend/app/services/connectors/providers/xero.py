@@ -41,6 +41,8 @@ class XeroConnectorAdapter(ConnectorAdapter):
         connector_version="finance_v0",
         default_cadence_minutes=360,
         implemented=True,
+        import_scope_modes=("all", "selected_external_ids", "selected_names", "sample_limit"),
+        import_scope_filter_keys=("external_ids", "names", "sample_limit"),
         config_fields=(
             ConnectorConfigField(key="demo_mode", label="Demo mode", required=False, secret=False),
             ConnectorConfigField(key="client_id", label="Client ID", required=False, secret=False),

@@ -26,6 +26,7 @@ const navGroups: { title: string; items: { to: string; label: string; end?: bool
     items: [
       { to: "/app/members", label: "Members" },
       { to: "/app/integrations", label: "Integrations" },
+      { to: "/app/integrations/mappings", label: "Mapping review" },
       { to: "/app/data-quality", label: "Data quality" },
       { to: "/app/onboarding", label: "Onboarding" },
       { to: "/app/roadmap", label: "Product roadmap" }

@@ -7,7 +7,7 @@ import httpx
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.entities import Contact, Customer, Opportunity, Quote, SourceSystemConnection, Ticket
+from app.models.entities import Contact, Customer, Opportunity, Quote, SourceEntityMapping, SourceSystemConnection, Ticket
 from app.services.connectors.base import ConnectorAdapter
 from app.services.connectors.capabilities import (
     CAP_CONTACTS,
@@ -25,6 +25,7 @@ from app.services.connectors.constants import (
     ENTITY_TICKET,
 )
 from app.services.connectors.manifest import ConnectorConfigField, ConnectorManifest
+from app.services.connectors.onboarding import ConnectorOnboardingService
 from app.services.connectors.types import ConnectorSyncResult, ConnectorSyncStats, ConnectorTestResult
 from app.services.connectors.utils import upsert_source_entity_mapping
 
@@ -46,6 +47,8 @@ class AutotaskConnectorAdapter(ConnectorAdapter):
         connector_version="v1",
         default_cadence_minutes=30,
         implemented=True,
+        import_scope_modes=("all", "selected_external_ids", "selected_names", "name_prefix", "sample_limit", "recent_active"),
+        import_scope_filter_keys=("external_ids", "names", "name_prefix", "sample_limit", "recent_active_days"),
         config_fields=(
             ConnectorConfigField(key="base_url", label="Base URL", required=True, secret=False),
             ConnectorConfigField(key="username", label="Username", required=True, secret=False),
@@ -54,6 +57,19 @@ class AutotaskConnectorAdapter(ConnectorAdapter):
         ),
         ui_help_text="Requires Autotask REST API credentials (integration code, username, secret).",
     )
+
+    def _customer_for_company(self, db: Session, tenant_id: UUID, connection_id: UUID, company_id: str) -> Customer | None:
+        mapping = db.scalars(
+            select(SourceEntityMapping).where(
+                SourceEntityMapping.tenant_id == tenant_id,
+                SourceEntityMapping.source_connection_id == connection_id,
+                SourceEntityMapping.entity_type == ENTITY_CUSTOMER,
+                SourceEntityMapping.source_id == company_id,
+            )
+        ).first()
+        if mapping:
+            return db.get(Customer, mapping.canonical_entity_id)
+        return db.scalars(select(Customer).where(Customer.tenant_id == tenant_id, Customer.external_ref == company_id)).first()
 
     def _headers(self, config: dict) -> dict[str, str]:
         return {
@@ -142,16 +158,50 @@ class AutotaskConnectorAdapter(ConnectorAdapter):
         stats = ConnectorSyncStats()
         try:
             companies = self._fetch_entities(base_url, headers, "/v1.0/Companies/query", cursor)
+            scope_mode = connection.import_scope_mode or "all"
+            scope_filters = connection.import_scope_filters or {}
+            onboarding = ConnectorOnboardingService(db)
+            processed_companies = 0
             for company in companies:
                 source_id = str(company.get("id") or company.get("idValue") or "")
                 if not source_id:
                     continue
+                name = str(company.get("companyName") or company.get("CompanyName") or f"Autotask Company {source_id}")
+                if scope_mode == "selected_external_ids" and source_id not in set(scope_filters.get("external_ids") or []):
+                    continue
+                if scope_mode == "selected_names" and name not in set(scope_filters.get("names") or []):
+                    continue
+                if scope_mode == "name_prefix":
+                    prefix = str(scope_filters.get("name_prefix") or "").lower()
+                    if prefix and not name.lower().startswith(prefix):
+                        continue
+                if scope_mode == "sample_limit":
+                    limit = int(scope_filters.get("sample_limit") or 0)
+                    if limit > 0 and processed_companies >= limit:
+                        break
                 stmt = select(Customer).where(Customer.tenant_id == tenant_id, Customer.external_ref == source_id)
                 customer = db.scalars(stmt).first()
                 if not customer:
+                    candidate = onboarding.upsert_mapping_review_candidate(
+                        tenant_id=tenant_id,
+                        source_connection_id=connection.id,
+                        entity_type=ENTITY_CUSTOMER,
+                        source_external_id=source_id,
+                        source_display_name=name,
+                        source_domain=None,
+                    )
+                    if candidate.suggested_confidence == "high" and candidate.suggested_customer_id:
+                        customer = db.get(Customer, candidate.suggested_customer_id)
+                        if customer:
+                            candidate.status = "accepted"
+                            candidate.mapped_customer_id = customer.id
+                    if not customer and candidate.suggested_confidence == "medium":
+                        # Require human review before creating potential duplicate customers.
+                        continue
+                if not customer:
                     customer = Customer(
                         tenant_id=tenant_id,
-                        name=str(company.get("companyName") or company.get("CompanyName") or f"Autotask Company {source_id}"),
+                        name=name,
                         status="active",
                         owner_name=company.get("ownerResourceName"),
                         external_ref=source_id,
@@ -162,6 +212,7 @@ class AutotaskConnectorAdapter(ConnectorAdapter):
                     customer.name = str(company.get("companyName") or customer.name)
                     customer.owner_name = company.get("ownerResourceName") or customer.owner_name
                 stats.customers_upserted += 1
+                processed_companies += 1
                 upsert_source_entity_mapping(
                     db=db,
                     tenant_id=tenant_id,
@@ -178,9 +229,7 @@ class AutotaskConnectorAdapter(ConnectorAdapter):
                 company_id = str(src.get("companyID") or src.get("companyId") or "")
                 if not source_id or not company_id:
                     continue
-                customer = db.scalars(
-                    select(Customer).where(Customer.tenant_id == tenant_id, Customer.external_ref == company_id)
-                ).first()
+                customer = self._customer_for_company(db, tenant_id, connection.id, company_id)
                 if not customer:
                     continue
                 contact = db.scalars(
@@ -218,9 +267,7 @@ class AutotaskConnectorAdapter(ConnectorAdapter):
                 company_id = str(src.get("companyID") or src.get("companyId") or "")
                 if not source_id or not company_id:
                     continue
-                customer = db.scalars(
-                    select(Customer).where(Customer.tenant_id == tenant_id, Customer.external_ref == company_id)
-                ).first()
+                customer = self._customer_for_company(db, tenant_id, connection.id, company_id)
                 if not customer:
                     continue
                 ticket = db.scalars(
@@ -258,9 +305,7 @@ class AutotaskConnectorAdapter(ConnectorAdapter):
                 company_id = str(src.get("companyID") or src.get("companyId") or "")
                 if not source_id or not company_id:
                     continue
-                customer = db.scalars(
-                    select(Customer).where(Customer.tenant_id == tenant_id, Customer.external_ref == company_id)
-                ).first()
+                customer = self._customer_for_company(db, tenant_id, connection.id, company_id)
                 if not customer:
                     continue
                 opp = db.scalars(
@@ -307,9 +352,7 @@ class AutotaskConnectorAdapter(ConnectorAdapter):
                 company_id = str(src.get("companyID") or src.get("companyId") or "")
                 if not source_id or not company_id:
                     continue
-                customer = db.scalars(
-                    select(Customer).where(Customer.tenant_id == tenant_id, Customer.external_ref == company_id)
-                ).first()
+                customer = self._customer_for_company(db, tenant_id, connection.id, company_id)
                 if not customer:
                     continue
                 quote = db.scalars(

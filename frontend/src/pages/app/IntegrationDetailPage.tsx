@@ -31,7 +31,7 @@ export function IntegrationDetailPage() {
       <header className="tenant-page-head">
         <h1 className="tenant-page-title">{connection.display_name}</h1>
         <p className="tenant-page-sub">
-          {connection.system_type} connector · {connection.health_status} · cadence every {connection.sync_cadence_minutes} min
+          {connection.system_type} connector · {connection.lifecycle_state} · {connection.health_status} · cadence every {connection.sync_cadence_minutes} min
         </p>
       </header>
       <section className="tenant-grid tenant-grid--cards-3">
@@ -40,8 +40,13 @@ export function IntegrationDetailPage() {
           <p className="muted">Base URL: {connection.base_url ?? "—"}</p>
           <p className="muted">Auth mode: {connection.auth_mode}</p>
           <p className="muted">Connector: {connection.connector_version}</p>
+          <p className="muted">Import scope: {connection.import_scope_mode}</p>
+          <p className="muted">Sync behavior: {connection.sync_behavior}</p>
           <Link to="/app/integrations" className="tenant-btn-inline tenant-btn-inline--ghost">
             Back to integrations
+          </Link>
+          <Link to="/app/integrations/mappings" className="tenant-btn-inline tenant-btn-inline--ghost">
+            Mapping review queue
           </Link>
         </article>
         <article className="tenant-card">

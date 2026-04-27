@@ -6,6 +6,7 @@ from typing import Literal
 ConnectorMaturity = Literal["planned", "stub", "experimental", "beta", "stable"]
 AuthMode = Literal["api_key", "oauth2", "oauth", "username_password", "token_endpoint", "sandbox", "none"]
 SyncMode = Literal["manual", "delta", "full", "webhook"]
+ImportScopeMode = Literal["all", "selected_external_ids", "selected_names", "name_prefix", "sample_limit", "recent_active"]
 
 
 @dataclass(frozen=True)
@@ -32,6 +33,8 @@ class ConnectorManifest:
     default_cadence_minutes: int = 60
     implemented: bool = False
     config_fields: tuple[ConnectorConfigField, ...] = field(default_factory=tuple)
+    import_scope_modes: tuple[ImportScopeMode, ...] = ("all",)
+    import_scope_filter_keys: tuple[str, ...] = ()
     ui_help_text: str | None = None
 
     def required_fields_for_auth(self, auth_mode: str) -> tuple[str, ...]:

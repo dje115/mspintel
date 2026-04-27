@@ -1,6 +1,7 @@
 import type {
   AIExecutionOutcome,
   ConnectorCatalogItem,
+  IntegrationCoverageResponse,
   AIProductBlockState,
   AIProviderSafe,
   AIProviderCatalogRow,
@@ -9,6 +10,7 @@ import type {
   M365WorkspaceResponse,
   CommercialHubResponse,
   IntegrationSyncRun,
+  MappingReviewRow,
   CustomerDetailResponse,
   CustomerListResponse,
   ExecutiveDashboardResponse,
@@ -360,6 +362,50 @@ export const api = {
   integrationRuns: (accessToken: string, tenantId: string, connectionId: string, limit = 20) =>
     request<IntegrationSyncRun[]>(`/api/v1/integrations/connections/${connectionId}/runs?limit=${limit}`, {
       headers: authHeaders(accessToken, tenantId)
+    }),
+  updateIntegrationLifecycle: (
+    accessToken: string,
+    tenantId: string,
+    connectionId: string,
+    body: { lifecycle_state?: string; is_enabled?: boolean; is_paused?: boolean; sync_behavior?: string; note?: string }
+  ) =>
+    request<SourceConnection>(`/api/v1/integrations/connections/${connectionId}/lifecycle`, {
+      method: "PATCH",
+      headers: authHeaders(accessToken, tenantId),
+      body: JSON.stringify(body)
+    }),
+  updateIntegrationImportScope: (
+    accessToken: string,
+    tenantId: string,
+    connectionId: string,
+    body: { import_scope_mode: string; filters?: Record<string, unknown> }
+  ) =>
+    request<SourceConnection>(`/api/v1/integrations/connections/${connectionId}/import-scope`, {
+      method: "PATCH",
+      headers: authHeaders(accessToken, tenantId),
+      body: JSON.stringify(body)
+    }),
+  integrationCoverage: (accessToken: string, tenantId: string) =>
+    request<IntegrationCoverageResponse>("/api/v1/integrations/coverage", {
+      headers: authHeaders(accessToken, tenantId)
+    }),
+  integrationMappings: (accessToken: string, tenantId: string, connectionId?: string) =>
+    request<MappingReviewRow[]>(
+      `/api/v1/integrations/mappings${connectionId ? `?connection_id=${encodeURIComponent(connectionId)}` : ""}`,
+      {
+        headers: authHeaders(accessToken, tenantId)
+      }
+    ),
+  integrationMappingAction: (
+    accessToken: string,
+    tenantId: string,
+    reviewId: string,
+    body: { action: string; customer_id?: string; notes?: string }
+  ) =>
+    request<MappingReviewRow>(`/api/v1/integrations/mappings/${reviewId}/action`, {
+      method: "POST",
+      headers: authHeaders(accessToken, tenantId),
+      body: JSON.stringify(body)
     }),
   platformOverview: (accessToken: string) =>
     request<PlatformOverview>("/api/v1/platform/overview", { headers: authHeaders(accessToken) }),

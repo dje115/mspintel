@@ -13,6 +13,19 @@ class SourceConnectionUpsertRequest(BaseModel):
     config: dict = Field(default_factory=dict)
 
 
+class ConnectionLifecycleUpdateRequest(BaseModel):
+    lifecycle_state: str | None = None
+    is_enabled: bool | None = None
+    is_paused: bool | None = None
+    sync_behavior: str | None = None
+    note: str | None = None
+
+
+class ConnectionImportScopeUpdateRequest(BaseModel):
+    import_scope_mode: str
+    filters: dict = Field(default_factory=dict)
+
+
 class SourceConnectionResponse(BaseModel):
     id: UUID
     system_type: str
@@ -31,6 +44,13 @@ class SourceConnectionResponse(BaseModel):
     connector_version: str
     connection_metadata: dict | None
     safe_config: dict | None
+    lifecycle_state: str
+    sync_behavior: str
+    is_paused: bool
+    import_scope_mode: str
+    import_scope_filters: dict | None
+    last_lifecycle_changed_at: str | None
+    last_lifecycle_note: str | None
     last_tested_at: str | None
     last_attempted_sync_at: str | None
     last_successful_sync_at: str | None
@@ -64,4 +84,51 @@ class ConnectorCatalogItem(BaseModel):
     default_cadence_minutes: int
     connector_version: str
     ui_help_text: str | None = None
+    import_scope_modes: list[str] = Field(default_factory=list)
+    import_scope_filter_keys: list[str] = Field(default_factory=list)
     config_fields: list[dict] = Field(default_factory=list)
+
+
+class MappingReviewRow(BaseModel):
+    id: UUID
+    source_connection_id: UUID
+    source_connection_name: str | None = None
+    entity_type: str
+    source_external_id: str
+    source_display_name: str | None = None
+    source_domain: str | None = None
+    suggested_customer_id: UUID | None = None
+    suggested_customer_name: str | None = None
+    suggested_confidence: str
+    suggested_score: float | None = None
+    suggested_reasons: list[str] = Field(default_factory=list)
+    status: str
+    mapped_customer_id: UUID | None = None
+    mapped_customer_name: str | None = None
+    reviewed_at: str | None = None
+    notes: str | None = None
+
+
+class MappingReviewActionRequest(BaseModel):
+    action: str
+    customer_id: UUID | None = None
+    notes: str | None = None
+
+
+class IntegrationCoverageItem(BaseModel):
+    source_connection_id: UUID
+    source_connection_name: str
+    system_type: str
+    lifecycle_state: str
+    import_scope_mode: str
+    linked_customers: int
+    unresolved_mappings: int
+    weak_mappings: int
+
+
+class IntegrationCoverageResponse(BaseModel):
+    connected_systems: int
+    unresolved_mappings: int
+    weak_mappings: int
+    phased_onboarding_connections: int
+    items: list[IntegrationCoverageItem]

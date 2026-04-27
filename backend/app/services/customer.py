@@ -1,8 +1,10 @@
 from uuid import UUID
 
 from fastapi import HTTPException, status
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.models.entities import ConnectorMappingReview, SourceEntityMapping, SourceSystemConnection
 from app.repositories.customers import CustomerRepository
 from app.schemas.billing_integrity import FinanceCustomerPanel
 from app.schemas.customer import CustomerDetailResponse, CustomerListItem, CustomerListResponse
@@ -55,6 +57,39 @@ class CustomerService:
         fin_raw.pop("error", None)
         finance_panel = FinanceCustomerPanel(**fin_raw)
         m365_panel = M365HealthService(self.repo.db).customer_panel(tenant_id, customer_id)
+        contributing = list(
+            self.repo.db.scalars(
+                select(func.distinct(SourceSystemConnection.system_type))
+                .join(SourceEntityMapping, SourceEntityMapping.source_connection_id == SourceSystemConnection.id)
+                .where(
+                    SourceSystemConnection.tenant_id == tenant_id,
+                    SourceEntityMapping.tenant_id == tenant_id,
+                    SourceEntityMapping.entity_type == "customer",
+                    SourceEntityMapping.canonical_entity_id == customer_id,
+                )
+            ).all()
+        )
+        connected = list(
+            self.repo.db.scalars(select(SourceSystemConnection.system_type).where(SourceSystemConnection.tenant_id == tenant_id)).all()
+        )
+        unresolved = self.repo.db.scalar(
+            select(func.count()).where(
+                ConnectorMappingReview.tenant_id == tenant_id,
+                ConnectorMappingReview.status == "pending",
+                ConnectorMappingReview.suggested_customer_id == customer_id,
+            )
+        ) or 0
+        missing = [s for s in connected if s not in contributing]
+        connector_coverage = {
+            "connected_systems": contributing,
+            "missing_systems": missing,
+            "unresolved_mapping_count": int(unresolved),
+            "confidence_note": (
+                "Cross-system confidence is constrained by unresolved mappings."
+                if int(unresolved) > 0
+                else "Cross-system linkage is stable for currently connected systems."
+            ),
+        }
 
         return CustomerDetailResponse(
             id=customer.id,
@@ -64,6 +99,7 @@ class CustomerService:
             demo_profile=customer.demo_profile,
             finance=finance_panel,
             m365=m365_panel,
+            connector_coverage=connector_coverage,
             risk_engine={
                 "scoring_version": risk.scoring_version,
                 "calculated_at": risk.calculated_at.isoformat() if risk.calculated_at else None,

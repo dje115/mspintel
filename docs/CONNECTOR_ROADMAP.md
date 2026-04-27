@@ -7,6 +7,15 @@
 - Runtime validates `auth_mode` + required config keys using the connector manifest contract before save/test/sync.
 - Catalog endpoint (`GET /api/v1/integrations/catalog`) is now metadata-rich and machine-readable for UI + feature gating.
 - Shared utility `upsert_source_entity_mapping()` centralizes mapping writes.
+- Manifests now also declare supported import-scope modes and scope filter keys for staged onboarding.
+
+## Onboarding control layer (v2.7)
+
+- Tenant connections now carry explicit lifecycle controls: `configured`, `tested`, `active`, `disabled`, `paused`, `error`.
+- Sync behavior is explicit per connection: `manual_sync_only` or `scheduled_sync_enabled`.
+- Import scope is explicit per connection (`all`, connector-specific scoped modes + filters), validated against manifest support.
+- Mapping review queue (`/app/integrations/mappings`) enables human acceptance/rejection/remap/unlink on suggested identity matches.
+- Coverage APIs expose unresolved and weak mapping counts for safer phased connector rollout.
 
 ## Maturity states
 

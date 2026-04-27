@@ -430,6 +430,37 @@ export function CustomerDetailPage() {
             </section>
           ) : null}
 
+          {data.connector_coverage ? (
+            <section className="tenant-panel" style={{ marginTop: "1rem" }}>
+              <div className="tenant-panel-head">
+                <h2 className="tenant-panel-title">Connector coverage confidence</h2>
+              </div>
+              <div className="tenant-panel-body tenant-op-grid">
+                <div>
+                  <div className="tenant-kpi-label">Contributing systems</div>
+                  <div className="tenant-kpi-value tenant-kpi-value--inline">
+                    {data.connector_coverage.connected_systems.join(", ") || "none"}
+                  </div>
+                </div>
+                <div>
+                  <div className="tenant-kpi-label">Missing linked systems</div>
+                  <div className="tenant-kpi-value tenant-kpi-value--inline">
+                    {data.connector_coverage.missing_systems.join(", ") || "none"}
+                  </div>
+                </div>
+                <div>
+                  <div className="tenant-kpi-label">Unresolved mappings</div>
+                  <div className="tenant-kpi-value tenant-kpi-value--inline">
+                    {data.connector_coverage.unresolved_mapping_count}
+                  </div>
+                </div>
+              </div>
+              <div className="tenant-panel-body" style={{ paddingTop: 0 }}>
+                <p className="muted" style={{ margin: 0 }}>{data.connector_coverage.confidence_note}</p>
+              </div>
+            </section>
+          ) : null}
+
           {data.demo_profile && (data.demo_profile as { synthetic?: boolean }).synthetic ? (
             <section className="tenant-panel" style={{ marginTop: "1rem" }}>
               <div className="tenant-panel-head">

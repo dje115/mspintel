@@ -38,6 +38,8 @@ class Microsoft365ConnectorAdapter(ConnectorAdapter):
         connector_version="m365_v1",
         default_cadence_minutes=180,
         implemented=True,
+        import_scope_modes=("all", "selected_names", "name_prefix", "sample_limit"),
+        import_scope_filter_keys=("names", "name_prefix", "sample_limit"),
         config_fields=(
             ConnectorConfigField(key="demo_mode", label="Demo mode", required=False, secret=False),
             ConnectorConfigField(key="tenant_id", label="Tenant ID", required=False, secret=False),

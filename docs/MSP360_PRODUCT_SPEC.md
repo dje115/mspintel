@@ -200,6 +200,7 @@ Columns: **section** · **purpose** · **key users** · **core data sources** ·
 | Security | Sessions | All users | Sessions | — | **Existing** | SSO |
 | Onboarding | First-run | Admin | Onboarding state | — | **Existing** | Connector wizard |
 | Data quality / gaps | Freshness & coverage | Ops, Admin | Sync runs, mapping density | `data_gap_summary`, `account_confidence_explanation` | **Wireframed** | Per-entity coverage scores |
+| Connector onboarding & mapping control | Safe staged adoption and identity integrity | Tenant admin, Ops | Connection lifecycle, scoped import settings, mapping review queue, audit events | N/A (workflow foundation) | **Implemented (v2.7 thin slice)** | Richer matching signals + bulk review ergonomics |
 | Stalled work | Quotes/projects/installs stuck | Ops, Sales, Service | PSA projects, tickets, quotes | `stalled_work_explanation`, `stalled_work_next_action` | **Planned** | PSA project entities |
 | Relationship health | Exec coverage, touch | AM | Contacts, activities (telephony later) | `relationship_health_summary`, `stakeholder_gap_explanation` | **Planned** | Activity ingestion |
 | AM workspace / next conversation | Cadence & talk track | AM | 360 + recs + commercial | `account_manager_next_conversation`, `account_manager_call_script` | **Planned** | Prompt + UI bundle |
