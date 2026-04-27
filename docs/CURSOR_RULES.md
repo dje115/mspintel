@@ -97,6 +97,13 @@ At the end of a phase, summarise for the user:
 - **Customer 360**, **retention / at-risk**, **commercial growth**, **billing integrity / revenue assurance**, and **data confidence** are **first-class** product concerns—implementation and UX priority should reflect that over time.
 - **Connectors** remain **tenant-scoped**, **canonical-model-driven**, and **auditable** (sync runs + mappings); avoid one-off APIs that bypass the ingestion model described in [DATA_INGESTION_AND_WAREHOUSE.md](DATA_INGESTION_AND_WAREHOUSE.md).
 
+### Connector standing rules
+
+- New connectors should implement the shared contract (`ConnectorAdapter`) and declare full metadata via `ConnectorManifest`.
+- Connector manifests must explicitly declare capabilities, maturity, auth modes, and config fields (including secret vs non-secret).
+- Prefer shared connector utilities/runtime helpers (e.g. mapping upsert helpers) over duplicate per-adapter logic.
+- Catalog and UX must represent connector maturity honestly; do not present `planned`/`stub` connectors as production-ready.
+
 ---
 
 ## 12. Persistent knowledge layer vs source of truth

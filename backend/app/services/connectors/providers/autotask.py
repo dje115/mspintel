@@ -7,8 +7,15 @@ import httpx
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.entities import Contact, Customer, Opportunity, Quote, SourceEntityMapping, SourceSystemConnection, Ticket
+from app.models.entities import Contact, Customer, Opportunity, Quote, SourceSystemConnection, Ticket
 from app.services.connectors.base import ConnectorAdapter
+from app.services.connectors.capabilities import (
+    CAP_CONTACTS,
+    CAP_CUSTOMERS,
+    CAP_OPPORTUNITIES,
+    CAP_QUOTES,
+    CAP_TICKETS,
+)
 from app.services.connectors.constants import (
     CONNECTOR_SYSTEM_AUTOTASK,
     ENTITY_CONTACT,
@@ -17,7 +24,9 @@ from app.services.connectors.constants import (
     ENTITY_QUOTE,
     ENTITY_TICKET,
 )
+from app.services.connectors.manifest import ConnectorConfigField, ConnectorManifest
 from app.services.connectors.types import ConnectorSyncResult, ConnectorSyncStats, ConnectorTestResult
+from app.services.connectors.utils import upsert_source_entity_mapping
 
 
 def _iso_now() -> str:
@@ -25,11 +34,26 @@ def _iso_now() -> str:
 
 
 class AutotaskConnectorAdapter(ConnectorAdapter):
-    system_type = CONNECTOR_SYSTEM_AUTOTASK
-    display_name = "Autotask PSA"
-    supports_entities = (ENTITY_CUSTOMER, ENTITY_CONTACT, ENTITY_TICKET, ENTITY_OPPORTUNITY, ENTITY_QUOTE)
-    default_cadence_minutes = 30
-    connector_version = "v1"
+    manifest = ConnectorManifest(
+        key=CONNECTOR_SYSTEM_AUTOTASK,
+        display_name="Autotask PSA",
+        description="Read-only PSA ingestion for customers/contacts/tickets/opportunities/quotes.",
+        system_family="psa",
+        maturity="beta",
+        auth_modes=("api_key",),
+        capabilities=(CAP_CUSTOMERS, CAP_CONTACTS, CAP_TICKETS, CAP_OPPORTUNITIES, CAP_QUOTES),
+        sync_modes=("manual", "delta"),
+        connector_version="v1",
+        default_cadence_minutes=30,
+        implemented=True,
+        config_fields=(
+            ConnectorConfigField(key="base_url", label="Base URL", required=True, secret=False),
+            ConnectorConfigField(key="username", label="Username", required=True, secret=False),
+            ConnectorConfigField(key="integration_code", label="Integration code", required=True, secret=False),
+            ConnectorConfigField(key="secret", label="Secret", required=True, secret=True),
+        ),
+        ui_help_text="Requires Autotask REST API credentials (integration code, username, secret).",
+    )
 
     def _headers(self, config: dict) -> dict[str, str]:
         return {
@@ -104,38 +128,6 @@ class AutotaskConnectorAdapter(ConnectorAdapter):
                     return payload["Items"]
             return []
 
-    def _upsert_mapping(
-        self,
-        *,
-        db: Session,
-        tenant_id: UUID,
-        source_connection_id: UUID,
-        entity_type: str,
-        source_id: str,
-        canonical_entity_id: UUID,
-    ) -> None:
-        stmt = select(SourceEntityMapping).where(
-            SourceEntityMapping.tenant_id == tenant_id,
-            SourceEntityMapping.source_connection_id == source_connection_id,
-            SourceEntityMapping.entity_type == entity_type,
-            SourceEntityMapping.source_id == source_id,
-        )
-        row = db.scalars(stmt).first()
-        if row:
-            row.canonical_entity_id = canonical_entity_id
-            row.source_updated_at = datetime.now(UTC)
-        else:
-            db.add(
-                SourceEntityMapping(
-                    tenant_id=tenant_id,
-                    source_connection_id=source_connection_id,
-                    entity_type=entity_type,
-                    source_id=source_id,
-                    canonical_entity_id=canonical_entity_id,
-                    source_updated_at=datetime.now(UTC),
-                )
-            )
-
     def run_sync(
         self,
         *,
@@ -170,7 +162,7 @@ class AutotaskConnectorAdapter(ConnectorAdapter):
                     customer.name = str(company.get("companyName") or customer.name)
                     customer.owner_name = company.get("ownerResourceName") or customer.owner_name
                 stats.customers_upserted += 1
-                self._upsert_mapping(
+                upsert_source_entity_mapping(
                     db=db,
                     tenant_id=tenant_id,
                     source_connection_id=connection.id,
@@ -210,7 +202,7 @@ class AutotaskConnectorAdapter(ConnectorAdapter):
                     contact.email = src.get("emailAddress") or contact.email
                 stats.contacts_upserted += 1
                 db.flush()
-                self._upsert_mapping(
+                upsert_source_entity_mapping(
                     db=db,
                     tenant_id=tenant_id,
                     source_connection_id=connection.id,
@@ -250,7 +242,7 @@ class AutotaskConnectorAdapter(ConnectorAdapter):
                     ticket.subject = str(src.get("title") or ticket.subject or f"Ticket {source_id}")
                 stats.tickets_upserted += 1
                 db.flush()
-                self._upsert_mapping(
+                upsert_source_entity_mapping(
                     db=db,
                     tenant_id=tenant_id,
                     source_connection_id=connection.id,
@@ -294,7 +286,7 @@ class AutotaskConnectorAdapter(ConnectorAdapter):
                     opp.value_cents = cents if cents is not None else opp.value_cents
                 stats.opportunities_upserted += 1
                 db.flush()
-                self._upsert_mapping(
+                upsert_source_entity_mapping(
                     db=db,
                     tenant_id=tenant_id,
                     source_connection_id=connection.id,
@@ -344,7 +336,7 @@ class AutotaskConnectorAdapter(ConnectorAdapter):
                     quote.value_cents = cents if cents is not None else quote.value_cents
                 stats.quotes_upserted += 1
                 db.flush()
-                self._upsert_mapping(
+                upsert_source_entity_mapping(
                     db=db,
                     tenant_id=tenant_id,
                     source_connection_id=connection.id,

@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.models.entities import SourceSystemConnection
 from app.services.connectors.base import ConnectorAdapter
+from app.services.connectors.manifest import ConnectorConfigField, ConnectorManifest
 from app.services.connectors.types import ConnectorSyncResult, ConnectorSyncStats, ConnectorTestResult
 
 
@@ -18,10 +19,24 @@ class UnsupportedConnectorAdapter(ConnectorAdapter):
         display_name: str,
         supports_entities: tuple[str, ...],
         message: str,
+        maturity: str = "stub",
+        auth_modes: tuple[str, ...] = ("api_key",),
+        sync_modes: tuple[str, ...] = ("manual",),
     ) -> None:
-        self.system_type = system_type
-        self.display_name = display_name
-        self.supports_entities = supports_entities
+        self.manifest = ConnectorManifest(
+            key=system_type,
+            display_name=display_name,
+            description=message,
+            system_family=system_type,
+            maturity=maturity,  # type: ignore[arg-type]
+            auth_modes=auth_modes,  # type: ignore[arg-type]
+            capabilities=supports_entities,
+            sync_modes=sync_modes,  # type: ignore[arg-type]
+            implemented=False,
+            connector_version="v1",
+            config_fields=(ConnectorConfigField(key="note", label="Notes", required=False, secret=False),),
+            ui_help_text=message,
+        )
         self._message = message
 
     def test_connection(

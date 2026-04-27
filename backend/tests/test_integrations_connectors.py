@@ -77,6 +77,57 @@ def test_itquoter_stub_test_connection_returns_safe_failure(client, db_session: 
     assert "not implemented" in (body["test_message"] or "").lower()
 
 
+def test_connector_catalog_exposes_manifest_metadata(client, db_session: Session):
+    tenant = _make_tenant(db_session, slug="catalog", name="Catalog MSP")
+    admin = create_user_with_membership(db_session, "admin-catalog@example.com", "tenant_admin", tenant)
+    res = client.get("/api/v1/integrations/catalog", headers=auth_headers(admin, str(tenant.id)))
+    assert res.status_code == 200, res.text
+    rows = res.json()
+    autotask = next(r for r in rows if r["system_type"] == "autotask")
+    assert autotask["maturity"] in ("beta", "stable", "experimental")
+    assert "api_key" in autotask["supported_auth_modes"]
+    assert isinstance(autotask["config_fields"], list)
+    itquoter = next(r for r in rows if r["system_type"] == "itquoter")
+    assert itquoter["implemented"] is False
+    assert itquoter["maturity"] in ("stub", "planned")
+
+
+def test_create_connection_rejects_unsupported_auth_mode(client, db_session: Session):
+    tenant = _make_tenant(db_session, slug="bad-auth", name="Bad Auth MSP")
+    admin = create_user_with_membership(db_session, "admin-bad-auth@example.com", "tenant_admin", tenant)
+    r = client.post(
+        "/api/v1/integrations/connections",
+        headers=auth_headers(admin, str(tenant.id)),
+        json={
+            "system_type": "autotask",
+            "display_name": "Bad auth",
+            "auth_mode": "oauth2",
+            "sync_cadence_minutes": 30,
+            "config": {"username": "u", "integration_code": "i", "secret": "s", "base_url": "https://example"},
+        },
+    )
+    assert r.status_code == 400
+    assert "Unsupported auth_mode" in r.text
+
+
+def test_create_connection_rejects_missing_required_manifest_config(client, db_session: Session):
+    tenant = _make_tenant(db_session, slug="missing-cfg", name="Missing Config MSP")
+    admin = create_user_with_membership(db_session, "admin-missing-cfg@example.com", "tenant_admin", tenant)
+    r = client.post(
+        "/api/v1/integrations/connections",
+        headers=auth_headers(admin, str(tenant.id)),
+        json={
+            "system_type": "autotask",
+            "display_name": "Missing bits",
+            "auth_mode": "api_key",
+            "sync_cadence_minutes": 30,
+            "config": {"username": "u"},
+        },
+    )
+    assert r.status_code == 400
+    assert "Missing connector config keys" in r.text
+
+
 def test_autotask_sync_writes_customers_mappings_and_run(monkeypatch, client, db_session: Session):
     tenant = _make_tenant(db_session, slug="delta", name="Delta MSP")
     admin = create_user_with_membership(db_session, "admin-delta@example.com", "tenant_admin", tenant)

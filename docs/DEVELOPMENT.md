@@ -37,6 +37,16 @@ After the stack is up and seeded:
 - Frontend build check: `cd frontend && npm run build`
 - Frontend lint: `cd frontend && npm run lint`
 
+## Connector development (plugin-style, in-repo)
+
+- Contract lives in `backend/app/services/connectors/base.py` + `manifest.py`.
+- Capabilities are standardized in `backend/app/services/connectors/capabilities.py`.
+- Registry/runtime uses manifest metadata for catalog and config validation.
+- Scaffold a new connector with:
+  - `cd backend`
+  - `python scripts/scaffold_connector.py --key "<key>" --display-name "<Name>" --family "<family>" --maturity planned --capabilities customers --auth-modes api_key`
+- After scaffolding, wire adapter into `ConnectorRegistry`, implement `test_connection()` and `run_sync()`, and add deterministic tests.
+
 ## Migration Commands
 
 - Upgrade: `docker compose exec backend alembic upgrade head`

@@ -20,7 +20,7 @@ This phase introduces a real connector runtime foundation with Autotask v1 and a
 
 1. Tenant admin configures a source connection in `/app/integrations`.
 2. Config is encrypted at rest in `source_system_connections.encrypted_config`.
-3. Connector runtime resolves an adapter by `system_type` (Autotask today; stubs for ITQuoter/ConnectWise/Veeam).
+3. Connector runtime resolves an adapter by `system_type` via the in-repo plugin registry (`ConnectorRegistry` + `ConnectorManifest`).
 4. Sync run writes lifecycle into `integration_sync_runs` and updates connection health/status timestamps.
 5. Adapter upserts canonical operational entities (`customers`, `contacts`, `tickets`, `opportunities`, optional `quotes`).
 6. Source-to-canonical lineage is persisted in `source_entity_mappings`.
@@ -29,7 +29,7 @@ This phase introduces a real connector runtime foundation with Autotask v1 and a
 ## Current storage tiers (implementation)
 
 - **Connection/config layer**  
-  `source_system_connections` stores tenant-scoped connection metadata, cadence, health, and encrypted credentials/config.
+  `source_system_connections` stores tenant-scoped connection metadata, cadence, health, encrypted credentials/config, and manifest-aligned metadata (`maturity`, `auth_modes`, `sync_modes`, `implemented`).
 
 - **Sync control plane**  
   `integration_sync_runs` records trigger mode, status, run timing, cursor, per-run stats JSON, and error summaries.
@@ -78,3 +78,16 @@ The v2.1 model intentionally keeps the current app in a **canonical operational 
 - Sensitive connector config is encrypted with the existing integration encryption key path.
 - API responses only expose redacted config (`safe_config`), never raw secrets.
 - Error messages intentionally avoid echoing credentials or raw payloads.
+
+## Plugin-style connector model (in-repo)
+
+- This architecture is plugin-like but intentionally in-repo (no external untrusted plugin loading yet).
+- Each connector declares a strict typed manifest:
+  - connector key + display metadata
+  - maturity (`planned`/`stub`/`experimental`/`beta`/`stable`)
+  - supported auth modes
+  - capability keys
+  - sync modes
+  - config field schema (required + secret flags)
+- Runtime validates auth mode and required config fields using the connector manifest before persisting connection records.
+- Integrations catalog can consume this metadata directly for honest UX, docs, and future feature gating.

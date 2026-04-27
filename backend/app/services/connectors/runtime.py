@@ -54,6 +54,21 @@ class ConnectorRuntimeService:
         config_payload: dict,
     ) -> SourceSystemConnection:
         adapter = self._adapter_for_system(system_type)
+        manifest = adapter.describe()
+        if auth_mode not in manifest.auth_modes:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Unsupported auth_mode '{auth_mode}' for connector '{system_type}'",
+            )
+        effective_config = dict(config_payload or {})
+        if base_url and not effective_config.get("base_url"):
+            effective_config["base_url"] = base_url
+        missing = adapter.validate_config(auth_mode, effective_config)
+        if missing:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Missing connector config keys: {', '.join(missing)}",
+            )
         row: SourceSystemConnection | None = None
         if connection_id:
             row = self.get_connection(tenant_id, connection_id)
@@ -70,8 +85,14 @@ class ConnectorRuntimeService:
                 health_status="unknown",
                 sync_mode="manual_and_scheduled",
                 sync_cadence_minutes=max(5, sync_cadence_minutes),
-                connector_version=adapter.connector_version,
-                connection_metadata={"supports_entities": list(adapter.supports_entities)},
+                connector_version=manifest.connector_version,
+                connection_metadata={
+                    "supports_entities": list(manifest.capabilities),
+                    "maturity": manifest.maturity,
+                    "auth_modes": list(manifest.auth_modes),
+                    "sync_modes": list(manifest.sync_modes),
+                    "implemented": manifest.implemented,
+                },
             )
             self.db.add(row)
         else:
@@ -81,8 +102,14 @@ class ConnectorRuntimeService:
             row.is_enabled = is_enabled
             row.sync_cadence_minutes = max(5, sync_cadence_minutes)
             row.provider_family = system_type
-            row.connector_version = adapter.connector_version
-            row.connection_metadata = {"supports_entities": list(adapter.supports_entities)}
+            row.connector_version = manifest.connector_version
+            row.connection_metadata = {
+                "supports_entities": list(manifest.capabilities),
+                "maturity": manifest.maturity,
+                "auth_modes": list(manifest.auth_modes),
+                "sync_modes": list(manifest.sync_modes),
+                "implemented": manifest.implemented,
+            }
 
         row.encrypted_config = encrypt_settings_payload(config_payload) if config_payload else row.encrypted_config
         self.db.flush()

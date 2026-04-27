@@ -1,6 +1,6 @@
 # mspintel
 
-mspintel is a secure, AI-assisted MSP intelligence platform for MSPs. Release **`v2.4.0`** adds **Risk Engine v1**: deterministic, explainable, tenant-scoped heuristic scoring (`risk_score`, `attention_score`, confidence notes, reason/factor payloads) powering `/app/at-risk`, `/app/attention`, dashboard priorities, Customer 360 risk panels, and review/QBR watch-outs. Finance Phase 0 and AI runtime foundations from `v2.3.0` remain in place.
+mspintel is a secure, AI-assisted MSP intelligence platform for MSPs. Release **`v2.5.0`** adds a plugin-style (in-repo) connector framework with strict manifests, capability/auth/maturity metadata, connector scaffolding, and richer integrations catalog visibility. Risk Engine v1 (`v2.4.0`) and Finance Phase 0 (`v2.3.0`) remain in place.
 
 ## Implementation guidance (Cursor / contributors)
 
@@ -21,7 +21,7 @@ Standing rules for Docker, versioning, env vars, validation, docs, GitHub workfl
 
 ## Versioning
 
-- Current app version: **`2.4.0`** (Risk Engine v1 heuristic scoring + at-risk/attention/dashboard/360/QBR integration, with Finance Phase 0 retained)
+- Current app version: **`2.5.0`** (plugin-style in-repo connector architecture with strict manifests/capabilities/auth metadata, plus existing Risk Engine v1 + Finance Phase 0)
 - Central runtime version variable: `MSPINTEL_APP_VERSION` (root `.env` and Compose → backend `MSPINTEL_APP_VERSION`)
 - Frontend display: `VITE_APP_VERSION` in `.env`, overridden in Compose from `MSPINTEL_APP_VERSION` as `VITE_APP_VERSION` for the dev container
 
@@ -142,7 +142,7 @@ The backend image runs **`alembic upgrade head` on container start**, then **ide
   - `GET /api/v1/workspace/service-risk` — backup placeholder section + live delivery metrics (e.g. open tickets, at-risk count)
   - `GET /api/v1/workspace/risk-queue?mode=at_risk|attention` — ranked Risk Engine v1 queues (scores, reasons, confidence, next-step placeholder)
   - `POST /api/v1/workspace/risk-engine/recompute` — on-demand risk recompute (tenant batch; optional `customer_id` for single account)
-  - `GET /api/v1/integrations/catalog` — connector catalog with supported entities + default cadence
+  - `GET /api/v1/integrations/catalog` — connector catalog with manifest metadata (maturity, auth modes, capabilities, sync modes, config field schema)
   - `GET /api/v1/integrations/connections` — tenant-scoped connection list
   - `POST /api/v1/integrations/connections` — create connector config (**membership:write**)
   - `PATCH /api/v1/integrations/connections/{connection_id}` — update connector config (**membership:write**)

@@ -8,11 +8,13 @@ from sqlalchemy.orm import Session
 
 from app.models.entities import Customer, FinanceInvoice, SourceEntityMapping, SourceSystemConnection
 from app.services.connectors.base import ConnectorAdapter
+from app.services.connectors.capabilities import CAP_BILLING_ACCOUNTS, CAP_INVOICES
 from app.services.connectors.constants import (
     CONNECTOR_SYSTEM_XERO,
     ENTITY_FINANCE_BILLING_ACCOUNT,
     ENTITY_FINANCE_INVOICE,
 )
+from app.services.connectors.manifest import ConnectorConfigField, ConnectorManifest
 from app.services.connectors.types import ConnectorSyncResult, ConnectorSyncStats, ConnectorTestResult
 from app.services.finance_canonical import upsert_finance_for_customer
 
@@ -27,11 +29,27 @@ class XeroConnectorAdapter(ConnectorAdapter):
     Live Xero invoice APIs are intentionally out of scope for Finance Phase 0; non-demo sync records a clear warning.
     """
 
-    system_type = CONNECTOR_SYSTEM_XERO
-    display_name = "Xero (accounting)"
-    supports_entities = (ENTITY_FINANCE_BILLING_ACCOUNT, ENTITY_FINANCE_INVOICE)
-    default_cadence_minutes = 360
-    connector_version = "finance_v0"
+    manifest = ConnectorManifest(
+        key=CONNECTOR_SYSTEM_XERO,
+        display_name="Xero (accounting)",
+        description="Finance snapshot connector with demo-mode materialisation; live invoice ingestion is future.",
+        system_family="accounting",
+        maturity="experimental",
+        auth_modes=("oauth2", "oauth", "sandbox"),
+        capabilities=(CAP_BILLING_ACCOUNTS, CAP_INVOICES),
+        sync_modes=("manual", "delta"),
+        connector_version="finance_v0",
+        default_cadence_minutes=360,
+        implemented=True,
+        config_fields=(
+            ConnectorConfigField(key="demo_mode", label="Demo mode", required=False, secret=False),
+            ConnectorConfigField(key="client_id", label="Client ID", required=False, secret=False),
+            ConnectorConfigField(key="client_secret", label="Client Secret", required=False, secret=True),
+            ConnectorConfigField(key="refresh_token", label="Refresh token", required=False, secret=True),
+            ConnectorConfigField(key="xero_tenant_id", label="Xero tenant ID", required=False, secret=False),
+        ),
+        ui_help_text="Use demo_mode for in-repo sandbox sync. Live OAuth read path is not yet enabled.",
+    )
 
     def _is_demo_mode(self, config: dict) -> bool:
         return bool(config.get("demo_mode")) or str(config.get("sandbox") or "").lower() in ("1", "true", "yes")

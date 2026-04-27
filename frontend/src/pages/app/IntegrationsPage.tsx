@@ -16,16 +16,30 @@ export function IntegrationsPage() {
     system_type: "autotask",
     display_name: "Primary Autotask",
     base_url: "",
-    username: "",
-    integration_code: "",
-    secret: "",
+    auth_mode: "api_key",
     sync_cadence_minutes: 30
   });
+  const [createConfig, setCreateConfig] = useState<Record<string, string>>({});
 
   const selectedCatalog = useMemo(
     () => catalog.find((c) => c.system_type === createForm.system_type) ?? null,
     [catalog, createForm.system_type]
   );
+
+  useEffect(() => {
+    if (!selectedCatalog) return;
+    setCreateForm((prev) => ({
+      ...prev,
+      auth_mode: selectedCatalog.supported_auth_modes[0] ?? "api_key",
+      sync_cadence_minutes: selectedCatalog.default_cadence_minutes || prev.sync_cadence_minutes
+    }));
+    const cfg: Record<string, string> = {};
+    selectedCatalog.config_fields.forEach((f) => {
+      cfg[f.key] = "";
+    });
+    if (selectedCatalog.system_type === "xero") cfg.demo_mode = "true";
+    setCreateConfig(cfg);
+  }, [selectedCatalog]);
 
   const load = useCallback(async () => {
     if (!accessToken || !currentTenantId) return;
@@ -75,21 +89,17 @@ export function IntegrationsPage() {
       await api.createIntegrationConnection(accessToken, currentTenantId, {
         system_type: createForm.system_type,
         display_name: createForm.display_name,
-        base_url: createForm.base_url || null,
-        auth_mode: "api_key",
+        base_url: createConfig.base_url || createForm.base_url || null,
+        auth_mode: createForm.auth_mode,
         sync_cadence_minutes: createForm.sync_cadence_minutes,
         is_enabled: true,
-        config:
-          createForm.system_type === "autotask"
-            ? {
-                base_url: createForm.base_url,
-                username: createForm.username,
-                integration_code: createForm.integration_code,
-                secret: createForm.secret
-              }
-            : {}
+        config: createConfig
       });
-      setCreateForm((v) => ({ ...v, secret: "" }));
+      setCreateConfig((prev) =>
+        Object.fromEntries(
+          Object.entries(prev).map(([k, v]) => [k, k.toLowerCase().includes("secret") || k.includes("token") ? "" : v])
+        )
+      );
       await load();
     } catch (e: unknown) {
       setErr(e instanceof Error ? e.message : "Create failed");
@@ -135,6 +145,20 @@ export function IntegrationsPage() {
               />
             </label>
             <label>
+              Auth mode
+              <select
+                className="tenant-select"
+                value={createForm.auth_mode}
+                onChange={(e) => setCreateForm((v) => ({ ...v, auth_mode: e.target.value }))}
+              >
+                {(selectedCatalog?.supported_auth_modes ?? ["api_key"]).map((m) => (
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
               Sync cadence (minutes)
               <input
                 className="tenant-input"
@@ -145,54 +169,48 @@ export function IntegrationsPage() {
               />
             </label>
           </div>
-          {createForm.system_type === "autotask" ? (
+          {selectedCatalog ? (
             <div className="tenant-grid tenant-grid--cards-3" style={{ marginTop: "0.75rem" }}>
-              <label>
-                Base URL
-                <input
-                  className="tenant-input"
-                  value={createForm.base_url}
-                  onChange={(e) => setCreateForm((v) => ({ ...v, base_url: e.target.value }))}
-                  placeholder="https://webservicesXX.autotask.net/ATServicesRest"
-                />
-              </label>
-              <label>
-                Username
-                <input
-                  className="tenant-input"
-                  value={createForm.username}
-                  onChange={(e) => setCreateForm((v) => ({ ...v, username: e.target.value }))}
-                />
-              </label>
-              <label>
-                Integration code
-                <input
-                  className="tenant-input"
-                  value={createForm.integration_code}
-                  onChange={(e) => setCreateForm((v) => ({ ...v, integration_code: e.target.value }))}
-                />
-              </label>
-              <label>
-                Secret
-                <input
-                  className="tenant-input"
-                  type="password"
-                  value={createForm.secret}
-                  onChange={(e) => setCreateForm((v) => ({ ...v, secret: e.target.value }))}
-                />
-              </label>
+              {selectedCatalog.config_fields.map((f) => (
+                <label key={f.key}>
+                  {f.label}
+                  <input
+                    className="tenant-input"
+                    type={f.secret ? "password" : "text"}
+                    required={f.required}
+                    value={createConfig[f.key] ?? ""}
+                    onChange={(e) => setCreateConfig((prev) => ({ ...prev, [f.key]: e.target.value }))}
+                  />
+                </label>
+              ))}
             </div>
-          ) : (
+          ) : null}
+          {selectedCatalog && !selectedCatalog.implemented ? (
             <p className="muted" style={{ marginTop: "0.75rem" }}>
-              {selectedCatalog?.display_name} is scaffolded for future phases. You can still register a placeholder connection
+              {selectedCatalog.display_name} is scaffolded for future phases. You can still register a placeholder connection
               to track rollout planning.
             </p>
-          )}
+          ) : null}
+          {selectedCatalog?.ui_help_text ? <p className="muted">{selectedCatalog.ui_help_text}</p> : null}
           <div style={{ marginTop: "0.9rem" }}>
             <button type="button" className="tenant-btn-primary" onClick={() => void createConnection()}>
               Save connection
             </button>
           </div>
+          {selectedCatalog ? (
+            <div style={{ marginTop: "0.9rem" }}>
+              <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap", marginBottom: "0.5rem" }}>
+                <span className="tenant-badge tenant-badge--muted">family: {selectedCatalog.system_family}</span>
+                <span className="tenant-badge tenant-badge--watch">maturity: {selectedCatalog.maturity}</span>
+                <span className="tenant-badge tenant-badge--muted">
+                  {selectedCatalog.implemented ? "implemented" : "stub/planned"}
+                </span>
+              </div>
+              <p className="muted" style={{ margin: 0 }}>
+                Capabilities: {selectedCatalog.supports_entities.join(", ") || "none declared"}.
+              </p>
+            </div>
+          ) : null}
         </div>
       </section>
 

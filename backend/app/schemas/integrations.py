@@ -54,6 +54,14 @@ class IntegrationSyncRunResponse(BaseModel):
 class ConnectorCatalogItem(BaseModel):
     system_type: str
     display_name: str
+    description: str
+    system_family: str
+    maturity: str
+    supported_auth_modes: list[str]
     supports_entities: list[str]
+    supported_sync_modes: list[str]
+    implemented: bool
     default_cadence_minutes: int
     connector_version: str
+    ui_help_text: str | None = None
+    config_fields: list[dict] = Field(default_factory=list)

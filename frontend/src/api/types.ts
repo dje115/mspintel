@@ -91,9 +91,24 @@ export type SourceConnection = {
 export type ConnectorCatalogItem = {
   system_type: string;
   display_name: string;
+  description: string;
+  system_family: string;
+  maturity: "planned" | "stub" | "experimental" | "beta" | "stable";
+  supported_auth_modes: string[];
   supports_entities: string[];
+  supported_sync_modes: string[];
+  implemented: boolean;
   default_cadence_minutes: number;
   connector_version: string;
+  ui_help_text?: string | null;
+  config_fields: {
+    key: string;
+    label: string;
+    required: boolean;
+    secret: boolean;
+    editable_after_create: boolean;
+    help_text?: string | null;
+  }[];
 };
 
 export type IntegrationSyncRun = {

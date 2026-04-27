@@ -32,13 +32,31 @@ def connector_catalog(
     svc = ConnectorRuntimeService(db)
     return [
         ConnectorCatalogItem(
-            system_type=a.system_type,
-            display_name=a.display_name,
-            supports_entities=list(a.supports_entities),
-            default_cadence_minutes=a.default_cadence_minutes,
-            connector_version=a.connector_version,
+            system_type=m.key,
+            display_name=m.display_name,
+            description=m.description,
+            system_family=m.system_family,
+            maturity=m.maturity,
+            supported_auth_modes=list(m.auth_modes),
+            supports_entities=list(m.capabilities),
+            supported_sync_modes=list(m.sync_modes),
+            implemented=m.implemented,
+            default_cadence_minutes=m.default_cadence_minutes,
+            connector_version=m.connector_version,
+            ui_help_text=m.ui_help_text,
+            config_fields=[
+                {
+                    "key": f.key,
+                    "label": f.label,
+                    "required": f.required,
+                    "secret": f.secret,
+                    "editable_after_create": f.editable_after_create,
+                    "help_text": f.help_text,
+                }
+                for f in m.config_fields
+            ],
         )
-        for a in svc.registry.list_adapters()
+        for m in svc.registry.list_manifests()
     ]
 
 
