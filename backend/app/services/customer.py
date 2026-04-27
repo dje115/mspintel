@@ -7,6 +7,7 @@ from app.repositories.customers import CustomerRepository
 from app.schemas.billing_integrity import FinanceCustomerPanel
 from app.schemas.customer import CustomerDetailResponse, CustomerListItem, CustomerListResponse
 from app.services.billing_integrity_service import BillingIntegrityService
+from app.services.risk_engine_v1 import RiskEngineV1Service
 from app.services.workspace import WorkspaceService
 
 
@@ -17,9 +18,10 @@ class CustomerService:
 
     def list_customers(self, tenant_id: UUID, search: str | None, status_filter: str | None, page: int, page_size: int):
         customers, total = self.repo.list_customers(tenant_id, search, status_filter, page, page_size)
+        score_map = RiskEngineV1Service(self.repo.db).latest_scores_map(tenant_id)
         items: list[CustomerListItem] = []
         for customer in customers:
-            score = self.repo.latest_score(tenant_id, customer.id)
+            score = score_map.get(customer.id)
             recs = self.repo.recommendation_summary(tenant_id, customer.id)
             items.append(
                 CustomerListItem(
@@ -46,6 +48,7 @@ class CustomerService:
         recs = self.repo.recommendation_summary(tenant_id, customer_id)
         actions = self.repo.recent_actions(tenant_id, customer_id)
         rec_rows, opp_rows, quote_rows = self.workspace.customer_workspace_slices(tenant_id, customer_id)
+        risk = RiskEngineV1Service(self.repo.db).latest_score_for_customer(tenant_id, customer_id)
 
         fin_raw = BillingIntegrityService(self.repo.db).customer_finance_panel(tenant_id, customer_id)
         fin_raw.pop("error", None)
@@ -58,6 +61,18 @@ class CustomerService:
             owner_name=customer.owner_name,
             demo_profile=customer.demo_profile,
             finance=finance_panel,
+            risk_engine={
+                "scoring_version": risk.scoring_version,
+                "calculated_at": risk.calculated_at.isoformat() if risk.calculated_at else None,
+                "risk_level": risk.risk_level,
+                "attention_level": risk.attention_level,
+                "confidence_level": risk.confidence_level,
+                "reason_codes": risk.reason_codes or [],
+                "factors": risk.factors_json or [],
+                "coverage_notes": risk.coverage_notes or [],
+            }
+            if risk
+            else None,
             latest_scores={
                 "risk_score": score.risk_score,
                 "attention_score": score.attention_score,

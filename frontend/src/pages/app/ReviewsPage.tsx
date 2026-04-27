@@ -157,6 +157,13 @@ export function ReviewsPage() {
       lines.push(`${lost} lost quote(s) — decide whether to revisit with a win-back angle.`);
     }
     const fin = detail.finance;
+    const risk = detail.risk_engine;
+    if (risk) {
+      lines.push(
+        `Risk engine watch-outs: ${risk.risk_level} risk / ${risk.attention_level} attention (${risk.confidence_level} confidence).`
+      );
+      risk.reason_codes.slice(0, 2).forEach((r) => lines.push(`Risk factor: ${r}`));
+    }
     if (fin?.finance_linked) {
       lines.push(
         `Billing alignment: canonical finance linked (confidence ${fin.confidence_level ?? "unknown"}) — review billed vs service mailboxes before the meeting.`
@@ -183,6 +190,11 @@ export function ReviewsPage() {
       gaps.push("Canonical finance not linked — QBR commercial narrative should stay high-level until accounting sync improves.");
     } else if ((detail.finance.confidence_level ?? "").toLowerCase().includes("low")) {
       gaps.push("Finance confidence is low on-file — validate figures with finance before committing to targets.");
+    }
+    if (!detail.risk_engine) {
+      gaps.push("Risk Engine snapshot missing — run risk recompute before finalising review priorities.");
+    } else if ((detail.risk_engine.confidence_level ?? "").toLowerCase().includes("low")) {
+      gaps.push("Risk confidence is low — treat watch-outs as heuristic until coverage improves.");
     }
     gaps.push("Microsoft 365, backup telemetry, telephony, and deeper accounting reads will strengthen confidence over time.");
     return gaps;

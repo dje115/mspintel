@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { api } from "../../api/client";
-import type { CustomerListResponse } from "../../api/types";
+import type { RiskQueueResponse } from "../../api/types";
 import { ScoreMeter } from "../../components/ScoreMeter";
 import { useSession } from "../../state/session";
 
@@ -21,23 +21,28 @@ function AccountQueuePage(props: { mode: QueueMode; title: string; subtitle: str
   const { accessToken, currentTenantId } = useSession();
   const { mode, title, subtitle } = props;
   const [page, setPage] = useState(1);
-  const [data, setData] = useState<CustomerListResponse | null>(null);
+  const [search, setSearch] = useState("");
+  const [owner, setOwner] = useState("");
+  const [data, setData] = useState<RiskQueueResponse | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     if (!accessToken || !currentTenantId) return;
     setLoadError(null);
     void api
-      .customers(accessToken, currentTenantId, {
+      .riskQueue(accessToken, currentTenantId, {
+        mode: mode === "at_risk" ? "at_risk" : "attention",
         page,
         page_size: PAGE_SIZE,
-        status: mode
+        search: search || undefined,
+        owner: owner || undefined
       })
       .then(setData)
       .catch((err: unknown) => {
         setLoadError(err instanceof Error ? err.message : "Unable to load accounts");
       });
-  }, [accessToken, currentTenantId, page, mode]);
+  }, [accessToken, currentTenantId, page, mode, search, owner]);
 
   if (loadError) {
     return (
@@ -62,6 +67,55 @@ function AccountQueuePage(props: { mode: QueueMode; title: string; subtitle: str
       </header>
 
       <section className="tenant-panel">
+        <div className="tenant-panel-head">
+          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
+            <input
+              className="tenant-input"
+              value={search}
+              onChange={(e) => {
+                setPage(1);
+                setSearch(e.target.value);
+              }}
+              placeholder="Search account"
+              aria-label="Search accounts"
+            />
+            <input
+              className="tenant-input"
+              value={owner}
+              onChange={(e) => {
+                setPage(1);
+                setOwner(e.target.value);
+              }}
+              placeholder="Filter owner"
+              aria-label="Filter owner"
+            />
+          </div>
+          <button
+            type="button"
+            className="tenant-btn-inline tenant-btn-inline--ghost"
+            disabled={refreshing}
+            onClick={() => {
+              if (!accessToken || !currentTenantId) return;
+              setRefreshing(true);
+              void api
+                .recomputeRiskEngine(accessToken, currentTenantId)
+                .then(() =>
+                  api.riskQueue(accessToken, currentTenantId, {
+                    mode: mode === "at_risk" ? "at_risk" : "attention",
+                    page,
+                    page_size: PAGE_SIZE,
+                    search: search || undefined,
+                    owner: owner || undefined
+                  })
+                )
+                .then(setData)
+                .catch((err: unknown) => setLoadError(err instanceof Error ? err.message : "Unable to refresh risk queue"))
+                .finally(() => setRefreshing(false));
+            }}
+          >
+            {refreshing ? "Refreshing..." : "Recompute risk signals"}
+          </button>
+        </div>
         <div className="tenant-panel-body">
           {data.items.length === 0 ? (
             <div className="tenant-empty">
@@ -84,14 +138,14 @@ function AccountQueuePage(props: { mode: QueueMode; title: string; subtitle: str
                 </thead>
                 <tbody>
                   {data.items.map((c) => (
-                    <tr key={c.id}>
+                    <tr key={c.customer_id}>
                       <td>
-                        <Link to={mode === "at_risk" ? `/app/customers/${c.id}?ai=risk` : `/app/customers/${c.id}`}>{c.name}</Link>
+                        <Link to={mode === "at_risk" ? `/app/customers/${c.customer_id}?ai=risk` : `/app/customers/${c.customer_id}`}>{c.customer_name}</Link>
                       </td>
                       <td>
                         <span className={statusBadge(c.status)}>{c.status.replace("_", " ")}</span>
                       </td>
-                      <td>{mode === "at_risk" ? (c.risk_score ?? "—") : (c.attention_score ?? "—")}</td>
+                      <td>{mode === "at_risk" ? c.risk_score : c.attention_score}</td>
                       <td>
                         <ScoreMeter
                           label=" "
@@ -101,10 +155,10 @@ function AccountQueuePage(props: { mode: QueueMode; title: string; subtitle: str
                       </td>
                       <td>{c.owner_name ?? "—"}</td>
                       <td className="muted" style={{ maxWidth: "18rem" }}>
-                        {c.next_best_action ?? "—"}
+                        {c.top_reasons.length > 0 ? c.top_reasons.join(" | ") : c.next_step_placeholder}
                       </td>
                       <td>
-                        <Link className="tenant-btn-inline" to={`/app/customers/${c.id}#workspace`}>
+                        <Link className="tenant-btn-inline" to={`/app/customers/${c.customer_id}#workspace`}>
                           Open 360
                         </Link>
                       </td>

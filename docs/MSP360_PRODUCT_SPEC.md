@@ -259,6 +259,16 @@ Each row: **purpose** · **widgets** · **actions** · **signals** · **sources*
 
 ## 7. Customer retention, at-risk, save-the-account
 
+### Risk Engine v1 (heuristic, explainable, deterministic)
+
+**Status:** implemented in `v2.4.0` as `risk_v1` (tenant-scoped).
+
+**Outputs per customer snapshot:** `risk_score`, `attention_score`, `risk_level`, `attention_level`, `confidence_level`, `reason_codes[]`, `factors_json[]`, `coverage_notes[]`, `calculated_at`, `scoring_version`.
+
+**Core rule families in v1:** ticket pressure/ageing, review recency, contact/stakeholder coverage, finance linkage and billing mismatch/payment friction, commercial dormancy/stall signals, sparse-profile/data-gap penalties, service-burden-vs-commercial imbalance.
+
+**Guardrails:** This is not a predictive ML model; scores are heuristic priorities with explicit reasons and confidence caveats. Missing data lowers confidence and is surfaced in `coverage_notes`.
+
 **Detection inputs:** engagement trend (tickets, meetings, marketing responses), sentiment proxies (repeat issues, escalations), project stall flags, commercial dormancy, review/QBR recency, stakeholder breadth, backup/M365 adoption vs contracted, data confidence flags.
 
 **Product behaviours:** ranked save queue; **save plan** doc per account (tasks, owners, dates); **next conversation** card with tone guidance; **event/campaign** suggestions tied to account segment; **QBR recovery** path when review overdue.
@@ -514,6 +524,7 @@ Full **workflow automation** ( unattended emails ), **embedding-heavy** personal
 | Telephony | Prove relationship effort | AM | 3CX | relationship_* (augment) | Future | CDR adapter |
 | Marketing / events | Fill rooms with right accounts | Marketing | Segments + ideas | marketing_* , event_* | Partial (shell + placeholders) | Idea bank DB + live matching |
 | Data quality | Trust & fix gaps | Admin, Ops | Sync + mappings | data_gap_* , account_confidence_* | Wireframed | Coverage APIs |
+| Risk Engine v1 | Explainable customer prioritisation | Director, AM, Service | Canonical tickets/contacts/commercial + finance snapshots when linked | risk_summary, churn_explanation, account_confidence_explanation | Implemented (heuristic) | Scheduler cadence + deeper connector signals |
 | **Tenant knowledge layer** | Persisted derived narratives / posture per account | All major surfaces | Canonical + connector coverage | **Maintainer** keys §21.7 + `ai_task_runs` | **Specified** | Schema, refresh jobs, UI freshness |
 
 ---
@@ -526,6 +537,12 @@ Full **workflow automation** ( unattended emails ), **embedding-heavy** personal
 - **Renewal command centre** — contracts + QBR + health in one timeline.  
 - **Benchmarking** — anonymised peer percentiles once multi-tenant analytics mature (governance-heavy).  
 - **Customer-facing portal (long-term)** — selective transparency; not v1.
+
+### Risk Engine v1 current limits
+- No predictive ML or probabilistic forecasting; this release is deterministic rule scoring.
+- No deep live M365 / backup / telephony behavioural feeds yet.
+- No live accounting OAuth-ledger ingestion yet (uses available canonical finance snapshots).
+- Confidence can be low when coverage is sparse; queues and 360 must treat those as prioritisation hints, not certainty.
 
 ---
 

@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.repositories.customers import CustomerRepository
 from app.repositories.workspace import WorkspaceRepository
 from app.services.billing_integrity_service import BillingIntegrityService
+from app.services.risk_engine_v1 import RiskEngineV1Service
 from app.services.workspace import WorkspaceService
 
 
@@ -25,6 +26,7 @@ def _customer_ai_context_variables(db: Session, tenant_id: UUID, customer_id: UU
     ws = WorkspaceService(db)
     rec_rows, opp_rows, quote_rows = ws.customer_workspace_slices(tenant_id, customer_id)
     fin = BillingIntegrityService(db).customer_finance_panel(tenant_id, customer_id)
+    risk = RiskEngineV1Service(db).latest_score_for_customer(tenant_id, customer_id)
     if fin.get("error") == "not_found":
         fin = {}
     return {
@@ -36,6 +38,20 @@ def _customer_ai_context_variables(db: Session, tenant_id: UUID, customer_id: UU
             "external_ref": customer.external_ref,
             "demo_profile": customer.demo_profile,
             "finance_panel": fin,
+            "risk_engine": {
+                "risk_score": risk.risk_score,
+                "attention_score": risk.attention_score,
+                "risk_level": risk.risk_level,
+                "attention_level": risk.attention_level,
+                "confidence_level": risk.confidence_level,
+                "reason_codes": risk.reason_codes or [],
+                "factors": risk.factors_json or [],
+                "coverage_notes": risk.coverage_notes or [],
+                "scoring_version": risk.scoring_version,
+                "calculated_at": risk.calculated_at.isoformat() if risk.calculated_at else None,
+            }
+            if risk
+            else None,
         },
         "scores": {
             "risk_score": score.risk_score if score else None,

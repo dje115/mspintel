@@ -234,6 +234,60 @@ export function CustomerDetailPage() {
             </article>
           </section>
 
+          {data.risk_engine ? (
+            <section className="tenant-panel" style={{ marginTop: "1rem" }}>
+              <div className="tenant-panel-head">
+                <h2 className="tenant-panel-title">Risk Engine v1 summary</h2>
+                <span className="tenant-badge tenant-badge--watch">
+                  {data.risk_engine.scoring_version} · {data.risk_engine.confidence_level} confidence
+                </span>
+              </div>
+              <div className="tenant-panel-body tenant-op-grid">
+                <div>
+                  <div className="tenant-kpi-label">Risk level</div>
+                  <div className="tenant-kpi-value tenant-kpi-value--inline">{data.risk_engine.risk_level}</div>
+                </div>
+                <div>
+                  <div className="tenant-kpi-label">Attention level</div>
+                  <div className="tenant-kpi-value tenant-kpi-value--inline">{data.risk_engine.attention_level}</div>
+                </div>
+                <div>
+                  <div className="tenant-kpi-label">Calculated</div>
+                  <div className="tenant-kpi-value tenant-kpi-value--inline">{data.risk_engine.calculated_at ?? "—"}</div>
+                </div>
+              </div>
+              <div className="tenant-panel-body" style={{ paddingTop: 0 }}>
+                <p className="tenant-kpi-label">Primary factors</p>
+                {data.risk_engine.factors.length === 0 ? (
+                  <p className="muted" style={{ marginTop: 0 }}>
+                    No high-impact factors captured in this snapshot.
+                  </p>
+                ) : (
+                  <ul className="tenant-list-plain">
+                    {data.risk_engine.factors.slice(0, 5).map((f, idx) => (
+                      <li key={`${idx}-${String(f.code ?? "factor")}`} className="tenant-rec-card">
+                        <strong>{String(f.title ?? f.code ?? "factor")}</strong>
+                        {f.evidence ? <span className="muted"> — {String(f.evidence)}</span> : null}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {data.risk_engine.coverage_notes.length > 0 ? (
+                  <>
+                    <p className="tenant-kpi-label">Confidence / blind spots</p>
+                    <ul className="tenant-list-plain">
+                      {data.risk_engine.coverage_notes.map((n) => (
+                        <li key={n} className="tenant-rec-card muted">
+                          {n}
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                ) : null}
+              </div>
+            </section>
+          ) : null}
+
           {data.finance ? (
             <section className="tenant-panel" style={{ marginTop: "1rem" }}>
               <div className="tenant-panel-head">

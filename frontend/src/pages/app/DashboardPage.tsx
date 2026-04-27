@@ -2,14 +2,14 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { api } from "../../api/client";
-import type { CustomerListItem, ExecutiveDashboardResponse } from "../../api/types";
+import type { ExecutiveDashboardResponse, RiskQueueRow } from "../../api/types";
 import { useSession } from "../../state/session";
 
 export function DashboardPage() {
   const { accessToken, currentTenantId } = useSession();
   const [exec, setExec] = useState<ExecutiveDashboardResponse | null>(null);
-  const [atRisk, setAtRisk] = useState<CustomerListItem[]>([]);
-  const [watch, setWatch] = useState<CustomerListItem[]>([]);
+  const [atRisk, setAtRisk] = useState<RiskQueueRow[]>([]);
+  const [watch, setWatch] = useState<RiskQueueRow[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -17,8 +17,8 @@ export function DashboardPage() {
     setLoadError(null);
     void Promise.all([
       api.executiveDashboard(accessToken, currentTenantId),
-      api.customers(accessToken, currentTenantId, { page: 1, page_size: 8, status: "at_risk" }),
-      api.customers(accessToken, currentTenantId, { page: 1, page_size: 8, status: "watch" })
+      api.riskQueue(accessToken, currentTenantId, { mode: "at_risk", page: 1, page_size: 8 }),
+      api.riskQueue(accessToken, currentTenantId, { mode: "attention", page: 1, page_size: 8 })
     ])
       .then(([e, ar, w]) => {
         setExec(e);
@@ -141,13 +141,13 @@ export function DashboardPage() {
                   </thead>
                   <tbody>
                     {atRisk.map((c) => (
-                      <tr key={c.id}>
+                      <tr key={c.customer_id}>
                         <td>
-                          <Link to={`/app/customers/${c.id}`}>{c.name}</Link>
+                          <Link to={`/app/customers/${c.customer_id}`}>{c.customer_name}</Link>
                         </td>
-                        <td>{c.risk_score ?? "—"}</td>
+                        <td>{c.risk_score}</td>
                         <td className="muted" style={{ maxWidth: "14rem" }}>
-                          {c.next_best_action ?? "—"}
+                          {c.top_reasons[0] ?? "—"}
                         </td>
                       </tr>
                     ))}
@@ -183,13 +183,13 @@ export function DashboardPage() {
                   </thead>
                   <tbody>
                     {watch.map((c) => (
-                      <tr key={c.id}>
+                      <tr key={c.customer_id}>
                         <td>
-                          <Link to={`/app/customers/${c.id}`}>{c.name}</Link>
+                          <Link to={`/app/customers/${c.customer_id}`}>{c.customer_name}</Link>
                         </td>
-                        <td>{c.attention_score ?? "—"}</td>
+                        <td>{c.attention_score}</td>
                         <td className="muted" style={{ maxWidth: "14rem" }}>
-                          {c.next_best_action ?? "—"}
+                          {c.top_reasons[0] ?? "—"}
                         </td>
                       </tr>
                     ))}

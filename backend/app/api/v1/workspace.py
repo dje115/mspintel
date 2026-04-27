@@ -12,6 +12,8 @@ from app.schemas.workspace import (
     RecommendationListResponse,
     RecommendationPatch,
     RecommendationRow,
+    RiskQueueResponse,
+    RiskRecomputeResponse,
     ServiceRiskResponse,
 )
 from app.services.ai_execution_service import AIExecutionService
@@ -113,3 +115,35 @@ def billing_integrity_workspace(
         coverage_notes=raw["coverage_notes"],
         accounts=raw["accounts"],
     )
+
+
+@router.get("/risk-queue", response_model=RiskQueueResponse)
+def risk_queue(
+    mode: str = Query(default="at_risk", description="at_risk | attention"),
+    search: str | None = Query(default=None),
+    owner: str | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    ctx: AccessContext = Depends(require_permission("customer:read")),
+    db: Session = Depends(get_db),
+):
+    mapped_mode = "at_risk" if mode == "at_risk" else "attention"
+    return WorkspaceService(db).risk_queue(
+        ctx.tenant.id,
+        mode=mapped_mode,
+        search=search,
+        owner_search=owner,
+        page=page,
+        page_size=page_size,
+    )
+
+
+@router.post("/risk-engine/recompute", response_model=RiskRecomputeResponse)
+def recompute_risk_engine(
+    customer_id: UUID | None = Query(default=None),
+    ctx: AccessContext = Depends(require_permission("membership:write")),
+    db: Session = Depends(get_db),
+):
+    out = WorkspaceService(db).recompute_risk(ctx.tenant.id, customer_id=customer_id)
+    db.commit()
+    return out

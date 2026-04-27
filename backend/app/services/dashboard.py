@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.repositories.dashboards import DashboardRepository
 from app.schemas.system import ExecutiveDashboardResponse, SalesDashboardResponse, ServiceDashboardResponse
+from app.services.risk_engine_v1 import RiskEngineV1Service
 
 
 class DashboardService:
@@ -11,6 +12,7 @@ class DashboardService:
         self.repo = DashboardRepository(db)
 
     def executive(self, tenant_id: UUID) -> ExecutiveDashboardResponse:
+        RiskEngineV1Service(self.repo.db).ensure_scores(tenant_id)
         return ExecutiveDashboardResponse(
             customers=self.repo.customer_count(tenant_id),
             high_risk_customers=self.repo.high_risk_count(tenant_id),

@@ -120,21 +120,21 @@ Audience: **MSP owner / service manager** — needs signal, prioritisation, and 
 
 ## 6. At-risk accounts (`/app/at-risk`)
 
-**Purpose:** Working list of `status=at_risk` customers with risk score, owner, and next-best-action text.
+**Purpose:** Working list ranked by **Risk Engine v1** heuristic output (risk score + explainable factors + confidence/blind-spot notes).
 
-**API:** `GET /api/v1/customers?status=at_risk` (existing customers list).
+**API:** `GET /api/v1/workspace/risk-queue?mode=at_risk` (+ optional `search`, `owner`, paging).
 
-**Primary actions:** Open customer 360, use dashboard KPI + panel links.
+**Primary actions:** Open Customer 360, trigger manual recompute (`POST /api/v1/workspace/risk-engine/recompute`), hand off next step to AM/service owner.
 
 ---
 
 ## 7. Needs-attention accounts (`/app/attention`)
 
-**Purpose:** Watch-list accounts (`status=watch`) needing proactive attention.
+**Purpose:** Queue ranked by **Risk Engine v1 attention_score** for proactive action before risk escalates.
 
-**API:** `GET /api/v1/customers?status=watch`.
+**API:** `GET /api/v1/workspace/risk-queue?mode=attention`.
 
-**Primary actions:** Same as at-risk hub; dashboard “Needs attention” panel links here.
+**Primary actions:** Same as at-risk hub; dashboard “Needs attention” panel links here with primary reasons visible.
 
 ---
 

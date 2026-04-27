@@ -23,6 +23,7 @@ import type {
   PlatformTenantList,
   RecommendationListResponse,
   RecommendationRow,
+  RiskQueueResponse,
   ResolvedAITaskResponse,
   ServiceRiskResponse,
   SourceConnection,
@@ -267,6 +268,29 @@ export const api = {
     request<BillingIntegrityWorkspaceResponse>("/api/v1/workspace/billing-integrity", {
       headers: authHeaders(accessToken, tenantId)
     }),
+  riskQueue: (
+    accessToken: string,
+    tenantId: string,
+    query: { mode: "at_risk" | "attention"; page: number; page_size: number; search?: string; owner?: string }
+  ) => {
+    const qs = new URLSearchParams();
+    qs.set("mode", query.mode);
+    qs.set("page", String(query.page));
+    qs.set("page_size", String(query.page_size));
+    if (query.search) qs.set("search", query.search);
+    if (query.owner) qs.set("owner", query.owner);
+    return request<RiskQueueResponse>(`/api/v1/workspace/risk-queue?${qs.toString()}`, {
+      headers: authHeaders(accessToken, tenantId)
+    });
+  },
+  recomputeRiskEngine: (accessToken: string, tenantId: string, customerId?: string) =>
+    request<{ mode: string; scoring_version: string; processed: number }>(
+      `/api/v1/workspace/risk-engine/recompute${customerId ? `?customer_id=${encodeURIComponent(customerId)}` : ""}`,
+      {
+        method: "POST",
+        headers: authHeaders(accessToken, tenantId)
+      }
+    ),
   workspaceServiceRisk: (accessToken: string, tenantId: string) =>
     request<ServiceRiskResponse>("/api/v1/workspace/service-risk", {
       headers: authHeaders(accessToken, tenantId)

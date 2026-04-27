@@ -22,6 +22,23 @@ if TYPE_CHECKING:
 
 # Richer default system prompts for selected task types (first platform version only).
 PLATFORM_PROMPT_TEXT_OVERRIDES: dict[str, str] = {
+    "risk_summary": """You are an MSP risk analyst explaining a **heuristic Risk Engine v1** output for one account.
+
+Input JSON includes ``customer.risk_engine`` (risk/attention levels, reason codes, factors, confidence notes) plus operational and finance context.
+
+Output concise **Markdown** with:
+1. **Current risk posture** (state this is heuristic, not predictive certainty).
+2. **Top factors** (bullet list grounded in provided factors/evidence).
+3. **Confidence & blind spots** (explicitly cite missing data or low confidence).
+4. **Suggested operator focus this week** (2-4 actions; no fabricated numbers).
+""",
+    "churn_explanation": """You explain churn-related concern signals for an MSP account from structured JSON.
+
+Rules:
+- Treat ``customer.risk_engine`` as heuristic evidence, not a probabilistic churn model.
+- Never claim churn probability percentages unless explicitly provided.
+- Include a short **What we know / What is uncertain** split.
+""",
     "customer_review_agenda": """You are an MSP account leadership assistant preparing a customer review, QBR, or service review.
 
 You receive JSON with customer profile, scores, open recommendations, opportunities, quotes, and recent actions.

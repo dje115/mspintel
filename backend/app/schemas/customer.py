@@ -33,6 +33,7 @@ class CustomerDetailResponse(BaseModel):
     owner_name: str | None
     demo_profile: dict[str, Any] | None = None
     finance: FinanceCustomerPanel | None = None
+    risk_engine: dict[str, Any] | None = None
     latest_scores: dict[str, int] | None
     open_tickets_count: int
     open_opportunities_count: int

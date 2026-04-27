@@ -1,6 +1,7 @@
 from uuid import UUID
 
 from fastapi import HTTPException, status
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.entities import Customer
@@ -15,9 +16,13 @@ from app.schemas.workspace import (
     QuoteRow,
     RecommendationListResponse,
     RecommendationRow,
+    RiskQueueResponse,
+    RiskQueueRow,
+    RiskRecomputeResponse,
     ServiceRiskResponse,
     ServiceRiskSection,
 )
+from app.services.risk_engine_v1 import RISK_ENGINE_VERSION, RiskEngineV1Service
 
 
 def _row_to_recommendation_row(rec, cname: str | None, owner: str | None) -> RecommendationRow:
@@ -180,3 +185,86 @@ class WorkspaceService:
                 )
             )
         return rec_rows, opp_rows, quote_rows
+
+    def risk_queue(
+        self,
+        tenant_id: UUID,
+        *,
+        mode: str,
+        search: str | None,
+        owner_search: str | None,
+        page: int,
+        page_size: int,
+    ) -> RiskQueueResponse:
+        from app.services.risk_engine_v1 import RiskEngineV1Service
+
+        svc = RiskEngineV1Service(self.repo.db)
+        score_map = svc.latest_scores_map(tenant_id)
+        customers = list(self.repo.db.scalars(select(Customer).where(Customer.tenant_id == tenant_id).order_by(Customer.name)).all())
+        if search:
+            q = search.lower()
+            customers = [c for c in customers if q in c.name.lower()]
+        if owner_search:
+            q = owner_search.lower()
+            customers = [c for c in customers if (c.owner_name or "").lower().find(q) >= 0]
+        rows: list[RiskQueueRow] = []
+        for c in customers:
+            s = score_map.get(c.id)
+            if not s:
+                continue
+            if mode == "at_risk" and s.risk_score < 45:
+                continue
+            if mode == "attention" and s.attention_score < 45:
+                continue
+            factors = s.factors_json or []
+            top_reasons = [f.get("title", f.get("code", "")) for f in factors[:3] if isinstance(f, dict)]
+            rows.append(
+                RiskQueueRow(
+                    customer_id=c.id,
+                    customer_name=c.name,
+                    owner_name=c.owner_name,
+                    status=c.status,
+                    risk_score=s.risk_score,
+                    attention_score=s.attention_score,
+                    risk_level=s.risk_level,
+                    attention_level=s.attention_level,
+                    confidence_level=s.confidence_level,
+                    reason_codes=s.reason_codes or [],
+                    top_reasons=top_reasons,
+                    coverage_notes=s.coverage_notes or [],
+                    next_step_placeholder=(
+                        "Plan next customer conversation using top risk factors and confirm owner/actions."
+                    ),
+                    calculated_at=s.calculated_at,
+                )
+            )
+        rows.sort(
+            key=(lambda r: (r.risk_score, r.attention_score))
+            if mode == "at_risk"
+            else (lambda r: (r.attention_score, r.risk_score)),
+            reverse=True,
+        )
+        total = len(rows)
+        offset = (page - 1) * page_size
+        paged = rows[offset : offset + page_size]
+        return RiskQueueResponse(
+            mode=mode,
+            scoring_version=RISK_ENGINE_VERSION,
+            page=page,
+            page_size=page_size,
+            total=total,
+            items=paged,
+        )
+
+    def recompute_risk(self, tenant_id: UUID, customer_id: UUID | None) -> RiskRecomputeResponse:
+        svc = RiskEngineV1Service(self.repo.db)
+        if customer_id:
+            svc.recompute_customer(tenant_id, customer_id)
+            processed = 1
+            mode = "single_customer"
+        else:
+            res = svc.recompute_tenant(tenant_id)
+            processed = int(res["processed"])
+            mode = "tenant_batch"
+        self.repo.db.flush()
+        return RiskRecomputeResponse(mode=mode, processed=processed, scoring_version=RISK_ENGINE_VERSION)

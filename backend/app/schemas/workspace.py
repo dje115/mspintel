@@ -72,3 +72,35 @@ class ServiceRiskSection(BaseModel):
 class ServiceRiskResponse(BaseModel):
     backup: ServiceRiskSection
     service_delivery: ServiceRiskSection
+
+
+class RiskQueueRow(BaseModel):
+    customer_id: UUID
+    customer_name: str
+    owner_name: str | None = None
+    status: str
+    risk_score: int
+    attention_score: int
+    risk_level: str
+    attention_level: str
+    confidence_level: str
+    reason_codes: list[str] = Field(default_factory=list)
+    top_reasons: list[str] = Field(default_factory=list)
+    coverage_notes: list[str] = Field(default_factory=list)
+    next_step_placeholder: str
+    calculated_at: datetime
+
+
+class RiskQueueResponse(BaseModel):
+    mode: str
+    scoring_version: str
+    page: int
+    page_size: int
+    total: int
+    items: list[RiskQueueRow]
+
+
+class RiskRecomputeResponse(BaseModel):
+    mode: str
+    scoring_version: str
+    processed: int

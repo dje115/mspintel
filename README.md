@@ -1,6 +1,6 @@
 # mspintel
 
-mspintel is a secure, AI-assisted MSP intelligence platform for MSPs. Release **`v2.1`** adds the first tenant-scoped connector framework and **Autotask adapter v1** (connection test + sync runs + canonical mappings), upgrades integrations into a real operating page (`/app/integrations` + detail), adds warehouse/cadence direction docs ([docs/DATA_INGESTION_AND_WAREHOUSE.md](docs/DATA_INGESTION_AND_WAREHOUSE.md)), and expands tenant product coverage with marketing/reviews/data-quality shells. **`v2.0`** wired the first real AI runtime (resolve → render → provider adapter → `ai_task_runs` lifecycle) into Customer 360 AI insights, recommendation explanations, and at-risk deep-links to risk AI.
+mspintel is a secure, AI-assisted MSP intelligence platform for MSPs. Release **`v2.4.0`** adds **Risk Engine v1**: deterministic, explainable, tenant-scoped heuristic scoring (`risk_score`, `attention_score`, confidence notes, reason/factor payloads) powering `/app/at-risk`, `/app/attention`, dashboard priorities, Customer 360 risk panels, and review/QBR watch-outs. Finance Phase 0 and AI runtime foundations from `v2.3.0` remain in place.
 
 ## Implementation guidance (Cursor / contributors)
 
@@ -21,7 +21,7 @@ Standing rules for Docker, versioning, env vars, validation, docs, GitHub workfl
 
 ## Versioning
 
-- Current app version: **`2.3.0`** (Finance Phase 0: canonical billing tables, Xero demo connector, billing integrity workspace, Customer 360 / QBR finance context, finance AI task keys in prompt DB)
+- Current app version: **`2.4.0`** (Risk Engine v1 heuristic scoring + at-risk/attention/dashboard/360/QBR integration, with Finance Phase 0 retained)
 - Central runtime version variable: `MSPINTEL_APP_VERSION` (root `.env` and Compose → backend `MSPINTEL_APP_VERSION`)
 - Frontend display: `VITE_APP_VERSION` in `.env`, overridden in Compose from `MSPINTEL_APP_VERSION` as `VITE_APP_VERSION` for the dev container
 
@@ -82,8 +82,8 @@ The backend image runs **`alembic upgrade head` on container start**, then **ide
 | Product roadmap (placeholder hub) | [http://localhost:5173/app/roadmap](http://localhost:5173/app/roadmap) |
 | Recommendations queue | [http://localhost:5173/app/recommendations](http://localhost:5173/app/recommendations) |
 | Opportunities & quotes | [http://localhost:5173/app/opportunities](http://localhost:5173/app/opportunities) |
-| At-risk accounts | [http://localhost:5173/app/at-risk](http://localhost:5173/app/at-risk) |
-| Needs attention | [http://localhost:5173/app/attention](http://localhost:5173/app/attention) |
+| At-risk accounts | [http://localhost:5173/app/at-risk](http://localhost:5173/app/at-risk) (Risk Engine v1 queue) |
+| Needs attention | [http://localhost:5173/app/attention](http://localhost:5173/app/attention) (Risk Engine v1 queue) |
 | Service risk | [http://localhost:5173/app/service-risk](http://localhost:5173/app/service-risk) |
 | Integrations | [http://localhost:5173/app/integrations](http://localhost:5173/app/integrations) |
 | Integration detail pattern | `http://localhost:5173/app/integrations/<connection-id>` |
@@ -140,6 +140,8 @@ The backend image runs **`alembic upgrade head` on container start**, then **ide
   - `PATCH /api/v1/workspace/recommendations/{recommendation_id}` — body `{"status":"open"|"accepted"|"rejected"|"completed"}`; requires **`membership:write`** (typically `tenant_admin`)
   - `GET /api/v1/workspace/commercial` — opportunities + lost + open/draft quotes for the commercial hub
   - `GET /api/v1/workspace/service-risk` — backup placeholder section + live delivery metrics (e.g. open tickets, at-risk count)
+  - `GET /api/v1/workspace/risk-queue?mode=at_risk|attention` — ranked Risk Engine v1 queues (scores, reasons, confidence, next-step placeholder)
+  - `POST /api/v1/workspace/risk-engine/recompute` — on-demand risk recompute (tenant batch; optional `customer_id` for single account)
   - `GET /api/v1/integrations/catalog` — connector catalog with supported entities + default cadence
   - `GET /api/v1/integrations/connections` — tenant-scoped connection list
   - `POST /api/v1/integrations/connections` — create connector config (**membership:write**)

@@ -31,12 +31,12 @@ All require tenant JWT and tenant context (`X-Tenant-Id` from session).
 
 | Path | Page | Notes |
 |------|------|-------|
-| `/app` | `DashboardPage` | Default post-login landing; executive KPIs (click-through) + priority lists + workspace links. |
+| `/app` | `DashboardPage` | Default post-login landing; executive KPIs + **Risk Engine v1-driven** at-risk/attention priority lists and workspace links. |
 | `/app/recommendations` | `RecommendationsPage` | Cross-account recommendation queue; per-row **Explain** calls workspace AI explanation endpoint. |
 | `/app/opportunities` | `OpportunitiesPage` | Commercial hub; optional `?tab=opportunities`, `pipeline`, or `lost`. |
 | `/app/marketing` | `MarketingPage` | Marketing / events / campaigns workspace: segment previews, themed **event idea board**, customer→campaign **matching placeholders**, notes area. Optional **`?customer_id=`** enables compact **AI account manager guidance** (next conversation + call script). Without it, shows prompt-key preview. |
-| `/app/at-risk` | `AtRiskAccountsPage` | At-risk account operating list. |
-| `/app/attention` | `NeedsAttentionAccountsPage` | Needs-attention (watch) operating list. |
+| `/app/at-risk` | `AtRiskAccountsPage` | **Risk Engine v1** at-risk queue (`risk_score`, bands, reasons, confidence notes, owner, next-step placeholder) with search/owner filters and manual recompute action. |
+| `/app/attention` | `NeedsAttentionAccountsPage` | **Risk Engine v1** attention queue (`attention_score`, reasons, confidence notes, owner, next-step placeholder) with drill-through to Customer 360. |
 | `/app/service-risk` | `ServiceRiskPage` | Backup + service delivery risk overview. |
 | `/app/customers` | `CustomersPage` | Account directory. |
 | `/app/customers/:id` | `CustomerDetailPage` | Customer 360; `#workspace` opens the recommendations tab; **Overview** includes **AI insights** (account summary, risk, churn) and a **Finance & billing alignment** panel when canonical finance exists. `?ai=risk` highlights risk AI (linked from at-risk queue). **Prepare review / QBR** → `/app/reviews?customer_id={id}`; **AI account manager guidance** preview shell on Overview. |

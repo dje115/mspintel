@@ -409,6 +409,14 @@ class AccountScore(Base, TimestampMixin):
     risk_score: Mapped[int] = mapped_column(Integer, default=0)
     attention_score: Mapped[int] = mapped_column(Integer, default=0)
     growth_score: Mapped[int] = mapped_column(Integer, default=0)
+    risk_level: Mapped[str] = mapped_column(String(20), default="low")
+    attention_level: Mapped[str] = mapped_column(String(20), default="low")
+    confidence_level: Mapped[str] = mapped_column(String(20), default="medium")
+    scoring_version: Mapped[str] = mapped_column(String(40), default="risk_v1")
+    reason_codes: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
+    factors_json: Mapped[list[dict] | None] = mapped_column(JSON, nullable=True)
+    coverage_notes: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
+    calculated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
 
 
 class Recommendation(Base, TimestampMixin):

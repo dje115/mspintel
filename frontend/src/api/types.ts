@@ -134,6 +134,32 @@ export type CustomerListResponse = {
   total: number;
 };
 
+export type RiskQueueRow = {
+  customer_id: string;
+  customer_name: string;
+  owner_name: string | null;
+  status: string;
+  risk_score: number;
+  attention_score: number;
+  risk_level: string;
+  attention_level: string;
+  confidence_level: string;
+  reason_codes: string[];
+  top_reasons: string[];
+  coverage_notes: string[];
+  next_step_placeholder: string;
+  calculated_at: string;
+};
+
+export type RiskQueueResponse = {
+  mode: string;
+  scoring_version: string;
+  page: number;
+  page_size: number;
+  total: number;
+  items: RiskQueueRow[];
+};
+
 export type RecommendationRow = {
   id: string;
   customer_id: string | null;
@@ -254,6 +280,16 @@ export type CustomerDetailResponse = {
   /** Present on `demo-msp` seeded accounts: synthetic UK MSP scenario JSON for AI/testing. */
   demo_profile?: Record<string, unknown> | null;
   finance?: FinanceCustomerPanel | null;
+  risk_engine?: {
+    scoring_version: string;
+    calculated_at: string | null;
+    risk_level: string;
+    attention_level: string;
+    confidence_level: string;
+    reason_codes: string[];
+    factors: Record<string, unknown>[];
+    coverage_notes: string[];
+  } | null;
   latest_scores: { risk_score: number; attention_score: number; growth_score: number } | null;
   open_tickets_count: number;
   open_opportunities_count: number;
