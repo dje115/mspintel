@@ -105,6 +105,12 @@ class BillingIntegrityService:
                     underbilling.append(c.id)
                 if (m365.unused_licences or 0) >= 5:
                     signals.append("Unused Microsoft licences indicate optimisation headroom.")
+                if (m365.stale_users_90d or 0) >= 10:
+                    signals.append("High stale M365 identity count — check for over-licensed dormant users.")
+                if (m365.disabled_users or 0) >= 5:
+                    signals.append("Disabled M365 identities present — validate billing and hygiene assumptions.")
+                if m365.confidence_level == "low":
+                    signals.append("M365 confidence is low; treat licence and usage deltas as directional only.")
             elif c.demo_profile and (c.demo_profile.get("billing") or {}).get("billed_m365_seats") is not None:
                 signals.append("Billing hints exist only in legacy demo_profile JSON — link accounting for canonical finance.")
             else:

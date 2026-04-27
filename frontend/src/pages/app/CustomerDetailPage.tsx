@@ -392,6 +392,15 @@ export function CustomerDetailPage() {
                     Unused licences: {data.m365.unused_licences ?? "—"}
                   </p>
                 </div>
+                <div>
+                  <div className="tenant-kpi-label">Stale / disabled / privileged</div>
+                  <div className="tenant-kpi-value tenant-kpi-value--inline">
+                    {data.m365.stale_users_90d ?? "—"} / {data.m365.disabled_users ?? "—"} / {data.m365.privileged_admin_users ?? "—"}
+                  </div>
+                  <p className="muted" style={{ fontSize: "0.82rem", marginTop: "0.35rem" }}>
+                    Domains: {data.m365.tenant_domains.join(", ") || "not captured"}
+                  </p>
+                </div>
               </div>
               {[...data.m365.hygiene_findings, ...data.m365.optimisation_findings].length > 0 ? (
                 <div className="tenant-panel-body" style={{ paddingTop: 0 }}>
@@ -413,6 +422,16 @@ export function CustomerDetailPage() {
                       <li key={n} className="tenant-rec-card muted">
                         {n}
                       </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+              {data.m365.billing_impact_signals.length > 0 ? (
+                <div className="tenant-panel-body" style={{ paddingTop: 0 }}>
+                  <p className="tenant-kpi-label">Billing impact signals</p>
+                  <ul className="tenant-list-plain">
+                    {data.m365.billing_impact_signals.map((s) => (
+                      <li key={s} className="tenant-rec-card">{s}</li>
                     ))}
                   </ul>
                 </div>

@@ -1,6 +1,6 @@
 # mspintel
 
-mspintel is a secure, AI-assisted MSP intelligence platform for MSPs. Release **`v2.7.0`** adds a connector onboarding and mapping-control layer: lifecycle controls, staged import scoping, mapping review with manual override, and tenant/customer coverage confidence surfaces.
+mspintel is a secure, AI-assisted MSP intelligence platform for MSPs. Release **`v2.8.0`** upgrades the Microsoft stack slice to a practical v1.5-style level: richer M365/Entra posture facts, stronger `/app/m365-health` workflows, and deeper integration with Customer 360, Billing Integrity, and Review/QBR prep.
 
 ## Implementation guidance (Cursor / contributors)
 
@@ -21,7 +21,7 @@ Standing rules for Docker, versioning, env vars, validation, docs, GitHub workfl
 
 ## Versioning
 
-- Current app version: **`2.7.0`** (connector onboarding controls + scoped imports + identity mapping review and coverage visibility)
+- Current app version: **`2.8.0`** (Microsoft stack slice completion: connector + canonical posture enrichment + M365 workspace and cross-product integration)
 - Central runtime version variable: `MSPINTEL_APP_VERSION` (root `.env` and Compose → backend `MSPINTEL_APP_VERSION`)
 - Frontend display: `VITE_APP_VERSION` in `.env`, overridden in Compose from `MSPINTEL_APP_VERSION` as `VITE_APP_VERSION` for the dev container
 

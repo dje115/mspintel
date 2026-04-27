@@ -1,6 +1,6 @@
 # Data Ingestion and Warehouse Direction (v2.1)
 
-This phase introduces a real connector runtime foundation with Autotask v1 and a storage model that can grow into richer analytics without re-architecting.
+This phase introduces a real connector runtime foundation with Autotask v1 and a storage model that can grow into richer analytics without re-architecting. Microsoft stack enrichment in `v2.8.0` extends this with practical M365/Entra canonical posture fields and billing-impact linkage.
 
 **Strategic context:** connector priorities, per-system entity expectations, cadence philosophy, and how ingestion supports retention/commercial/billing product areas are summarised in **[MSP360_PRODUCT_SPEC.md](MSP360_PRODUCT_SPEC.md)** (especially **§3** persistent tenant knowledge layer, **§§18–19** data sources and warehouse strategy, and **§22** roadmap). The **four conceptual tiers** below align that spec with this technical doc—keep both files aligned when the connector matrix or knowledge model changes materially.
 
@@ -29,7 +29,7 @@ This phase introduces a real connector runtime foundation with Autotask v1 and a
 ## Current storage tiers (implementation)
 
 - **Connection/config layer**  
-  `source_system_connections` stores tenant-scoped connection metadata, cadence, health, encrypted credentials/config, and manifest-aligned metadata (`maturity`, `auth_modes`, `sync_modes`, `implemented`).
+  `source_system_connections` stores tenant-scoped connection metadata, cadence, health, encrypted credentials/config, and manifest-aligned metadata (`maturity`, `auth_modes`, `sync_modes`, `implemented`). Microsoft connector config remains redacted in all API responses.
 
 - **Sync control plane**  
   `integration_sync_runs` records trigger mode, status, run timing, cursor, per-run stats JSON, and error summaries.
@@ -39,7 +39,7 @@ This phase introduces a real connector runtime foundation with Autotask v1 and a
 
 - **Canonical operational layer**  
   `customers`, `contacts`, `tickets`, `opportunities`, `quotes` continue as tenant-facing current-state records (now with optional `external_ref`; opportunities/quotes also carry title/value fields).
-  Finance and M365 thin-slice canonical tables (`finance_*`, `m365_customer_postures`) support billing integrity, M365 health, Customer 360, and QBR context.
+  Finance and Microsoft canonical tables (`finance_*`, `m365_customer_postures`) support billing integrity, M365 health, Customer 360, and QBR context. The Microsoft posture table now carries practical v1.5 fields: stale/disabled/privileged-user counts, tenant domains, usage summaries, and Entra/Azure summary JSON.
 
 - **Derived knowledge layer (planned)**  
   Tenant-scoped **knowledge objects** (typed summaries linked to `customer_id` or tenant aggregates) **downstream of** canonical upserts. Populated by **maintainer** prompt runs, not by mutating tier 3 to “look like” AI output. **Ingestion’s role:** emit events or flags so refreshes run **after** data lands; **lint** jobs can compare objects to canonical facts for drift.

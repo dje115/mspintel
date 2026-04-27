@@ -114,6 +114,18 @@ def build_account_confidence_explanation_variables(db: Session, tenant_id: UUID,
     return {"task": "account_confidence_explanation", **_customer_ai_context_variables(db, tenant_id, customer_id)}
 
 
+def build_m365_hygiene_summary_variables(db: Session, tenant_id: UUID, customer_id: UUID) -> dict:
+    return {"task": "m365_hygiene_summary", **_customer_ai_context_variables(db, tenant_id, customer_id)}
+
+
+def build_m365_upsell_opportunity_variables(db: Session, tenant_id: UUID, customer_id: UUID) -> dict:
+    return {"task": "m365_upsell_opportunity", **_customer_ai_context_variables(db, tenant_id, customer_id)}
+
+
+def build_technical_gap_summary_variables(db: Session, tenant_id: UUID, customer_id: UUID) -> dict:
+    return {"task": "technical_gap_summary", **_customer_ai_context_variables(db, tenant_id, customer_id)}
+
+
 def build_recommendation_explanation_variables(db: Session, tenant_id: UUID, recommendation_id: UUID) -> dict:
     wrepo = WorkspaceRepository(db)
     rec = wrepo.get_recommendation(tenant_id, recommendation_id)

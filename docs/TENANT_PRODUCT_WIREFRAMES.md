@@ -220,11 +220,11 @@ Audience: **MSP owner / service manager** — needs signal, prioritisation, and 
 
 ## 15. Microsoft 365 health (`/app/m365-health`)
 
-**Purpose:** Thin, honest M365 posture workspace for hygiene/licence optimisation and account-prioritisation support.
+**Purpose:** Practical, honest M365/Entra workspace for licence optimisation, identity hygiene, billing-impact review, and account-prioritisation support.
 
-**Above the fold:** portfolio KPIs (linked accounts, licensed vs active users, inactive users, mailbox/shared mailbox counts), optimisation candidate count.
+**Above the fold:** portfolio KPIs (linked accounts, licensed vs active users, inactive users, stale/disabled identities, mailbox/shared mailbox counts), optimisation + billing mismatch candidate counts.
 
-**Key regions:** per-customer posture table (licensed/active/inactive, mailbox footprint, unused licences, MFA coverage where available), hygiene findings, optimisation findings, and explicit coverage/confidence notes.
+**Key regions:** per-customer posture table (licensed/active/inactive, stale/disabled identities, mailbox footprint, unused licences, MFA coverage where available), Entra/Azure high-level summaries where captured, billing-impact signals, hygiene findings, optimisation findings, and explicit coverage/confidence notes.
 
 **Primary actions:** drill into Customer 360; cross-check with Billing Integrity and Review/QBR prep.
 

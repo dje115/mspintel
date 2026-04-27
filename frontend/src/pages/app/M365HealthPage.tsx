@@ -51,11 +51,38 @@ export function M365HealthPage() {
               <p className="tenant-metric-note">Potential lifecycle/optimisation conversation queue.</p>
             </article>
             <article className="tenant-metric-card">
+              <h3>Stale / disabled</h3>
+              <p className="tenant-metric-big">
+                {data.summary.stale_users_total} / {data.summary.disabled_users_total}
+              </p>
+              <p className="tenant-metric-note">Identity hygiene indicators (directional).</p>
+            </article>
+            <article className="tenant-metric-card">
               <h3>Mailboxes / shared</h3>
               <p className="tenant-metric-big">
                 {data.summary.mailbox_total} / {data.summary.shared_mailbox_total}
               </p>
               <p className="tenant-metric-note">Shared mailbox sprawl is directional, not an audit-grade count.</p>
+            </article>
+          </section>
+
+          <section className="tenant-grid tenant-grid--cards-3" style={{ marginTop: "1rem" }}>
+            <article className="tenant-card">
+              <h3 style={{ marginTop: 0 }}>Licensing</h3>
+              <p className="muted">Licensed users: {data.summary.licensed_users_total}</p>
+              <p className="muted">Unused/stale identities should drive true-up and cleanup discussions.</p>
+            </article>
+            <article className="tenant-card">
+              <h3 style={{ marginTop: 0 }}>Billing impact</h3>
+              <p className="muted">Mismatch candidates: {data.summary.billing_mismatch_candidate_count}</p>
+              <Link to="/app/billing-integrity" className="tenant-btn-inline tenant-btn-inline--ghost">
+                Open billing integrity
+              </Link>
+            </article>
+            <article className="tenant-card">
+              <h3 style={{ marginTop: 0 }}>Opportunities</h3>
+              <p className="muted">Optimisation candidates: {data.summary.optimisation_candidate_count}</p>
+              <p className="muted">Use Review/QBR prep to turn hygiene findings into customer actions.</p>
             </article>
           </section>
 
@@ -90,6 +117,7 @@ export function M365HealthPage() {
                       <th>Licensed / active / inactive</th>
                       <th>Mailboxes</th>
                       <th>Unused licences</th>
+                      <th>Stale / disabled</th>
                       <th>MFA %</th>
                       <th>Signals</th>
                     </tr>
@@ -112,9 +140,14 @@ export function M365HealthPage() {
                           {r.mailbox_count ?? "—"} (shared {r.shared_mailbox_count ?? "—"})
                         </td>
                         <td>{r.unused_licences ?? "—"}</td>
+                        <td>
+                          {r.stale_users_90d ?? "—"} / {r.disabled_users ?? "—"}
+                        </td>
                         <td>{r.mfa_coverage_pct ?? "—"}</td>
                         <td>
-                          {[...(r.hygiene_findings || []), ...(r.optimisation_findings || [])].slice(0, 2).join(" · ") || "—"}
+                          {[...(r.billing_impact_signals || []), ...(r.hygiene_findings || []), ...(r.optimisation_findings || [])]
+                            .slice(0, 2)
+                            .join(" · ") || "—"}
                         </td>
                       </tr>
                     ))}

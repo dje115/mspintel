@@ -176,8 +176,12 @@ export function ReviewsPage() {
       lines.push(
         `Microsoft 365 hygiene: ${detail.m365.active_users_30d ?? "—"} active users, ${detail.m365.inactive_users_30d ?? "—"} inactive, ${detail.m365.unused_licences ?? "—"} unused licences.`
       );
+      lines.push(
+        `Identity lifecycle: ${detail.m365.stale_users_90d ?? "—"} stale users (90d), ${detail.m365.disabled_users ?? "—"} disabled identities.`
+      );
       detail.m365.hygiene_findings.slice(0, 1).forEach((h) => lines.push(`M365 hygiene note: ${h}`));
       detail.m365.optimisation_findings.slice(0, 1).forEach((h) => lines.push(`M365 optimisation note: ${h}`));
+      detail.m365.billing_impact_signals.slice(0, 1).forEach((h) => lines.push(`M365 billing impact: ${h}`));
     } else if (detail.m365) {
       lines.push("Microsoft 365 hygiene view is not linked — keep technical posture statements conservative.");
     }

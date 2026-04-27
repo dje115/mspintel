@@ -31,7 +31,7 @@ class Microsoft365ConnectorAdapter(ConnectorAdapter):
         display_name="Microsoft 365 / Entra",
         description="Thin v1 M365 hygiene/licensing posture connector for customer intelligence.",
         system_family="productivity",
-        maturity="experimental",
+        maturity="beta",
         auth_modes=("oauth2", "sandbox"),
         capabilities=(CAP_USERS, CAP_LICENCES, CAP_MAILBOXES, CAP_STORAGE),
         sync_modes=("manual", "delta"),
@@ -45,9 +45,12 @@ class Microsoft365ConnectorAdapter(ConnectorAdapter):
             ConnectorConfigField(key="tenant_id", label="Tenant ID", required=False, secret=False),
             ConnectorConfigField(key="client_id", label="Client ID", required=False, secret=False),
             ConnectorConfigField(key="client_secret", label="Client Secret", required=False, secret=True),
+            ConnectorConfigField(key="include_usage_signals", label="Include usage summary", required=False, secret=False),
+            ConnectorConfigField(key="include_entra_summary", label="Include Entra summary", required=False, secret=False),
+            ConnectorConfigField(key="include_azure_summary", label="Include Azure summary", required=False, secret=False),
         ),
         ui_help_text=(
-            "v1 supports demo-backed canonical posture sync. Live Microsoft Graph ingestion can be layered in next phase."
+            "Supports tenant-scoped M365/Entra posture sync with safe demo-mode fallback. Live Graph depth is intentionally limited."
         ),
     )
 
@@ -68,7 +71,7 @@ class Microsoft365ConnectorAdapter(ConnectorAdapter):
         if self._is_demo_mode(config):
             return ConnectorTestResult(
                 ok=True,
-                message="Demo mode enabled: M365 posture sync will use seeded demo_profile.microsoft_365 facts.",
+                message="Demo mode enabled: sync will use seeded microsoft_365 posture facts (tenant-scoped, deterministic).",
                 checked_at=datetime.now(UTC),
                 metadata={"mode": "demo_profile"},
             )
@@ -76,7 +79,7 @@ class Microsoft365ConnectorAdapter(ConnectorAdapter):
             return ConnectorTestResult(
                 ok=True,
                 message=(
-                    "OAuth app registration fields are present. v1 currently runs demo-backed sync for deterministic posture."
+                    "OAuth app registration fields are present. This phase persists practical posture facts; deeper Graph coverage remains limited."
                 ),
                 checked_at=datetime.now(UTC),
                 metadata={"mode": "credentials_only"},
@@ -99,7 +102,7 @@ class Microsoft365ConnectorAdapter(ConnectorAdapter):
         stats = ConnectorSyncStats()
         if not self._is_demo_mode(config):
             stats.warnings.append(
-                "Live Graph ingestion is intentionally not enabled in v1; enable demo_mode for deterministic posture sync."
+                "Live Graph ingestion depth is intentionally constrained in this phase; enable demo_mode for deterministic posture sync."
             )
             return ConnectorSyncResult(
                 ok=True,
@@ -111,7 +114,19 @@ class Microsoft365ConnectorAdapter(ConnectorAdapter):
 
         stmt = select(Customer).where(Customer.tenant_id == tenant_id).order_by(Customer.name)
         customers = list(db.scalars(stmt).all())
+        scope_mode = connection.import_scope_mode or "all"
+        scope_filters = connection.import_scope_filters or {}
+        selected_names = {str(n) for n in (scope_filters.get("names") or [])}
+        prefix = str(scope_filters.get("name_prefix") or "").lower()
+        sample_limit = int(scope_filters.get("sample_limit") or 0)
+        processed = 0
         for customer in customers:
+            if scope_mode == "selected_names" and customer.name not in selected_names:
+                continue
+            if scope_mode == "name_prefix" and prefix and not customer.name.lower().startswith(prefix):
+                continue
+            if scope_mode == "sample_limit" and sample_limit > 0 and processed >= sample_limit:
+                break
             posture = upsert_m365_for_customer(
                 db,
                 tenant_id=tenant_id,
@@ -122,6 +137,7 @@ class Microsoft365ConnectorAdapter(ConnectorAdapter):
             )
             if not posture:
                 continue
+            processed += 1
             stats.m365_postures_upserted += 1
             upsert_source_entity_mapping(
                 db=db,
@@ -133,7 +149,7 @@ class Microsoft365ConnectorAdapter(ConnectorAdapter):
             )
             stats.mappings_written += 1
         stats.warnings.append(
-            "M365 v1 sync is demo-backed from canonical customer demo_profile data; treat outputs as directional where live telemetry is absent."
+            "Microsoft sync may be demo-backed; treat outputs as directional where live telemetry is absent."
         )
         return ConnectorSyncResult(
             ok=True,

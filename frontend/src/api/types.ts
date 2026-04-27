@@ -343,7 +343,10 @@ export type M365WorkspaceSummary = {
   inactive_users_total: number;
   mailbox_total: number;
   shared_mailbox_total: number;
+  stale_users_total: number;
+  disabled_users_total: number;
   optimisation_candidate_count: number;
+  billing_mismatch_candidate_count: number;
 };
 
 export type M365WorkspaceRow = {
@@ -353,10 +356,17 @@ export type M365WorkspaceRow = {
   licensed_users: number | null;
   active_users_30d: number | null;
   inactive_users_30d: number | null;
+  disabled_users: number | null;
+  stale_users_90d: number | null;
+  privileged_admin_users: number | null;
   mailbox_count: number | null;
   shared_mailbox_count: number | null;
   unused_licences: number | null;
   mfa_coverage_pct: number | null;
+  tenant_domains: string[];
+  entra_summary: Record<string, unknown>;
+  azure_summary: Record<string, unknown>;
+  billing_impact_signals: string[];
   hygiene_findings: string[];
   optimisation_findings: string[];
   coverage_notes: string[];
@@ -374,10 +384,17 @@ export type M365CustomerPanel = {
   licensed_users: number | null;
   active_users_30d: number | null;
   inactive_users_30d: number | null;
+  disabled_users: number | null;
+  stale_users_90d: number | null;
+  privileged_admin_users: number | null;
   mailbox_count: number | null;
   shared_mailbox_count: number | null;
   unused_licences: number | null;
   mfa_coverage_pct: number | null;
+  tenant_domains: string[];
+  entra_summary: Record<string, unknown>;
+  azure_summary: Record<string, unknown>;
+  billing_impact_signals: string[];
   hygiene_findings: string[];
   optimisation_findings: string[];
   confidence_notes: string[];

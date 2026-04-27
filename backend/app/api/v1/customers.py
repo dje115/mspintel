@@ -17,8 +17,11 @@ from app.services.ai_product_context import (
     build_billing_variance_summary_variables,
     build_churn_explanation_variables,
     build_customer_review_agenda_variables,
+    build_m365_hygiene_summary_variables,
+    build_m365_upsell_opportunity_variables,
     build_revenue_leakage_explanation_variables,
     build_risk_summary_variables,
+    build_technical_gap_summary_variables,
     build_underbilling_opportunity_variables,
 )
 from app.services.customer import CustomerService
@@ -320,6 +323,81 @@ def post_account_confidence_explanation_ai(
     return AIExecutionService(db).execute(
         tenant_id=ctx.tenant.id,
         task_type="account_confidence_explanation",
+        variables=variables,
+        actor_user_id=ctx.user.id,
+        customer_id=customer_id,
+    )
+
+
+@router.get("/{customer_id}/ai/m365-hygiene-summary", response_model=AIProductBlockState)
+def get_m365_hygiene_summary_ai_state(
+    customer_id: UUID,
+    ctx: AccessContext = Depends(require_permission("customer:read")),
+    db: Session = Depends(get_db),
+):
+    return AIExecutionService(db).read_block_state(ctx.tenant.id, "m365_hygiene_summary", customer_id=customer_id)
+
+
+@router.post("/{customer_id}/ai/m365-hygiene-summary", response_model=AIExecutionOutcome)
+def post_m365_hygiene_summary_ai(
+    customer_id: UUID,
+    ctx: AccessContext = Depends(require_permission("customer:read")),
+    db: Session = Depends(get_db),
+):
+    variables = build_m365_hygiene_summary_variables(db, ctx.tenant.id, customer_id)
+    return AIExecutionService(db).execute(
+        tenant_id=ctx.tenant.id,
+        task_type="m365_hygiene_summary",
+        variables=variables,
+        actor_user_id=ctx.user.id,
+        customer_id=customer_id,
+    )
+
+
+@router.get("/{customer_id}/ai/m365-upsell-opportunity", response_model=AIProductBlockState)
+def get_m365_upsell_opportunity_ai_state(
+    customer_id: UUID,
+    ctx: AccessContext = Depends(require_permission("customer:read")),
+    db: Session = Depends(get_db),
+):
+    return AIExecutionService(db).read_block_state(ctx.tenant.id, "m365_upsell_opportunity", customer_id=customer_id)
+
+
+@router.post("/{customer_id}/ai/m365-upsell-opportunity", response_model=AIExecutionOutcome)
+def post_m365_upsell_opportunity_ai(
+    customer_id: UUID,
+    ctx: AccessContext = Depends(require_permission("customer:read")),
+    db: Session = Depends(get_db),
+):
+    variables = build_m365_upsell_opportunity_variables(db, ctx.tenant.id, customer_id)
+    return AIExecutionService(db).execute(
+        tenant_id=ctx.tenant.id,
+        task_type="m365_upsell_opportunity",
+        variables=variables,
+        actor_user_id=ctx.user.id,
+        customer_id=customer_id,
+    )
+
+
+@router.get("/{customer_id}/ai/technical-gap-summary", response_model=AIProductBlockState)
+def get_technical_gap_summary_ai_state(
+    customer_id: UUID,
+    ctx: AccessContext = Depends(require_permission("customer:read")),
+    db: Session = Depends(get_db),
+):
+    return AIExecutionService(db).read_block_state(ctx.tenant.id, "technical_gap_summary", customer_id=customer_id)
+
+
+@router.post("/{customer_id}/ai/technical-gap-summary", response_model=AIExecutionOutcome)
+def post_technical_gap_summary_ai(
+    customer_id: UUID,
+    ctx: AccessContext = Depends(require_permission("customer:read")),
+    db: Session = Depends(get_db),
+):
+    variables = build_technical_gap_summary_variables(db, ctx.tenant.id, customer_id)
+    return AIExecutionService(db).execute(
+        tenant_id=ctx.tenant.id,
+        task_type="technical_gap_summary",
         variables=variables,
         actor_user_id=ctx.user.id,
         customer_id=customer_id,

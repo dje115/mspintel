@@ -20,9 +20,10 @@ def _tenant(db: Session, slug: str) -> Tenant:
 def test_m365_manifest_exposed() -> None:
     m = ConnectorRegistry().get_manifest("microsoft_365")
     assert m.implemented is True
-    assert m.maturity in ("experimental", "beta", "stable")
+    assert m.maturity in ("beta", "stable")
     assert "users" in m.capabilities
     assert "oauth2" in m.auth_modes
+    assert "sample_limit" in m.import_scope_modes
 
 
 def test_m365_connection_redacts_secret_and_syncs_postures(client, db_session: Session):
@@ -127,13 +128,17 @@ def test_m365_workspace_and_customer_detail_shapes(client, db_session: Session):
     assert ws.status_code == 200, ws.text
     body = ws.json()
     assert body["summary"]["linked_count"] == 1
+    assert "stale_users_total" in body["summary"]
     assert body["customers"][0]["customer_name"] == "B Customer"
+    assert "billing_impact_signals" in body["customers"][0]
 
     detail = client.get(f"/api/v1/customers/{customer.id}", headers=auth_headers(admin, str(tenant.id)))
     assert detail.status_code == 200, detail.text
     d = detail.json()
     assert d["m365"] is not None
     assert d["m365"]["linked"] is True
+    assert "stale_users_90d" in d["m365"]
+    assert "tenant_domains" in d["m365"]
 
 
 def test_billing_integrity_includes_m365_mismatch_signal(client, db_session: Session):
@@ -178,4 +183,30 @@ def test_billing_integrity_includes_m365_mismatch_signal(client, db_session: Ses
     assert res.status_code == 200, res.text
     rows = res.json()["accounts"]
     assert rows and any("M365" in s for s in rows[0]["signals"])
+
+
+def test_m365_ai_routes_execute_with_runtime(client, db_session: Session):
+    tenant = _tenant(db_session, "m365-ai")
+    admin = create_user_with_membership(db_session, "m365-ai@example.com", "tenant_admin", tenant)
+    customer = Customer(
+        id=uuid.uuid4(),
+        tenant_id=tenant.id,
+        name="AI M365",
+        status="active",
+        owner_name="Owner",
+        demo_profile={"microsoft_365": {"licensed_users": 12, "active_sign_ins_30d": 10, "unused_licences": 2}},
+    )
+    db_session.add(customer)
+    db_session.commit()
+    get_state = client.get(
+        f"/api/v1/customers/{customer.id}/ai/m365-hygiene-summary",
+        headers=auth_headers(admin, str(tenant.id)),
+    )
+    assert get_state.status_code == 200, get_state.text
+    run = client.post(
+        f"/api/v1/customers/{customer.id}/ai/m365-hygiene-summary",
+        headers=auth_headers(admin, str(tenant.id)),
+    )
+    assert run.status_code == 200, run.text
+    assert run.json()["task_type"] == "m365_hygiene_summary"
 

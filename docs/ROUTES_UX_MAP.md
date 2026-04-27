@@ -47,7 +47,7 @@ All require tenant JWT and tenant context (`X-Tenant-Id` from session).
 | `/app/data-quality` | `DataQualityPage` | Tenant connector coverage summary with unresolved/weak mapping counts and onboarding visibility. |
 | `/app/reviews` | `ReviewsPage` | QBR/customer-review prep: service/commercial panels plus **finance & billing** and **M365 hygiene/optimisation** context when linked. |
 | `/app/billing-integrity` | `BillingIntegrityPage` | **Revenue assurance workspace** — portfolio summary of finance linkage, under/overbilling heuristics, payment-friction counts, per-account signals (`GET /api/v1/workspace/billing-integrity`). |
-| `/app/m365-health` | `M365HealthPage` | **Microsoft 365 Health workspace** — licensed/active/inactive users, mailbox/shared mailbox counts, hygiene + optimisation findings, and coverage notes (`GET /api/v1/workspace/m365-health`). |
+| `/app/m365-health` | `M365HealthPage` | **Microsoft 365 Health workspace** — licensing/identity/mailbox posture, stale/disabled identity indicators, billing-impact signals, optimisation candidates, and confidence notes (`GET /api/v1/workspace/m365-health`). |
 | `/app/members` | `MembersPage` | Team + invitations. |
 | `/app/security` | `SecurityPage` | Sessions. |
 | `/app/ai-settings` | `AiSettingsPage` | Tenant AI defaults, task routing table, provider/deployment badges; warnings for behavioural impact. |
