@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { api } from "../../api/client";
 import type { M365WorkspaceResponse } from "../../api/types";
 import { useSession } from "../../state/session";
+import { TenantAiContextNotice } from "../../components/TenantAiContextNotice";
 
 export function M365HealthPage() {
   const { accessToken, currentTenantId } = useSession();
@@ -27,6 +28,7 @@ export function M365HealthPage() {
           Thin v1 posture view for M365 hygiene, identity activity, mailbox footprint, and licence optimisation signals.
         </p>
       </header>
+      <TenantAiContextNotice compact />
       {err ? <p className="tenant-error">{err}</p> : null}
       {!data ? (
         <div className="tenant-skeleton">Loading Microsoft posture…</div>

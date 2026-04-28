@@ -35,6 +35,7 @@ import { PlatformLoginPage } from "./pages/platform/PlatformLoginPage";
 import { PlatformAiProvidersPage } from "./pages/platform/PlatformAiProvidersPage";
 import { PlatformAiTaskRunsPage } from "./pages/platform/PlatformAiTaskRunsPage";
 import { PlatformOverviewPage } from "./pages/platform/PlatformOverviewPage";
+import { PlatformAuditPage, PlatformConnectorsPage, PlatformSettingsPage } from "./pages/platform/PlatformPlaceholderPages";
 import { PlatformPromptsPage } from "./pages/platform/PlatformPromptsPage";
 import { PlatformSecurityPage } from "./pages/platform/PlatformSecurityPage";
 import { PlatformSystemStatusPage } from "./pages/platform/PlatformSystemStatusPage";
@@ -60,6 +61,9 @@ function App() {
           <Route path="ai-providers" element={<PlatformAiProvidersPage />} />
           <Route path="ai-task-runs" element={<PlatformAiTaskRunsPage />} />
           <Route path="prompts" element={<PlatformPromptsPage />} />
+          <Route path="connectors" element={<PlatformConnectorsPage />} />
+          <Route path="audit" element={<PlatformAuditPage />} />
+          <Route path="settings" element={<PlatformSettingsPage />} />
         </Route>
       </Route>
 
@@ -72,6 +76,8 @@ function App() {
           <Route path="service-risk" element={<ServiceRiskPage />} />
           <Route path="customers" element={<CustomersPage />} />
           <Route path="customers/:id" element={<CustomerDetailPage />} />
+          <Route path="dashboard" element={<DashboardPage />} />
+          <Route path="lost-quotes" element={<Navigate to="/app/opportunities?tab=lost" replace />} />
           <Route path="onboarding" element={<OnboardingPage />} />
           <Route path="integrations" element={<IntegrationsPage />} />
           <Route path="integrations/mappings" element={<IntegrationMappingsPage />} />

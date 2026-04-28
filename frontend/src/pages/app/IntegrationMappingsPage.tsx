@@ -17,7 +17,7 @@ export function IntegrationMappingsPage() {
     const [mappingRows, connectionRows, customerRows] = await Promise.all([
       api.integrationMappings(accessToken, currentTenantId),
       api.integrations(accessToken, currentTenantId),
-      api.customers(accessToken, currentTenantId, { page: 1, page_size: 500 }),
+      api.customers(accessToken, currentTenantId, { page: 1, page_size: 100 }),
     ]);
     setRows(mappingRows);
     setConnections(connectionRows);

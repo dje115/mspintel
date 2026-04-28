@@ -32,8 +32,10 @@ All require tenant JWT and tenant context (`X-Tenant-Id` from session).
 | Path | Page | Notes |
 |------|------|-------|
 | `/app` | `DashboardPage` | Default post-login landing; executive KPIs + **Risk Engine v1-driven** at-risk/attention priority lists and workspace links. |
+| `/app/dashboard` | `DashboardPage` | Alias route for direct links/bookmarks; same content as `/app`. |
 | `/app/recommendations` | `RecommendationsPage` | Cross-account recommendation queue; per-row **Explain** calls workspace AI explanation endpoint. |
 | `/app/opportunities` | `OpportunitiesPage` | Commercial hub; optional `?tab=opportunities`, `pipeline`, or `lost`. |
+| `/app/lost-quotes` | redirect to `/app/opportunities?tab=lost` | Backward-compatible route alias for lost-quote workflows. |
 | `/app/marketing` | `MarketingPage` | Marketing / events / campaigns workspace: segment previews, themed **event idea board**, customer→campaign **matching placeholders**, notes area. Optional **`?customer_id=`** enables compact **AI account manager guidance** (next conversation + call script). Without it, shows prompt-key preview. |
 | `/app/at-risk` | `AtRiskAccountsPage` | **Risk Engine v1** at-risk queue (`risk_score`, bands, reasons, confidence notes, owner, next-step placeholder) with search/owner filters and manual recompute action. |
 | `/app/attention` | `NeedsAttentionAccountsPage` | **Risk Engine v1** attention queue (`attention_score`, reasons, confidence notes, owner, next-step placeholder) with drill-through to Customer 360. |
@@ -74,6 +76,9 @@ All require tenant JWT and tenant context (`X-Tenant-Id` from session).
 | `/platform/ai-providers` | `PlatformAiProvidersPage` | Read-only provider catalog (family + deployment mode). |
 | `/platform/prompts` | `PlatformPromptsPage` | Global default prompts overview; high-impact warning copy. |
 | `/platform/ai-task-runs` | `PlatformAiTaskRunsPage` | Read-only cross-tenant `ai_task_runs` tail for observability. |
+| `/platform/connectors` | `PlatformConnectorsPage` | **Partially connected placeholder**; platform rollup UX reserved while tenant-level integrations are live. |
+| `/platform/audit` | `PlatformAuditPage` | **Coming soon placeholder**; audit events exist but cross-tenant timeline UI is pending. |
+| `/platform/settings` | `PlatformSettingsPage` | **Coming soon placeholder** for global runtime defaults and policy controls. |
 
 ---
 
@@ -101,3 +106,12 @@ All require tenant JWT and tenant context (`X-Tenant-Id` from session).
 - `/app/customers/<uuid>#workspace` — customer 360 with recommendations tab.
 
 See [TENANT_PRODUCT_WIREFRAMES.md](TENANT_PRODUCT_WIREFRAMES.md) for IA detail; routes are registered in `App.tsx` under **AppLayout**. Planned product breadth and maturity are summarised in [MSP360_PRODUCT_SPEC.md](MSP360_PRODUCT_SPEC.md).
+
+---
+
+## Stabilisation notes (P0 pass)
+
+- Route wiring now includes explicit aliases for `/app/dashboard` and `/app/lost-quotes`.
+- Data quality workspace now has explicit loading, error, empty, and live-data states instead of silent failure.
+- Platform navigation now includes `/platform/connectors`, `/platform/audit`, and `/platform/settings` with truthful placeholder labels.
+- Customer list consumers now honor backend API contract limits (`page_size <= 100`) to avoid runtime 422s.

@@ -4,12 +4,25 @@ Standing rules for this repository. **Follow this document** for implementation 
 
 ---
 
+## 0. Before each task / phase
+
+- Before starting each new implementation phase, **re-read** **`docs/CURSOR_RULES.md`** and **`docs/MSP360_PRODUCT_SPEC.md`**.
+- If a user prompt conflicts with this rules document, ask for clarification unless the user explicitly overrides the conflicting rule.
+- End-of-phase reports must explicitly state whether these rules were followed, especially **Docker validation coverage** and any skipped Docker checks.
+
+---
+
 ## 1. Docker-first
 
-- **mspintel is Docker-first.** Local and CI workflows should assume Compose is the primary way to run Postgres, Redis, backend, worker, frontend, and Mailpit together.
+- **mspintel is Docker-first.** Docker Compose is the primary development/runtime contract for Postgres, Redis, backend, worker, frontend, and Mailpit.
+- Local commands such as `npm run build`, `npm run lint`, `pytest`, Alembic checks, or direct `vite` / `uvicorn` runs are useful, but **not sufficient validation on their own** for meaningful app changes.
+- **Meaningful app changes** include (non-exhaustive): frontend routes/components/API clients/types; backend routes/schemas/services; database models; migrations; connector code; AI context wiring; prompt/runtime wiring; worker behaviour; env/configuration; dependencies; Dockerfiles; and `compose.yaml`.
+- For meaningful app changes, Docker Compose validation is expected unless explicitly told otherwise.
+- If Docker validation cannot be run, report that clearly in the phase output and state why.
+- Do not claim a phase is fully validated if Docker validation was skipped.
 - **Every change** to code, runtime, dependencies, or configuration must keep **Dockerfiles**, **`compose.yaml`**, **`.env` / `.env.example` wiring**, and **container startup** (e.g. backend `docker-entrypoint.sh`, `alembic upgrade head`) **aligned**.
 - If a feature needs a **new service** (queue, extra worker, sidecar, etc.), **add it to Compose** (and document ports/env) rather than relying on undocumented manual processes.
-- After meaningful infra or dependency changes, **validate**: `docker compose config` and `docker compose up --build -d` (or equivalent) so the stack **builds and starts** cleanly.
+- After meaningful app changes, validate Docker runtime behaviour (not only static config) so containerised assumptions stay trustworthy.
 
 ---
 
@@ -33,9 +46,21 @@ Standing rules for this repository. **Follow this document** for implementation 
 After every **meaningful phase** (not necessarily every one-line typo fix):
 
 - Run **appropriate checks**: e.g. `cd backend && python -m pytest`, `cd backend && python -m alembic heads` / `upgrade head` when migrations exist, `cd frontend && npm run build` (and `npm run lint` when touching TS/React).
-- **Confirm Docker alignment** (`docker compose config`, and stack up when Dockerfiles or Compose change).
+- **Confirm Docker alignment for meaningful app changes** (not only Dockerfile/Compose edits).
+- Minimum expected Docker checks for meaningful app changes:
+  - `docker compose config`
+  - `docker compose up --build -d` when the change affects frontend, backend, worker, env, dependencies, API behaviour, migrations, or runtime assumptions
+  - `docker compose ps`
+  - relevant logs checked with `docker compose logs` (at least backend/frontend/worker when touched)
+  - backend starts cleanly
+  - frontend starts cleanly
+  - worker starts cleanly
+  - Postgres and Redis are healthy
+  - migrations apply cleanly when schema changes
+  - changed routes / API calls work in the containerised app
 - **Confirm migrations** when the schema changes (Alembic revision chain, `down_revision`, and ≤32-char revision ids for `alembic_version` if applicable).
 - **Confirm builds** for frontend and backend when those trees change.
+- If Docker validation is skipped, state that explicitly in the final report and do not present the phase as fully validated.
 
 ---
 
@@ -135,6 +160,9 @@ Compose sets **`CHOKIDAR_USEPOLLING=true`** for the frontend service so Vite **p
 |------|---------|
 | Compose sanity | `docker compose config` |
 | Stack up | `docker compose up --build -d` |
+| Stack status | `docker compose ps` |
+| Check stack logs | `docker compose logs --tail=100 backend frontend worker` |
+| Restart frontend | `docker compose restart frontend` |
 | DB migrations (container) | `docker compose exec backend alembic upgrade head` |
 | Seed demo data | `docker compose exec backend python -m app.db.seed` |
 | Backend tests | `cd backend && python -m pytest` |

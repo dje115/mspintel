@@ -5,6 +5,7 @@ import { api } from "../../api/client";
 import type { CustomerListResponse, RecommendationListResponse } from "../../api/types";
 import { useSession } from "../../state/session";
 import { formatAge, formatShortDate } from "../../utils/formatWorkspace";
+import { TenantAiContextNotice } from "../../components/TenantAiContextNotice";
 
 const PAGE_SIZE = 15;
 
@@ -150,6 +151,7 @@ export function RecommendationsPage() {
           — <strong>{openCount}</strong> open on this page.
         </p>
       </header>
+      <TenantAiContextNotice compact />
 
       {actionError ? <p className="tenant-error">{actionError}</p> : null}
 
@@ -209,7 +211,10 @@ export function RecommendationsPage() {
           {data.items.length === 0 ? (
             <div className="tenant-empty">
               <p className="tenant-empty-title">No recommendations match</p>
-              <p>Adjust filters or seed demo data — open items appear here as the engine proposes work.</p>
+              <p>
+                Adjust filters or improve data inputs. Generic/low-context tenants should complete onboarding, connect
+                PSA/finance/M365 sources, and resolve mappings to produce stronger recommendations.
+              </p>
             </div>
           ) : (
             <div className="tenant-table-wrap">
@@ -295,7 +300,7 @@ export function RecommendationsPage() {
                       <tr className="tenant-table-subrow">
                         <td colSpan={10} style={{ paddingTop: 0, borderTop: "none", background: "rgba(15, 118, 110, 0.04)" }}>
                           <div className="muted" style={{ fontSize: "0.72rem", marginBottom: "0.25rem" }}>
-                            AI explanation (from configured provider + prompt version)
+                            AI explanation (provider + prompt version + tenant context; quality depends on onboarding and connector coverage)
                           </div>
                           {aiExplainText[r.id] ? (
                             <div className="tenant-rec-card" style={{ fontSize: "0.88rem", whiteSpace: "pre-wrap" }}>

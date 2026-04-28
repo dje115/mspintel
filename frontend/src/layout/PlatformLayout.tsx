@@ -7,8 +7,11 @@ const nav = [
   { to: "/platform", label: "Overview", end: true },
   { to: "/platform/tenants", label: "Tenants" },
   { to: "/platform/ai-providers", label: "AI providers" },
+  { to: "/platform/connectors", label: "Connectors" },
   { to: "/platform/ai-task-runs", label: "AI runs" },
   { to: "/platform/prompts", label: "Prompts" },
+  { to: "/platform/audit", label: "Audit" },
+  { to: "/platform/settings", label: "Settings" },
   { to: "/platform/system-status", label: "System status" },
   { to: "/platform/security", label: "Security" }
 ];

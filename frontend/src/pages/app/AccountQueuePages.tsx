@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { api } from "../../api/client";
 import type { RiskQueueResponse } from "../../api/types";
 import { ScoreMeter } from "../../components/ScoreMeter";
+import { TenantAiContextNotice } from "../../components/TenantAiContextNotice";
 import { useSession } from "../../state/session";
 
 const PAGE_SIZE = 20;
@@ -65,6 +66,7 @@ function AccountQueuePage(props: { mode: QueueMode; title: string; subtitle: str
         <h1 className="tenant-page-title">{title}</h1>
         <p className="tenant-page-sub">{subtitle}</p>
       </header>
+      <TenantAiContextNotice compact />
 
       <section className="tenant-panel">
         <div className="tenant-panel-head">
@@ -120,7 +122,10 @@ function AccountQueuePage(props: { mode: QueueMode; title: string; subtitle: str
           {data.items.length === 0 ? (
             <div className="tenant-empty">
               <p className="tenant-empty-title">No accounts in this queue</p>
-              <p>Scores and rules will populate this view as data grows.</p>
+              <p>
+                Scores and rules will populate this queue after onboarding, connector setup, and mapping review provide
+                enough account coverage for confident risk signals.
+              </p>
             </div>
           ) : (
             <div className="tenant-table-wrap">

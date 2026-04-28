@@ -159,6 +159,41 @@ class TenantSetting(Base, TimestampMixin):
     value: Mapped[str] = mapped_column(Text)
 
 
+class TenantMspProfile(Base, TimestampMixin):
+    __tablename__ = "tenant_msp_profiles"
+    __table_args__ = (UniqueConstraint("tenant_id", name="uq_tenant_msp_profile_tenant"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), index=True
+    )
+    legal_name: Mapped[str | None] = mapped_column(String(220), nullable=True)
+    brand_name: Mapped[str | None] = mapped_column(String(220), nullable=True)
+    regions_served: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
+    vertical_focus: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
+    team_size_band: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    customer_count_band: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    typical_customer_size_band: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    delivery_model: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    business_goals: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
+    free_text_description: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class TenantServiceCatalogEntry(Base, TimestampMixin):
+    __tablename__ = "tenant_service_catalog_entries"
+    __table_args__ = (UniqueConstraint("tenant_id", "service_key", name="uq_tenant_service_catalog_tenant_key"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), index=True
+    )
+    service_key: Mapped[str] = mapped_column(String(80), nullable=False)
+    service_name: Mapped[str] = mapped_column(String(160), nullable=False)
+    is_selected: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    is_custom: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
+
 class Plan(Base, TimestampMixin):
     __tablename__ = "plans"
 

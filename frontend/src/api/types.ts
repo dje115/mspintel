@@ -56,6 +56,50 @@ export type UserSessionRow = {
 };
 
 export type OnboardingResponse = { tenant_id: string; status: string; step: string };
+export type TenantMspProfile = {
+  tenant_id: string;
+  legal_name: string | null;
+  brand_name: string | null;
+  regions_served: string[];
+  vertical_focus: string[];
+  team_size_band: string | null;
+  customer_count_band: string | null;
+  typical_customer_size_band: string | null;
+  delivery_model: string | null;
+  business_goals: string[];
+  free_text_description: string | null;
+};
+export type TenantServiceCatalogEntry = {
+  service_key: string;
+  service_name: string;
+  is_selected: boolean;
+  is_custom: boolean;
+  sort_order: number;
+};
+export type TenantServiceCatalog = {
+  tenant_id: string;
+  items: TenantServiceCatalogEntry[];
+};
+
+/** Mirrors ``GET /api/tenant/ai-context`` — same structure wired into AI product context. */
+export type TenantAIContext = {
+  tenant_id: string;
+  msp_profile_summary: {
+    legal_name?: string | null;
+    brand_name?: string | null;
+    delivery_model?: string | null;
+    team_size_band?: string | null;
+    customer_count_band?: string | null;
+    typical_customer_size_band?: string | null;
+    free_text_description?: string | null;
+  };
+  selected_services: string[];
+  business_goals: string[];
+  vertical_focus: string[];
+  regions_served: string[];
+  data_confidence_notes: string[];
+};
+
 export type SubscriptionResponse = {
   tenant_id: string;
   plan_code: string;

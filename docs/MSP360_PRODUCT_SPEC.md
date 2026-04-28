@@ -36,7 +36,7 @@ PSA (**Autotask**, **ConnectWise**), quoting (**ITQuoter**), backup (**Veeam** a
 | Principle | Meaning for implementation |
 |-----------|----------------------------|
 | **Tenant-scoped & secure** | Data, connectors, prompts, and AI routes are tenant-bound; platform admin is a separate surface and JWT scope. |
-| **Docker-first** | Local and CI assume Compose; see [CURSOR_RULES.md](CURSOR_RULES.md). |
+| **Docker-first** | Local and CI assume Compose; meaningful app changes are validated in Docker (see [CURSOR_RULES.md](CURSOR_RULES.md)). |
 | **Auditable AI** | Every production AI call should be traceable: provider family, model, prompt definition/version, fallbacks, outcome. |
 | **Prompt/version-driven** | Prefer **prompt DB** (`prompt_key` + versions) over hardcoded strings for user-facing analysis templates. |
 | **Connector-driven ingestion** | Product signals come from sync runs and mappings, not manual CSV uploads as the primary path. |
@@ -198,9 +198,9 @@ Columns: **section** · **purpose** · **key users** · **core data sources** ·
 | AI engines | Provider routing | Admin | `ai_providers`, routes | — | **Existing** | More adapters |
 | Prompts | Overrides & versions | Admin | `prompt_definitions`, versions | — | **Existing** | More keys from §21 |
 | Security | Sessions | All users | Sessions | — | **Existing** | SSO |
-| Onboarding | First-run | Admin | Onboarding state | — | **Existing** | Connector wizard |
-| Data quality / gaps | Freshness & coverage | Ops, Admin | Sync runs, mapping density | `data_gap_summary`, `account_confidence_explanation` | **Wireframed** | Per-entity coverage scores |
-| Connector onboarding & mapping control | Safe staged adoption and identity integrity | Tenant admin, Ops | Connection lifecycle, scoped import settings, mapping review queue, audit events | N/A (workflow foundation) | **Implemented (v2.7 thin slice)** | Richer matching signals + bulk review ergonomics |
+| Onboarding | First-run + tenant business context capture | Admin | Onboarding state, tenant MSP profile, service catalogue | — | **Existing / expanded (v2 onboarding)** | Connector wizard + mapping setup + context completion nudges |
+| Data quality / gaps | Freshness, confidence, and gap-to-action | Ops, Admin | Sync runs, mapping density, connector coverage, knowledge confidence notes | `data_gap_summary`, `account_confidence_explanation`, `missing_data_next_steps` | **Wireframed / partial surfaces live** | Tenant scorecard + role-owned next actions |
+| Connector onboarding & mapping control | Safe staged adoption and identity integrity | Tenant admin, Ops | Connection lifecycle states, scoped import settings, mapping suggestions, confidence signals, review queue, audit events | N/A (workflow foundation) | **Implemented (v2.7 thin slice)** | Richer matching + bulk review + lifecycle ergonomics |
 | Stalled work | Quotes/projects/installs stuck | Ops, Sales, Service | PSA projects, tickets, quotes | `stalled_work_explanation`, `stalled_work_next_action` | **Planned** | PSA project entities |
 | Relationship health | Exec coverage, touch | AM | Contacts, activities (telephony later) | `relationship_health_summary`, `stakeholder_gap_explanation` | **Planned** | Activity ingestion |
 | AM workspace / next conversation | Cadence & talk track | AM | 360 + recs + commercial | `account_manager_next_conversation`, `account_manager_call_script` | **Planned** | Prompt + UI bundle |
@@ -255,6 +255,14 @@ Each row: **purpose** · **widgets** · **actions** · **signals** · **sources*
 **Documentation / coverage quality** — Link coverage to risk and QBR. *Maturity:* **future**.
 
 **Security posture / compliance overview** — Tenant-customer security narrative. *Maturity:* **future**.
+
+### 6.3 Onboarding v2 and tenant AI context (current)
+
+- **Onboarding v2 (`/app/onboarding`)** captures richer MSP business profile context: legal/brand name, regions served, vertical focus, team and customer-size bands, delivery model, business goals, free-text business description, and selected/default/custom services.
+- **Reusable tenant AI context bundle:** `GET /api/tenant/ai-context` provides MSP profile summary, selected services, business goals, vertical focus, regions served, and data confidence notes.
+- **AI settings transparency:** `/app/ai-settings` includes a read-only “MSP context used by AI” card that loads the same tenant AI context bundle and links back to onboarding for edits.
+- **Product use:** this context is intended to shape customer-facing AI outputs (reviews/QBR prep, account-manager guidance, marketing/campaign matching, recommendation explanations) while preserving confidence-aware, honest fallbacks when context is incomplete.
+- **Truthfulness rule:** when onboarding context is missing or weak, UI and AI surfaces should explicitly communicate low-confidence/generic behaviour instead of implying account-specific certainty.
 
 ---
 
@@ -330,7 +338,7 @@ Each row: **purpose** · **widgets** · **actions** · **signals** · **sources*
 
 ## 15. Marketing, events, campaign matching
 
-**Flow:** marketing enters **raw event ideas** → AI **refines** for MSP positioning → system **matches accounts** (rules + embeddings later) → **segment summary** → **invite draft** per segment. Support **review campaigns**, **backup/continuity** themes, **AI governance** education events. **Persistent fit signals** (`marketing_fit`, posture objects) should **rank and explain** matches so marketers are not re-running full-account synthesis for every campaign.
+**Flow:** marketing enters **raw event ideas** (ideas board) → AI **refines** for MSP positioning → optionally **convert to campaign draft** → system builds **campaign-ready segments** and **matches accounts** (rules + embeddings later) → **segment summary** → **invite draft** per segment. Support **lost quote reactivation**, **nurture opportunities**, **review/QBR invite candidates**, and **service pain → commercial opportunity** themes. **Persistent fit signals** (`marketing_fit`, posture objects) should **rank and explain** matches so marketers are not re-running full-account synthesis for every campaign.
 
 ---
 
@@ -338,7 +346,7 @@ Each row: **purpose** · **widgets** · **actions** · **signals** · **sources*
 
 **Detect missing:** account owner, primary contact, economic buyer, billing/contract link, quote history, M365 telemetry, backup coverage, call history, review history, service plan coverage.
 
-**Present:** **coverage score** per account; **“cannot conclude X because Y is missing”** strings in UI and in AI system prompts as constraints. *Prompts:* `data_gap_summary`, `account_confidence_explanation`, `missing_data_next_steps`. *Direction:* treat **data confidence** as a **maintained knowledge concern**—e.g. `account_confidence` / maintainer output refreshed with sync coverage—not only a single ephemeral score string.
+**Present:** tenant-level **data gap scorecard** plus customer-level confidence card; **“cannot conclude X because Y is missing”** strings in UI and AI prompts; and a **gap-to-action engine** where each major gap includes suggested next action, suggested owner role, and expected impact. *Prompts:* `data_gap_summary`, `account_confidence_explanation`, `missing_data_next_steps`. *Direction:* treat **data confidence** as a **maintained knowledge concern**—e.g. `account_confidence` / maintainer output refreshed with sync coverage—not only a single ephemeral score string.
 
 ---
 
@@ -381,6 +389,8 @@ Each row: **purpose** · **widgets** · **actions** · **signals** · **sources*
 
 **Implementation-oriented breakdown:** connection config → `integration_sync_runs` → `source_entity_mappings` → canonical tables → *(future)* knowledge-object store → *(future)* warehouse facts.
 
+**Connector onboarding/mapping operating model (current direction):** connector lifecycle states should remain explicit (`configured`, `tested`, `active`, `disabled`, `paused`, `manual_sync_only`, `scheduled_later`) with import scoping options (all customers, selected customers, selected IDs, filtered subset, sample/top-N). Matching suggestions should expose confidence and route through a mapping-review queue with manual accept/reject/remap/unlink and auditable change history. Tenant/customer-level coverage visibility should be surfaced in product UX.
+
 **Rules:** **Page-load sync is wrong** for heavy PSA pulls—use **scheduled delta** + **manual sync** for repair and onboarding. **Freshness** requirements vary: ticket backlog **minutes–hours**; financial **daily**; licence counts **daily**; relationship call patterns **hours**. **Reporting** should attach to warehouse facts (tier **E**) without forcing operational tables to carry all history. **Knowledge refreshes** (tier **C**) should run **after** meaningful sync completion or on policy cadence—not on every page view.
 
 ---
@@ -390,6 +400,7 @@ Each row: **purpose** · **widgets** · **actions** · **signals** · **sources*
 - **Per-tenant** provider/model selection and **fallback** chains.  
 - **Provider families:** hosted OpenAI-compatible, OpenRouter, self-hosted (**Ollama**, vLLM, LM Studio), **Microsoft / Copilot** path as first-class when adapter exists; others explicit unsupported/stub until dedicated adapter.  
 - **Prompt inheritance:** platform defaults → tenant overrides; **versioning** and rollback.  
+- **Reusable tenant AI context bundle:** customer-facing/product AI runs may receive context from `GET /api/tenant/ai-context` (MSP profile summary, selected services, business goals, regions served, vertical focus, data confidence notes) so prompts stay tenant-aware without hardcoded profile assumptions.  
 - **Lineage:** every execution writes **`ai_task_runs`** with provider, model, prompt ids/version ids, and outcome summaries.
 
 ---
@@ -490,16 +501,16 @@ Full conceptual model: **§3** (this document). Runtime wiring: [AI_CONFIGURATIO
 
 ### 22.1 Suggested sequencing (high level)
 
-1. **Connector expansion** — ConnectWise, deepen Autotask, ITQuoter, Veeam scaffolds to live sync.  
-2. **Persistent knowledge layer (foundation)** — Storage model for tenant-scoped knowledge objects; refresh after sync; staleness/lint; maintainer prompt keys (§21.7) registered and executed as `ai_task_runs`; product reads with freshness badges.  
-3. **Customer 360 enrichment** — Panels per new data domains; **prefer** maintained knowledge objects for default narratives; single AI “overview” with lineage where live calls remain.  
-4. **Billing integrity & revenue assurance** — Rules + finance connector phase 1; **`billing_integrity`** object consumers.  
-5. **Microsoft 365 insights** — Read-only hygiene first, then optimisation.  
-6. **Backup insights** — Veeam job + billing alignment.  
-7. **Telephony** — CDR ingestion for relationship health.  
-8. **Campaign / event matching** — Idea bank + match scores + invite drafts; **`marketing_fit`** and posture objects as inputs.  
-9. **Richer AM workflows** — Save-the-account state, tasks, playbook library.  
-10. **Observability & prompt tooling** — Compare prompt versions, offline eval hooks, safer rollouts.
+1. **P0/P0.5 stabilisation & truthfulness pass** — route/render reliability, schema alignment, defensive loading/error/empty states, clear live/demo/partial labels, confidence-aware AI panels, Docker-runtime validation of changed flows.  
+2. **Onboarding v2 + tenant AI context hardening** — MSP business profile + service catalogue completeness, `GET /api/tenant/ai-context` consumption consistency, and explicit low-context guidance across AI surfaces.  
+3. **Prompt packs + context wiring** — expand prompt families where gaps remain; ensure reusable tenant/customer context is consistently available to runtime and lineage.  
+4. **Connector onboarding/mapping control depth** — lifecycle ergonomics, scoped imports, matching confidence, mapping review throughput, and coverage visibility.  
+5. **Microsoft 365 completion** — continue practical M365/Entra/Azure depth with confidence-first UX and billing/service linkage.  
+6. **Data confidence + risk + relationship improvements** — stronger gap-to-action engine, relationship coverage signals, and risk confidence explanations.  
+7. **Persistent knowledge layer (foundation)** — Storage model for tenant-scoped knowledge objects; refresh after sync; staleness/lint; maintainer prompt keys (§21.7) registered and executed as `ai_task_runs`; product reads with freshness badges.  
+8. **Customer 360 enrichment** — Panels per new data domains; **prefer** maintained knowledge objects for default narratives; single AI “overview” with lineage where live calls remain.  
+9. **Billing integrity & revenue assurance** — Rules + finance connector phase 1; **`billing_integrity`** object consumers.  
+10. **Backup insights, telephony, and observability tooling** — Veeam billing alignment, CDR relationship signal, prompt/version observability and safer rollout controls.
 
 ### 22.2 Intentionally later
 
@@ -524,7 +535,9 @@ Full **workflow automation** ( unattended emails ), **embedding-heavy** personal
 | Backup insights | Prove protection | Service | Veeam | backup_* | Future | Connector |
 | Telephony | Prove relationship effort | AM | 3CX | relationship_* (augment) | Future | CDR adapter |
 | Marketing / events | Fill rooms with right accounts | Marketing | Segments + ideas | marketing_* , event_* | Partial (shell + placeholders) | Idea bank DB + live matching |
-| Data quality | Trust & fix gaps | Admin, Ops | Sync + mappings | data_gap_* , account_confidence_* | Wireframed | Coverage APIs |
+| Onboarding | Capture tenant MSP business/service context for downstream AI quality | Admin | Tenant profile + service catalogue + onboarding state | *(context bundle consumer; no direct user-facing key)* | Existing / expanded | Connector wizard + mapping + context completion loops |
+| AI engines | Tenant AI routing with transparent context readiness | Admin | `ai_providers`, task routes, tenant AI context bundle | — | Existing (with read-only context card) | More adapters + policy tooling |
+| Data quality | Trust & fix gaps with actionable ownership | Admin, Ops | Sync + mappings + connector coverage + confidence notes | data_gap_* , account_confidence_* , missing_data_* | Wireframed / partial | Tenant scorecard + gap owner/action impact |
 | Risk Engine v1 | Explainable customer prioritisation | Director, AM, Service | Canonical tickets/contacts/commercial + finance snapshots when linked | risk_summary, churn_explanation, account_confidence_explanation | Implemented (heuristic) | Scheduler cadence + deeper connector signals |
 | **Tenant knowledge layer** | Persisted derived narratives / posture per account | All major surfaces | Canonical + connector coverage | **Maintainer** keys §21.7 + `ai_task_runs` | **Specified** | Schema, refresh jobs, UI freshness |
 
@@ -538,6 +551,7 @@ Full **workflow automation** ( unattended emails ), **embedding-heavy** personal
 - **Renewal command centre** — contracts + QBR + health in one timeline.  
 - **Benchmarking** — anonymised peer percentiles once multi-tenant analytics mature (governance-heavy).  
 - **Customer-facing portal (long-term)** — selective transparency; not v1.
+- **Sector-pack extensibility (future architecture)** — keep MSPIntel as the primary vertical, while allowing the same core platform model to host future sector packs (connectors, entities, risk rules, dashboards, prompts) when strategically justified.
 
 ### Risk Engine v1 current limits
 - No predictive ML or probabilistic forecasting; this release is deterministic rule scoring.

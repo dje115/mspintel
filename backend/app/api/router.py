@@ -11,6 +11,7 @@ from app.api.v1.platform_prompts import router as platform_prompts_router
 from app.api.v1.system import router as system_router
 from app.api.v1.tenants import root_router as invitations_router
 from app.api.v1.tenants import router as tenants_router
+from app.api.v1.tenant_profile import router as tenant_profile_router
 from app.api.v1.tenant_ai import router as tenant_ai_router
 from app.api.v1.tenant_prompts import router as tenant_prompts_router
 from app.api.v1.workspace import router as workspace_router
@@ -22,6 +23,7 @@ api_router.include_router(platform_router)
 api_router.include_router(platform_ai_router)
 api_router.include_router(platform_prompts_router)
 api_router.include_router(tenants_router)
+api_router.include_router(tenant_profile_router)
 api_router.include_router(invitations_router)
 api_router.include_router(integrations_router)
 api_router.include_router(customer_router)

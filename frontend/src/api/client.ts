@@ -31,6 +31,9 @@ import type {
   ServiceRiskResponse,
   SourceConnection,
   SubscriptionResponse,
+  TenantMspProfile,
+  TenantAIContext,
+  TenantServiceCatalog,
   SystemStatus,
   TenantAiSettingsResponse,
   TenantAiTaskRouteRow,
@@ -212,6 +215,24 @@ export const api = {
     request<SubscriptionResponse>("/api/v1/tenants/current/subscription", {
       headers: authHeaders(accessToken, tenantId)
     }),
+  tenantProfile: (accessToken: string, tenantId: string) =>
+    request<TenantMspProfile>("/api/tenant/profile", { headers: authHeaders(accessToken, tenantId) }),
+  updateTenantProfile: (accessToken: string, tenantId: string, payload: Omit<TenantMspProfile, "tenant_id">) =>
+    request<TenantMspProfile>("/api/tenant/profile", {
+      method: "PUT",
+      headers: authHeaders(accessToken, tenantId),
+      body: JSON.stringify(payload)
+    }),
+  tenantServiceCatalogue: (accessToken: string, tenantId: string) =>
+    request<TenantServiceCatalog>("/api/tenant/service-catalogue", { headers: authHeaders(accessToken, tenantId) }),
+  updateTenantServiceCatalogue: (accessToken: string, tenantId: string, payload: TenantServiceCatalog) =>
+    request<TenantServiceCatalog>("/api/tenant/service-catalogue", {
+      method: "PUT",
+      headers: authHeaders(accessToken, tenantId),
+      body: JSON.stringify(payload)
+    }),
+  tenantAiContext: (accessToken: string, tenantId: string) =>
+    request<TenantAIContext>("/api/tenant/ai-context", { headers: authHeaders(accessToken, tenantId) }),
   customers: (
     accessToken: string,
     tenantId: string,

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api } from "../api/client";
 import type { AIProductBlockState } from "../api/types";
 import { useSession } from "../state/session";
+import { TenantAiContextNotice } from "./TenantAiContextNotice";
 
 type GuidanceTask =
   | "customer_review_agenda"
@@ -164,6 +165,7 @@ export function CustomerGuidanceAiPanel({
           These runs use the same resolver as Customer 360 AI: versioned prompts, tenant providers, and{" "}
           <code className="tenant-code-inline">ai_task_runs</code> lineage.
         </p>
+        <TenantAiContextNotice compact />
         <div className="tenant-ai-guidance-stack">
           {tasks.map((t) => (
             <GuidanceBlock key={t} customerId={customerId} task={t} compact={compact} />

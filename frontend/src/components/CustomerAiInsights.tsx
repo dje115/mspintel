@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api } from "../api/client";
 import type { AIProductBlockState } from "../api/types";
 import { useSession } from "../state/session";
+import { TenantAiContextNotice } from "./TenantAiContextNotice";
 
 type TaskKey = "account_summary" | "risk_summary" | "churn_explanation";
 
@@ -163,6 +164,7 @@ export function CustomerAiInsights(props: { customerId: string; highlight?: "ris
           Outputs use your tenant&apos;s configured providers and versioned prompts. If generation fails, check{" "}
           <strong>AI engines</strong> under Administration — nothing here is mocked.
         </p>
+        <TenantAiContextNotice compact />
         <AiBlock customerId={customerId} task="account_summary" />
         <AiBlock customerId={customerId} task="risk_summary" emphasize={highlight === "risk"} />
         <AiBlock customerId={customerId} task="churn_explanation" />

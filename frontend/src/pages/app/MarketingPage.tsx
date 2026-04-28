@@ -1,6 +1,7 @@
 import { Link, useSearchParams } from "react-router-dom";
 
 import { AccountManagerGuidanceShell } from "../../components/AccountManagerGuidanceShell";
+import { TenantAiContextNotice } from "../../components/TenantAiContextNotice";
 
 const EVENT_THEMES = [
   { id: "ai_intro", label: "AI introduction", hint: "Governance + quick wins" },
@@ -41,6 +42,7 @@ export function MarketingPage() {
           ) : null}
         </p>
       </header>
+      <TenantAiContextNotice compact />
 
       <section className="tenant-panel tenant-panel--accent">
         <div className="tenant-panel-head">

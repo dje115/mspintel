@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { api } from "../../api/client";
 import type { BillingIntegrityWorkspaceResponse } from "../../api/types";
 import { useSession } from "../../state/session";
+import { TenantAiContextNotice } from "../../components/TenantAiContextNotice";
 
 export function BillingIntegrityPage() {
   const { accessToken, currentTenantId } = useSession();
@@ -37,6 +38,7 @@ export function BillingIntegrityPage() {
           view — signals are only as strong as connector coverage and synced fields.
         </p>
       </header>
+      <TenantAiContextNotice compact />
 
       <section className="tenant-panel tenant-panel--accent" style={{ marginBottom: "1.25rem" }}>
         <div className="tenant-panel-body" style={{ padding: "1rem 1.1rem" }}>

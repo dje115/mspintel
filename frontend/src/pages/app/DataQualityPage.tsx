@@ -7,9 +7,21 @@ import { useSession } from "../../state/session";
 export function DataQualityPage() {
   const { accessToken, currentTenantId } = useSession();
   const [coverage, setCoverage] = useState<IntegrationCoverageResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
   useEffect(() => {
     if (!accessToken || !currentTenantId) return;
-    void api.integrationCoverage(accessToken, currentTenantId).then(setCoverage).catch(() => undefined);
+    setLoading(true);
+    setError(null);
+    void api
+      .integrationCoverage(accessToken, currentTenantId)
+      .then(setCoverage)
+      .catch((err: unknown) => {
+        setCoverage(null);
+        setError(err instanceof Error ? err.message : "Unable to load data quality coverage");
+      })
+      .finally(() => setLoading(false));
   }, [accessToken, currentTenantId]);
 
   return (
@@ -19,9 +31,28 @@ export function DataQualityPage() {
         <p className="tenant-page-sub">
           Visibility into connector freshness, failed syncs, and coverage gaps before they degrade recommendations.
         </p>
+        <p style={{ marginTop: "0.5rem" }}>
+          <span className="tenant-badge tenant-badge--active">Live data</span>
+        </p>
       </header>
       <section className="tenant-panel">
         <div className="tenant-panel-body">
+          {loading ? <p className="tenant-skeleton">Loading connector coverage…</p> : null}
+
+          {error ? (
+            <div className="tenant-empty">
+              <p className="tenant-empty-title">Coverage unavailable</p>
+              <p className="tenant-error">{error}</p>
+            </div>
+          ) : null}
+
+          {!loading && !error && !coverage ? (
+            <div className="tenant-empty">
+              <p className="tenant-empty-title">No coverage data yet</p>
+              <p>Connect and sync at least one source to populate quality metrics.</p>
+            </div>
+          ) : null}
+
           {coverage ? (
             <div className="tenant-grid tenant-grid--cards-3">
               <article className="tenant-card">

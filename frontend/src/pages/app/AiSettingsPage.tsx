@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 
 import { api } from "../../api/client";
-import type { AIProviderSafe, TenantAiSettingsResponse, TenantAiTaskRouteRow } from "../../api/types";
+import type { AIProviderSafe, TenantAIContext, TenantAiSettingsResponse, TenantAiTaskRouteRow } from "../../api/types";
 import { tenantHasAiConfigure } from "../../tenant/access";
 import { useSession } from "../../state/session";
 
@@ -28,6 +29,17 @@ function WarningBanner() {
 function familyLabel(family: string | null) {
   if (!family) return "—";
   return family.replace(/_/g, " ");
+}
+
+function dash(v: string | null | undefined) {
+  if (v === null || v === undefined || String(v).trim() === "") return "—";
+  return v;
+}
+
+function truncate(text: string, max: number) {
+  const t = text.trim();
+  if (t.length <= max) return t;
+  return `${t.slice(0, max - 1)}…`;
 }
 
 export function AiSettingsPage() {
@@ -58,6 +70,9 @@ export function AiSettingsPage() {
   const [editProviders, setEditProviders] = useState<
     Record<string, { display_label: string; base_url: string; is_enabled: boolean; api_key: string; model: string }>
   >({});
+  const [mspAiContext, setMspAiContext] = useState<TenantAIContext | null>(null);
+  const [mspAiContextLoading, setMspAiContextLoading] = useState(false);
+  const [mspAiContextError, setMspAiContextError] = useState<string | null>(null);
 
   const providerBadgeTone = (mode: string | null): string => {
     if (!mode) return "tenant-badge tenant-badge--muted";
@@ -135,6 +150,20 @@ export function AiSettingsPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (!accessToken || !currentTenantId) return;
+    setMspAiContextLoading(true);
+    setMspAiContextError(null);
+    void api
+      .tenantAiContext(accessToken, currentTenantId)
+      .then(setMspAiContext)
+      .catch((e: unknown) => {
+        setMspAiContext(null);
+        setMspAiContextError(e instanceof Error ? e.message : "Unable to load MSP AI context");
+      })
+      .finally(() => setMspAiContextLoading(false));
+  }, [accessToken, currentTenantId]);
 
   const onSaveRoute = async (row: TenantAiTaskRouteRow, enabledOverride?: boolean) => {
     if (!accessToken || !currentTenantId || !canConfigure) return;
@@ -255,6 +284,95 @@ export function AiSettingsPage() {
           <strong>deployment mode</strong> so operators can see how inference runs.
         </p>
       </header>
+
+      <section className="tenant-panel tenant-panel--accent" style={{ marginBottom: "1.25rem" }}>
+        <div className="tenant-panel-head">
+          <h2 className="tenant-panel-title">MSP context used by AI</h2>
+          <span className="tenant-badge tenant-badge--muted">Read-only</span>
+        </div>
+        <div className="tenant-panel-body" style={{ padding: "1rem 1.1rem 1.1rem" }}>
+          <p className="tenant-page-sub" style={{ marginTop: 0 }}>
+            Snapshot of the tenant MSP business profile and selected services from{" "}
+            <Link className="tenant-panel-link" to="/app/onboarding">
+              Onboarding
+            </Link>
+            . This matches <code className="tenant-code-inline">GET /api/tenant/ai-context</code> — the same bundle
+            merged into customer-facing AI prompts.
+          </p>
+          {mspAiContextLoading ? <p className="tenant-skeleton">Loading MSP context…</p> : null}
+          {mspAiContextError ? <p className="tenant-error">{mspAiContextError}</p> : null}
+          {!mspAiContextLoading && !mspAiContextError && mspAiContext ? (
+            <>
+              {(() => {
+                const brand = mspAiContext.msp_profile_summary.brand_name?.trim() ?? "";
+                const legal = mspAiContext.msp_profile_summary.legal_name?.trim() ?? "";
+                const primary = brand || legal || "";
+                const secondary = brand && legal && brand !== legal ? legal : "";
+                return (
+                  <p style={{ margin: "0.75rem 0 0.35rem", fontSize: "0.95rem", fontWeight: 700, color: "#0f172a" }}>
+                    {primary || "MSP profile not configured yet"}
+                    {secondary ? (
+                      <span className="muted" style={{ fontWeight: 500, marginLeft: "0.35rem" }}>
+                        ({secondary})
+                      </span>
+                    ) : null}
+                  </p>
+                );
+              })()}
+              <dl style={{ display: "grid", gridTemplateColumns: "minmax(9rem, 38%) 1fr", rowGap: "0.45rem", columnGap: "1rem", margin: "0.65rem 0 0" }}>
+                <dt className="tenant-page-sub">Delivery model</dt>
+                <dd style={{ margin: 0 }}>{dash(mspAiContext.msp_profile_summary.delivery_model)}</dd>
+                <dt className="tenant-page-sub">Team size</dt>
+                <dd style={{ margin: 0 }}>{dash(mspAiContext.msp_profile_summary.team_size_band)}</dd>
+                <dt className="tenant-page-sub">Customer count</dt>
+                <dd style={{ margin: 0 }}>{dash(mspAiContext.msp_profile_summary.customer_count_band)}</dd>
+                <dt className="tenant-page-sub">Typical customer size</dt>
+                <dd style={{ margin: 0 }}>{dash(mspAiContext.msp_profile_summary.typical_customer_size_band)}</dd>
+                <dt className="tenant-page-sub">Regions served</dt>
+                <dd style={{ margin: 0 }}>{mspAiContext.regions_served.length ? mspAiContext.regions_served.join(", ") : "—"}</dd>
+                <dt className="tenant-page-sub">Vertical focus</dt>
+                <dd style={{ margin: 0 }}>{mspAiContext.vertical_focus.length ? mspAiContext.vertical_focus.join(", ") : "—"}</dd>
+                <dt className="tenant-page-sub">Business goals</dt>
+                <dd style={{ margin: 0 }}>{mspAiContext.business_goals.length ? mspAiContext.business_goals.join(", ") : "—"}</dd>
+                <dt className="tenant-page-sub">Description</dt>
+                <dd style={{ margin: 0 }}>
+                  {mspAiContext.msp_profile_summary.free_text_description
+                    ? truncate(mspAiContext.msp_profile_summary.free_text_description, 360)
+                    : "—"}
+                </dd>
+              </dl>
+              <div style={{ marginTop: "1rem" }}>
+                <p className="tenant-page-sub" style={{ marginBottom: "0.35rem", fontWeight: 700 }}>
+                  Selected services ({mspAiContext.selected_services.length})
+                </p>
+                {mspAiContext.selected_services.length ? (
+                  <ul className="tenant-list-plain" style={{ paddingLeft: "1.25rem", margin: 0 }}>
+                    {mspAiContext.selected_services.map((s) => (
+                      <li key={s}>{s}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="tenant-page-sub" style={{ margin: 0 }}>
+                    No services selected yet.
+                  </p>
+                )}
+              </div>
+              {mspAiContext.data_confidence_notes.length ? (
+                <div style={{ marginTop: "1rem", paddingTop: "0.85rem", borderTop: "1px solid #e2e8f0" }}>
+                  <p className="tenant-page-sub" style={{ margin: "0 0 0.35rem", fontWeight: 700 }}>
+                    Data confidence
+                  </p>
+                  <ul style={{ margin: 0, paddingLeft: "1.25rem", fontSize: "0.86rem", color: "#64748b", lineHeight: 1.45 }}>
+                    {mspAiContext.data_confidence_notes.map((n) => (
+                      <li key={n}>{n}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+            </>
+          ) : null}
+        </div>
+      </section>
 
       <WarningBanner />
 

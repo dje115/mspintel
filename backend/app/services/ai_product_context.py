@@ -12,6 +12,7 @@ from app.repositories.workspace import WorkspaceRepository
 from app.services.billing_integrity_service import BillingIntegrityService
 from app.services.m365_health_service import M365HealthService
 from app.services.risk_engine_v1 import RiskEngineV1Service
+from app.services.tenant_profile import build_tenant_ai_context
 from app.services.workspace import WorkspaceService
 
 
@@ -31,6 +32,7 @@ def _customer_ai_context_variables(db: Session, tenant_id: UUID, customer_id: UU
     risk = RiskEngineV1Service(db).latest_score_for_customer(tenant_id, customer_id)
     if fin.get("error") == "not_found":
         fin = {}
+    tenant_profile_context = build_tenant_ai_context(db, tenant_id).model_dump(mode="json")
     return {
         "customer": {
             "id": str(customer.id),
@@ -67,6 +69,7 @@ def _customer_ai_context_variables(db: Session, tenant_id: UUID, customer_id: UU
         "open_recommendations": [r.model_dump(mode="json") for r in rec_rows],
         "open_opportunities": [o.model_dump(mode="json") for o in opp_rows],
         "quotes": [q.model_dump(mode="json") for q in quote_rows],
+        "tenant_profile_context": tenant_profile_context,
     }
 
 
@@ -136,6 +139,7 @@ def build_recommendation_explanation_variables(db: Session, tenant_id: UUID, rec
         c = CustomerRepository(db).get_customer(tenant_id, rec.customer_id)
         if c:
             cust_name, owner = c.name, c.owner_name
+    tenant_profile_context = build_tenant_ai_context(db, tenant_id).model_dump(mode="json")
     return {
         "task": "recommendation_explanation",
         "recommendation": {
@@ -147,4 +151,5 @@ def build_recommendation_explanation_variables(db: Session, tenant_id: UUID, rec
             "customer_name": cust_name,
             "owner_name": owner,
         },
+        "tenant_profile_context": tenant_profile_context,
     }

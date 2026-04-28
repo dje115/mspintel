@@ -4,6 +4,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../../api/client";
 import type { CustomerDetailResponse, CustomerListItem } from "../../api/types";
 import { AccountManagerGuidanceShell } from "../../components/AccountManagerGuidanceShell";
+import { TenantAiContextNotice } from "../../components/TenantAiContextNotice";
 import { useSession } from "../../state/session";
 import { formatUsdFromCents } from "../../utils/formatWorkspace";
 
@@ -119,7 +120,7 @@ export function ReviewsPage() {
     if (!accessToken || !currentTenantId) return;
     setLoadListError(null);
     void api
-      .customers(accessToken, currentTenantId, { page: 1, page_size: 120 })
+      .customers(accessToken, currentTenantId, { page: 1, page_size: 100 })
       .then((r) => setCustomerOptions(r.items))
       .catch((e: unknown) => setLoadListError(e instanceof Error ? e.message : "Unable to load accounts"));
   }, [accessToken, currentTenantId]);
@@ -235,6 +236,7 @@ export function ReviewsPage() {
           locally.
         </p>
       </header>
+      <TenantAiContextNotice compact />
 
       {!detail && (
         <section className="tenant-panel tenant-panel--accent" style={{ marginBottom: "1.25rem" }}>
