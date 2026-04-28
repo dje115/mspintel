@@ -57,6 +57,23 @@ services:
       - redis
       - postgres
 
+  connector-lab:
+    container_name: mspintel-connector-lab
+    build:
+      context: ./tools/connector_lab
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    environment:
+      CONNECTOR_LAB_TOKEN: ${CONNECTOR_LAB_TOKEN:-connector-lab-dev-token}
+      CONNECTOR_LAB_API_KEY: ${CONNECTOR_LAB_API_KEY:-connector-lab-api-key}
+      CONNECTOR_LAB_GLOBAL_MODE: ${CONNECTOR_LAB_GLOBAL_MODE:-}
+      CONNECTOR_LAB_SLOW_MS: ${CONNECTOR_LAB_SLOW_MS:-600}
+    ports:
+      - "8099:8099"
+    volumes:
+      - ./tools/connector_lab:/app
+
   postgres:
     container_name: mspintel-postgres
     image: postgres:16-alpine

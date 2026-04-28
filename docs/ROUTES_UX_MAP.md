@@ -115,3 +115,10 @@ See [TENANT_PRODUCT_WIREFRAMES.md](TENANT_PRODUCT_WIREFRAMES.md) for IA detail; 
 - Data quality workspace now has explicit loading, error, empty, and live-data states instead of silent failure.
 - Platform navigation now includes `/platform/connectors`, `/platform/audit`, and `/platform/settings` with truthful placeholder labels.
 - Customer list consumers now honor backend API contract limits (`page_size <= 100`) to avoid runtime 422s.
+
+---
+
+## Dev tooling surface (non-tenant UI)
+
+- Connector Lab (development/testing only): `http://localhost:8099/` (`/ui`, `/ui/status`, `/ui/scenarios`, `/ui/signals`)
+- Purpose: mock vendor namespaces for connector development, mapping confidence testing, and deterministic error-mode validation outside the tenant product shell.

@@ -47,6 +47,57 @@ After the stack is up and seeded:
   - `python scripts/scaffold_connector.py --key "<key>" --display-name "<Name>" --family "<family>" --maturity planned --capabilities customers --auth-modes api_key`
 - After scaffolding, wire adapter into `ConnectorRegistry`, implement `test_connection()` and `run_sync()`, and add deterministic tests.
 
+## Connector Lab (dev-only vendor emulator)
+
+Connector Lab runs as a Compose service (`connector-lab`) and provides mock vendor APIs plus a browser UI for connector development/testing without live vendor credentials.
+
+- UI: `http://localhost:8099/`
+- Status: `http://localhost:8099/ui/status`
+- Health: `http://localhost:8099/health`
+- Container DNS from backend/worker: `http://connector-lab:8099`
+
+### Auth
+
+Use either:
+
+- `Authorization: Bearer ${CONNECTOR_LAB_TOKEN}` (default: `connector-lab-dev-token`)
+- `X-API-Key: ${CONNECTOR_LAB_API_KEY}` (default: `connector-lab-api-key`)
+
+### Mock namespaces
+
+- `/autotask`, `/itquoter`, `/xero`, `/m365`, `/veeam`, `/3cx` (thin optional)
+
+### Supported testing behavior
+
+- pagination (`page`, `page_size`)
+- `updated_since` filtering
+- forced modes via `mode=` query and/or `X-Connector-Lab-Mode` header:
+  - `auth_failure`
+  - `rate_limit`
+  - `server_error`
+  - `slow`
+  - `empty`
+  - `partial`
+
+### Scenario usage
+
+Use `/ui/scenarios` and `/ui/signals` to inspect:
+
+- cross-system customer mismatches (exact, near match, suffix/trading-name differences, unmatched, stale/legacy variants)
+- product signal conditions (billing-vs-M365 mismatch, inactive licensed users, failed/stale backup jobs, overdue restore tests, lost/stalled quotes, aged debt)
+
+### Pointing connectors at Connector Lab
+
+Set connection base URLs (or environment hints) to:
+
+- `AUTOTASK_BASE_URL=http://connector-lab:8099/autotask`
+- `ITQUOTER_BASE_URL=http://connector-lab:8099/itquoter`
+- `XERO_BASE_URL=http://connector-lab:8099/xero`
+- `M365_BASE_URL=http://connector-lab:8099/m365`
+- `VEEAM_BASE_URL=http://connector-lab:8099/veeam`
+
+Use this service for development/testing only. It is not a production vendor integration endpoint.
+
 ## Migration Commands
 
 - Upgrade: `docker compose exec backend alembic upgrade head`
