@@ -5,7 +5,7 @@ import uuid
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.entities import Customer, M365CustomerPosture, SourceEntityMapping, SourceSystemConnection, Tenant
+from app.models.entities import ConnectorMappingReview, Customer, M365CustomerPosture, SourceEntityMapping, SourceSystemConnection, Tenant
 from app.services.connectors.providers.microsoft_365 import Microsoft365ConnectorAdapter
 from app.services.connectors.registry import ConnectorRegistry
 from tests.helpers import auth_headers, create_user_with_membership
@@ -66,7 +66,7 @@ def test_m365_connection_redacts_secret_and_syncs_postures(client, db_session: S
 
     sync = client.post(f"/api/v1/integrations/connections/{cid}/sync", headers=auth_headers(admin, str(tenant.id)))
     assert sync.status_code == 202, sync.text
-    assert sync.json()["status"] == "succeeded"
+    assert sync.json()["status"] == "succeeded", sync.text
 
     posture = db_session.scalars(select(M365CustomerPosture).where(M365CustomerPosture.tenant_id == tenant.id)).first()
     assert posture is not None
@@ -177,7 +177,7 @@ def test_m365_sync_handles_empty_connector_lab_data(client, db_session: Session,
     cid = create.json()["id"]
     sync = client.post(f"/api/v1/integrations/connections/{cid}/sync", headers=auth_headers(admin, str(tenant.id)))
     assert sync.status_code == 202, sync.text
-    assert sync.json()["status"] == "succeeded"
+    assert sync.json()["status"] == "succeeded", sync.text
     assert sync.json()["records_processed"] == 0
 
 
@@ -219,9 +219,90 @@ def test_m365_sync_unmatched_connector_lab_records_warns(client, db_session: Ses
     cid = create.json()["id"]
     sync = client.post(f"/api/v1/integrations/connections/{cid}/sync", headers=auth_headers(admin, str(tenant.id)))
     assert sync.status_code == 202, sync.text
-    assert sync.json()["status"] == "succeeded"
+    assert sync.json()["status"] == "succeeded", sync.text
     warnings = (sync.json().get("stats_json") or {}).get("warnings") or []
-    assert any("created canonical customer" in w.lower() for w in warnings)
+    assert any("requires mapping review" in w.lower() for w in warnings)
+    reviews = db_session.scalars(
+        select(ConnectorMappingReview).where(ConnectorMappingReview.tenant_id == tenant.id)
+    ).all()
+    assert len(reviews) >= 1
+    assert any(r.status in {"pending", "unlinked"} for r in reviews)
+    created = db_session.scalars(
+        select(Customer).where(Customer.tenant_id == tenant.id, Customer.name == "No Match Customer")
+    ).first()
+    assert created is None
+
+
+def test_m365_sync_creates_confirmed_and_reviewable_mapping_states(client, db_session: Session, monkeypatch):
+    tenant = _tenant(db_session, "m365-mapmix")
+    admin = create_user_with_membership(db_session, "m365-mapmix@example.com", "tenant_admin", tenant)
+    db_session.add(Customer(id=uuid.uuid4(), tenant_id=tenant.id, name="Acme Dental Ltd", status="active", owner_name="Owner", demo_profile={}))
+    db_session.add(Customer(id=uuid.uuid4(), tenant_id=tenant.id, name="Riverside Care Group", status="active", owner_name="Owner", demo_profile={}))
+    db_session.commit()
+
+    def _fake_fetch(self, *, base_url: str, path: str, config: dict, page_size: int = 200):
+        if path == "tenants":
+            return [
+                {"id": "M-T001", "tenant_name": "acme.onmicrosoft.com", "customer_hint": "Acme Dental Ltd"},
+                {"id": "M-T002", "tenant_name": "riverside.onmicrosoft.com", "customer_hint": "Riverside Care"},
+                {"id": "M-T003", "tenant_name": "unknown.onmicrosoft.com", "customer_hint": "Unknown Logistics"},
+            ]
+        if path == "licence-summary":
+            return [
+                {"tenant_id": "M-T001", "licensed_users": 12, "active_users_30d": 11, "inactive_users_30d": 1},
+                {"tenant_id": "M-T002", "licensed_users": 18, "active_users_30d": 15, "inactive_users_30d": 3},
+                {"tenant_id": "M-T003", "licensed_users": 9, "active_users_30d": 7, "inactive_users_30d": 2},
+            ]
+        if path == "mailbox-counts":
+            return [
+                {"tenant_id": "M-T001", "mailboxes": 11, "shared_mailboxes": 2},
+                {"tenant_id": "M-T002", "mailboxes": 15, "shared_mailboxes": 4},
+                {"tenant_id": "M-T003", "mailboxes": 7, "shared_mailboxes": 1},
+            ]
+        if path == "hygiene-findings":
+            return [{"tenant_id": "M-T001", "finding": "inactive_users_still_licensed"}]
+        return []
+
+    monkeypatch.setattr(Microsoft365ConnectorAdapter, "_fetch_resource", _fake_fetch)
+
+    create = client.post(
+        "/api/v1/integrations/connections",
+        headers=auth_headers(admin, str(tenant.id)),
+        json={
+            "system_type": "microsoft_365",
+            "display_name": "M365 map mix",
+            "base_url": "http://connector-lab:8099",
+            "auth_mode": "oauth2",
+            "sync_cadence_minutes": 60,
+            "config": {"tenant_id": "t", "client_id": "c", "client_secret": "secret"},
+        },
+    )
+    assert create.status_code == 201, create.text
+    cid = create.json()["id"]
+    sync = client.post(f"/api/v1/integrations/connections/{cid}/sync", headers=auth_headers(admin, str(tenant.id)))
+    assert sync.status_code == 202, sync.text
+    assert sync.json()["status"] == "succeeded", sync.text
+
+    reviews = db_session.scalars(
+        select(ConnectorMappingReview).where(ConnectorMappingReview.tenant_id == tenant.id)
+    ).all()
+    assert len(reviews) == 3
+    statuses = {r.status for r in reviews}
+    assert "accepted" in statuses
+    assert "pending" in statuses or "unlinked" in statuses
+    mapping_rows = client.get("/api/v1/integrations/mappings", headers=auth_headers(admin, str(tenant.id)))
+    assert mapping_rows.status_code == 200, mapping_rows.text
+    api_statuses = {r["status"] for r in mapping_rows.json()}
+    assert "accepted" in api_statuses
+    assert "pending" in api_statuses or "unlinked" in api_statuses
+
+    mappings = db_session.scalars(
+        select(SourceEntityMapping).where(
+            SourceEntityMapping.tenant_id == tenant.id,
+            SourceEntityMapping.entity_type == "customer",
+        )
+    ).all()
+    assert len(mappings) >= 1
 
 
 def test_m365_workspace_and_customer_detail_shapes(client, db_session: Session):

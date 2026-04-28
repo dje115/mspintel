@@ -25,6 +25,7 @@ from app.services.connectors.constants import (
 from app.services.connectors.manifest import ConnectorConfigField, ConnectorManifest
 from app.services.connectors.types import ConnectorSyncResult, ConnectorSyncStats, ConnectorTestResult
 from app.services.connectors.utils import upsert_source_entity_mapping
+from app.services.connectors.onboarding import ConnectorOnboardingService
 from app.services.m365_canonical import upsert_m365_for_customer, upsert_m365_for_customer_payload
 
 
@@ -275,38 +276,44 @@ class Microsoft365ConnectorAdapter(ConnectorAdapter):
             stmt = select(Customer).where(Customer.tenant_id == tenant_id).order_by(Customer.name)
             customers = list(db.scalars(stmt).all())
             customer_by_name = {self._norm_customer_label(c.name): c for c in customers}
+            customer_by_id = {c.id: c for c in customers}
+            onboarding = ConnectorOnboardingService(db)
             for tenant_row in tenants:
                 tenant_ref = str(tenant_row.get("id") or "").strip()
                 if not tenant_ref:
                     continue
                 hint = self._norm_customer_label(str(tenant_row.get("customer_hint") or ""))
                 customer = customer_by_name.get(hint)
-                if not customer:
-                    fallback_name = str(tenant_row.get("customer_hint") or tenant_row.get("tenant_name") or "").strip()
-                    if fallback_name:
-                        customer = Customer(
-                            tenant_id=tenant_id,
-                            name=fallback_name[:180],
-                            status="watch",
-                            owner_name=None,
-                            external_ref=f"m365:{tenant_ref}",
-                        )
-                        db.add(customer)
-                        db.flush()
-                        upsert_source_entity_mapping(
-                            db=db,
-                            tenant_id=tenant_id,
-                            source_connection_id=connection.id,
-                            entity_type=ENTITY_CUSTOMER,
-                            source_id=f"m365-customer:{tenant_ref}",
-                            canonical_entity_id=customer.id,
-                        )
-                        stats.mappings_written += 1
-                        stats.warnings.append(
-                            f"Created canonical customer '{fallback_name}' from M365 tenant hint (unmatched to existing customer)."
-                        )
-                    else:
-                        continue
+                source_display_name = str(tenant_row.get("customer_hint") or tenant_row.get("tenant_name") or "").strip() or None
+                review = onboarding.upsert_mapping_review_candidate(
+                    tenant_id=tenant_id,
+                    source_connection_id=connection.id,
+                    entity_type=ENTITY_CUSTOMER,
+                    source_external_id=f"m365-customer:{tenant_ref}",
+                    source_display_name=source_display_name,
+                    source_domain=None,
+                )
+                mapped_customer = customer
+                if not mapped_customer and review.suggested_customer_id and review.suggested_confidence == "high":
+                    mapped_customer = customer_by_id.get(review.suggested_customer_id)
+                if mapped_customer:
+                    review.status = "accepted"
+                    review.mapped_customer_id = mapped_customer.id
+                    upsert_source_entity_mapping(
+                        db=db,
+                        tenant_id=tenant_id,
+                        source_connection_id=connection.id,
+                        entity_type=ENTITY_CUSTOMER,
+                        source_id=f"m365-customer:{tenant_ref}",
+                        canonical_entity_id=mapped_customer.id,
+                    )
+                    stats.mappings_written += 1
+                else:
+                    review.status = "pending" if review.suggested_customer_id else "unlinked"
+                    stats.warnings.append(
+                        f"M365 tenant '{source_display_name or tenant_ref}' requires mapping review ({review.status})."
+                    )
+                    continue
                 licence = tenant_rows_by_id.get(tenant_ref, {})
                 mailbox = mailbox_rows_by_id.get(tenant_ref, {})
                 findings = hygiene_by_tenant.get(tenant_ref, [])
@@ -322,13 +329,14 @@ class Microsoft365ConnectorAdapter(ConnectorAdapter):
                     "hygiene_findings": [str(f.get("finding")) for f in findings if f.get("finding")],
                     "coverage_notes": [
                         "Materialised from Connector Lab M365 endpoints; treat as mock vendor telemetry.",
+                        "Customer mapping confidence is governed by connector mapping review state.",
                     ],
                     "confidence_level": self._confidence_from_hygiene(len(findings)),
                 }
                 posture = upsert_m365_for_customer_payload(
                     db,
                     tenant_id=tenant_id,
-                    customer_id=customer.id,
+                    customer_id=mapped_customer.id,
                     source_connection_id=connection.id,
                     payload=row_payload,
                     provenance="m365_connector_lab",
@@ -344,7 +352,9 @@ class Microsoft365ConnectorAdapter(ConnectorAdapter):
                 )
                 stats.mappings_written += 1
             if stats.m365_postures_upserted == 0:
-                stats.warnings.append("No customer hints in Connector Lab tenants matched canonical customer names.")
+                stats.warnings.append(
+                    "No M365 posture rows written yet; review mapping queue to confirm or remap source tenant records."
+                )
             return ConnectorSyncResult(
                 ok=True,
                 message=f"Synced M365 postures from Connector Lab for {stats.m365_postures_upserted} customer(s).",

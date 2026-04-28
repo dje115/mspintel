@@ -11,7 +11,7 @@ export function IntegrationMappingsPage() {
   const [customers, setCustomers] = useState<CustomerListItem[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<Record<string, string>>({});
   const [selectedConnection, setSelectedConnection] = useState<string>("");
-  const [selectedStatus, setSelectedStatus] = useState<string>("pending");
+  const [selectedStatus, setSelectedStatus] = useState<string>("");
   const [selectedConfidence, setSelectedConfidence] = useState<string>("");
   const [selectedCustomerFilter, setSelectedCustomerFilter] = useState<string>("");
   const [search, setSearch] = useState<string>("");

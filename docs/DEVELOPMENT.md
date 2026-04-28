@@ -84,6 +84,7 @@ Use either:
 Use `/ui/scenarios` and `/ui/signals` to inspect:
 
 - cross-system customer mismatches (exact, near match, suffix/trading-name differences, unmatched, stale/legacy variants)
+- realistic UK-style customer naming (no generic "Scenario Customer" labels) with vendor-specific variants
 - product signal conditions (billing-vs-M365 mismatch, inactive licensed users, failed/stale backup jobs, overdue restore tests, lost/stalled quotes, aged debt)
 
 ### Pointing connectors at Connector Lab
@@ -108,7 +109,9 @@ Preferred flow for connector-backed demo domains:
    - `POST /api/v1/integrations/connections/{id}/test`
    - `POST /api/v1/integrations/connections/{id}/sync`
 4. Validate canonical surfaces:
+   - `GET /api/v1/integrations/mappings` (reviewable suggested/unlinked identity rows)
    - `GET /api/v1/workspace/m365-health`
+   - `/app/integrations/mappings`
    - `/app/m365-health`
 
 The direction is to keep seed mostly structural and let connector syncs materialise realistic business telemetry into canonical tables.

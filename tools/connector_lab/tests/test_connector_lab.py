@@ -60,6 +60,14 @@ def test_expanded_dataset_counts_and_pagination():
     assert tenants.json()["total"] >= 20
 
 
+def test_no_generic_connectorlab_scenario_names_in_m365_tenants():
+    client = TestClient(app)
+    body = client.get("/m365/tenants", headers=_auth_headers()).json()
+    tenant_hints = [str(row.get("customer_hint") or "") for row in body["items"]]
+    assert tenant_hints
+    assert not any("ConnectorLab Scenario Customer" in hint for hint in tenant_hints)
+
+
 def test_ui_pages_render():
     client = TestClient(app)
     root = client.get("/")

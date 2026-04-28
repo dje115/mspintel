@@ -93,8 +93,30 @@ CUSTOMER_MASTER = [
 
 
 def _add_generated_customers() -> None:
-    for i in range(1, 21):
-        name = f"ConnectorLab Scenario Customer {i:02d} Ltd"
+    realistic_names = [
+        "Foxglove Accountants Ltd",
+        "Harborough Veterinary Clinic",
+        "Midland Fabrication Ltd",
+        "Ashfield Architects",
+        "Brookside Pharmacy",
+        "Castle View Estate Agents",
+        "Silverline Manufacturing Ltd",
+        "Meadowgate Care Home",
+        "Oakridge Construction Ltd",
+        "Willowbrook Finance",
+        "Fosse Retail Group",
+        "Welland Dental Care",
+        "Stoughton Logistics Ltd",
+        "Kingfisher Education Trust",
+        "Bruntingthorpe Engineering Ltd",
+        "Market Harborough Dental",
+        "Leicester Property Services",
+        "Rutland Legal LLP",
+        "Welford Road Hospitality",
+        "Soar Valley Training",
+        "Hinckley Components Ltd",
+    ]
+    for i, name in enumerate(realistic_names, start=1):
         signals = []
         if i % 3 == 0:
             signals.append("stalled_quote")
@@ -112,17 +134,27 @@ def _add_generated_customers() -> None:
             signals.append("shared_mailboxes_not_billed")
         if not signals:
             signals = ["exact_match"]
+        # Keep realistic but intentionally messy cross-system identity variants.
+        if i % 6 == 0:
+            xero_name = name.replace("Ltd", "Limited").replace("  ", " ").strip()
+        elif i % 5 == 0:
+            xero_name = name.upper().replace(" LLP", " L.L.P.")
+        else:
+            xero_name = name
+        itq_name = name.replace(" Ltd", "").replace(" LLP", "")
+        m365_hint = itq_name if i % 4 else xero_name
+        veeam_name = None if i % 5 == 0 else name
         CUSTOMER_MASTER.append(
             {
                 "key": f"scenario_{i:02d}",
                 "canonical_name": name,
-                "scenario": "Synthetic connector-lab expansion customer.",
+                "scenario": "Realistic UK MSP demo account with deliberate identity variance.",
                 "hints": {
                     "autotask": name,
-                    "itquoter": name.replace("Ltd", "").strip() if i % 2 else name,
-                    "xero": name if i % 4 else name.replace("Ltd", "Limited"),
-                    "m365": name,
-                    "veeam": name if i % 5 else None,
+                    "itquoter": itq_name,
+                    "xero": xero_name,
+                    "m365": m365_hint,
+                    "veeam": veeam_name,
                 },
                 "signals": signals,
             }

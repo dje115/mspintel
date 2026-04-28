@@ -4,6 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.entities import (
+    ConnectorMappingReview,
     Contact,
     Customer,
     IntegrationSyncRun,
@@ -84,9 +85,13 @@ def test_m365_posture_appears_only_after_connector_sync(client, db_session: Sess
     sync = client.post(f"/api/v1/integrations/connections/{m365['id']}/sync", headers=headers)
     assert sync.status_code == 202, sync.text
     assert sync.json()["status"] == "succeeded"
-    assert sync.json()["records_processed"] >= 1
-
-    assert db_session.scalars(select(M365CustomerPosture).where(M365CustomerPosture.tenant_id == tid)).first() is not None
+    # Structural-only seed means unmatched source rows should queue for mapping review,
+    # not auto-create canonical customers.
+    assert sync.json()["records_processed"] == 0
+    assert db_session.scalars(select(M365CustomerPosture).where(M365CustomerPosture.tenant_id == tid)).first() is None
+    reviews = db_session.scalars(select(ConnectorMappingReview).where(ConnectorMappingReview.tenant_id == tid)).all()
+    assert len(reviews) >= 1
+    assert any(r.status in {"pending", "unlinked"} for r in reviews)
 
 
 def test_workspace_apis_are_safe_after_structural_only_seed(client, db_session: Session):
