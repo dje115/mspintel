@@ -181,6 +181,49 @@ def test_m365_sync_handles_empty_connector_lab_data(client, db_session: Session,
     assert sync.json()["records_processed"] == 0
 
 
+def test_m365_sync_unmatched_connector_lab_records_warns(client, db_session: Session, monkeypatch):
+    tenant = _tenant(db_session, "m365-unmatched")
+    admin = create_user_with_membership(db_session, "m365-unmatched@example.com", "tenant_admin", tenant)
+    db_session.add(
+        Customer(
+            id=uuid.uuid4(),
+            tenant_id=tenant.id,
+            name="Known Customer",
+            status="active",
+            owner_name="Owner",
+            demo_profile={},
+        )
+    )
+    db_session.commit()
+
+    def _fake_fetch(self, *, base_url: str, path: str, config: dict, page_size: int = 200):
+        if path == "tenants":
+            return [{"id": "M-T999", "tenant_name": "unknown.onmicrosoft.com", "customer_hint": "No Match Customer"}]
+        return []
+
+    monkeypatch.setattr(Microsoft365ConnectorAdapter, "_fetch_resource", _fake_fetch)
+
+    create = client.post(
+        "/api/v1/integrations/connections",
+        headers=auth_headers(admin, str(tenant.id)),
+        json={
+            "system_type": "microsoft_365",
+            "display_name": "M365 unmatched",
+            "base_url": "http://connector-lab:8099",
+            "auth_mode": "oauth2",
+            "sync_cadence_minutes": 60,
+            "config": {"tenant_id": "t", "client_id": "c", "client_secret": "secret"},
+        },
+    )
+    assert create.status_code == 201, create.text
+    cid = create.json()["id"]
+    sync = client.post(f"/api/v1/integrations/connections/{cid}/sync", headers=auth_headers(admin, str(tenant.id)))
+    assert sync.status_code == 202, sync.text
+    assert sync.json()["status"] == "succeeded"
+    warnings = (sync.json().get("stats_json") or {}).get("warnings") or []
+    assert any("created canonical customer" in w.lower() for w in warnings)
+
+
 def test_m365_workspace_and_customer_detail_shapes(client, db_session: Session):
     tenant = _tenant(db_session, "m365-b")
     admin = create_user_with_membership(db_session, "m365-b@example.com", "tenant_admin", tenant)

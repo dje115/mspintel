@@ -116,6 +116,7 @@ Scope: connector realism audit for Autotask, ITQuoter, Xero, Microsoft Graph, Ve
   - Veeam-like: `instanceUid`.
 - Added `has_more` to list payloads in `tools/connector_lab/app/main.py` for clearer pagination semantics.
 - Added Xero realism guard: `Xero-Tenant-Id` header now required for `/xero/*` endpoints.
+- Expanded Connector Lab datasets to include ~20+ additional customer/account-level scenarios per vendor namespace, with deliberately messy identity and signal cases (match/no-match, legal-name variants, stalled/lost quotes, aged invoices, M365 hygiene mismatches, failed/stale backups, restore-test gaps).
 
 ## Manifest/catalog alignment updates in this slice
 

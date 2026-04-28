@@ -47,6 +47,19 @@ def test_messy_customer_data_exists():
     assert "Old Mill Eng" in names
 
 
+def test_expanded_dataset_counts_and_pagination():
+    client = TestClient(app)
+    accounts = client.get("/autotask/accounts?page=1&page_size=10", headers=_auth_headers())
+    assert accounts.status_code == 200
+    data = accounts.json()
+    assert data["total"] >= 20
+    assert data["has_more"] is True
+    assert len(data["items"]) == 10
+    tenants = client.get("/m365/tenants", headers=_auth_headers())
+    assert tenants.status_code == 200
+    assert tenants.json()["total"] >= 20
+
+
 def test_ui_pages_render():
     client = TestClient(app)
     root = client.get("/")

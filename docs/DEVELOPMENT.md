@@ -98,6 +98,21 @@ Set connection base URLs (or environment hints) to:
 
 Use this service for development/testing only. It is not a production vendor integration endpoint.
 
+### Demo sync orchestration (current thin-slice flow)
+
+Preferred flow for connector-backed demo domains:
+
+1. Seed structural/config baseline: `docker compose exec backend python -m app.db.seed`
+2. Log in as tenant admin (`tenant-admin@demo-msp.example.com`)
+3. From Integrations, test/sync connector connections (starting with M365), or call:
+   - `POST /api/v1/integrations/connections/{id}/test`
+   - `POST /api/v1/integrations/connections/{id}/sync`
+4. Validate canonical surfaces:
+   - `GET /api/v1/workspace/m365-health`
+   - `/app/m365-health`
+
+The direction is to keep seed mostly structural and let connector syncs materialise realistic business telemetry into canonical tables.
+
 ## Migration Commands
 
 - Upgrade: `docker compose exec backend alembic upgrade head`

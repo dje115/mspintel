@@ -88,7 +88,7 @@ Classification used per area:
 | ConnectWise | **Stub / planned** | Registry presence; no production ingestion path yet. |
 | ITQuoter | **Stub** | Scaffold + updated auth metadata; live API integration still pending. |
 | Veeam | **Stub / planned** | Scaffold; VSPC-first API direction documented. |
-| Microsoft 365 | **Partial (practical slice)** | Tenant product has canonical M365 posture ingestion with Connector Lab-backed connection test/sync, explicit confidence notes, and live-depth limits for real Graph. |
+| Microsoft 365 | **Partial (practical slice)** | Tenant product has canonical M365 posture ingestion with Connector Lab-backed connection test/sync, explicit confidence notes, and live-depth limits for real Graph. Demo seed no longer directly upserts canonical M365 posture rows. |
 | Accounting (Xero/Sage) | **Partial** | Canonical finance tables exist; Xero live ingestion remains limited and demo-backed. |
 | Warehouse / snapshots | **Documented only** | No `warehouse_*` tables yet. |
 

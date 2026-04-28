@@ -1,245 +1,469 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 
-def _iso(ts: str) -> str:
-    return datetime.fromisoformat(ts).replace(tzinfo=UTC).isoformat().replace("+00:00", "Z")
+def _iso(dt: datetime) -> str:
+    return dt.astimezone(UTC).isoformat().replace("+00:00", "Z")
+
+
+BASE_TS = datetime(2026, 1, 10, 9, 0, tzinfo=UTC)
+
+
+CUSTOMER_MASTER = [
+    {
+        "key": "acme_dental",
+        "canonical_name": "Acme Dental Ltd",
+        "scenario": "Exact cross-system match with healthy baseline.",
+        "hints": {
+            "autotask": "Acme Dental Ltd",
+            "itquoter": "Acme Dental",
+            "xero": "Acme Dental Ltd",
+            "m365": "Acme Dental Ltd",
+            "veeam": "Acme Dental Ltd",
+        },
+        "signals": ["exact_match"],
+    },
+    {
+        "key": "bright_legal",
+        "canonical_name": "Bright Legal Services",
+        "scenario": "Trading vs legal suffix mismatch.",
+        "hints": {
+            "autotask": "Bright Legal Services",
+            "itquoter": "Bright Legal",
+            "xero": "Bright Legal Services LLP",
+            "m365": "Bright Legal Services",
+            "veeam": "Bright Legal Services",
+        },
+        "signals": ["trading_vs_legal_name", "stalled_quote"],
+    },
+    {
+        "key": "greenfield_school",
+        "canonical_name": "Greenfield Primary School",
+        "scenario": "Missing suffix and duplicate candidate pressure.",
+        "hints": {
+            "autotask": "Greenfield Primary School",
+            "itquoter": "Greenfield School",
+            "xero": "Greenfield Primary",
+            "m365": "Greenfield Primary School",
+            "veeam": "Greenfield Primary School",
+        },
+        "signals": ["missing_suffix", "duplicate_candidate"],
+    },
+    {
+        "key": "northview_logistics",
+        "canonical_name": "Northview Logistics",
+        "scenario": "Missing from backup system to test gap handling.",
+        "hints": {
+            "autotask": "Northview Logistics",
+            "itquoter": "Northview Logistics",
+            "xero": "Northview Logistics",
+            "m365": "Northview Logistics",
+            "veeam": None,
+        },
+        "signals": ["system_gap"],
+    },
+    {
+        "key": "riverside_care",
+        "canonical_name": "Riverside Care Group",
+        "scenario": "Legacy naming in backup and high ticket pressure.",
+        "hints": {
+            "autotask": "Riverside Care Group",
+            "itquoter": "Riverside Care",
+            "xero": "Riverside Care Group",
+            "m365": "Riverside Care Group",
+            "veeam": "Riverside Care Group Legacy",
+        },
+        "signals": ["high_ticket_pressure", "failed_backup_jobs"],
+    },
+    {
+        "key": "old_mill",
+        "canonical_name": "Old Mill Engineering",
+        "scenario": "Low-confidence sparse profile.",
+        "hints": {
+            "autotask": "Old Mill Engineering",
+            "itquoter": "Old Mill Eng",
+            "xero": "Old Mill Engineering",
+            "m365": "Old Mill Engineering",
+            "veeam": "Old Mill Engineering",
+        },
+        "signals": ["low_confidence_mapping", "no_recent_contact"],
+    },
+]
+
+
+def _add_generated_customers() -> None:
+    for i in range(1, 21):
+        name = f"ConnectorLab Scenario Customer {i:02d} Ltd"
+        signals = []
+        if i % 3 == 0:
+            signals.append("stalled_quote")
+        if i % 4 == 0:
+            signals.append("unpaid_aged_invoice")
+        if i % 5 == 0:
+            signals.append("m365_licence_mismatch")
+        if i % 6 == 0:
+            signals.append("inactive_licensed_users")
+        if i % 7 == 0:
+            signals.append("failed_backup_jobs")
+        if i % 8 == 0:
+            signals.append("stale_restore_test")
+        if i % 9 == 0:
+            signals.append("shared_mailboxes_not_billed")
+        if not signals:
+            signals = ["exact_match"]
+        CUSTOMER_MASTER.append(
+            {
+                "key": f"scenario_{i:02d}",
+                "canonical_name": name,
+                "scenario": "Synthetic connector-lab expansion customer.",
+                "hints": {
+                    "autotask": name,
+                    "itquoter": name.replace("Ltd", "").strip() if i % 2 else name,
+                    "xero": name if i % 4 else name.replace("Ltd", "Limited"),
+                    "m365": name,
+                    "veeam": name if i % 5 else None,
+                },
+                "signals": signals,
+            }
+        )
+
+
+_add_generated_customers()
 
 
 CUSTOMER_SCENARIOS = [
     {
-        "customer_key": "acme_dental",
-        "canonical_name": "Acme Dental Ltd",
-        "scenario": "Exact match in some systems, slight legal-name differences in others.",
+        "customer_key": row["key"],
+        "canonical_name": row["canonical_name"],
+        "scenario": row["scenario"],
         "systems": {
-            "autotask": "Acme Dental Ltd",
-            "itquoter": "Acme Dental",
-            "xero": "Acme Dental Limited",
-            "m365": "acme-dental.onmicrosoft.com",
-            "veeam": "Acme Dental Ltd",
+            "autotask": row["hints"]["autotask"],
+            "itquoter": row["hints"]["itquoter"],
+            "xero": row["hints"]["xero"],
+            "m365": row["hints"]["m365"],
+            "veeam": row["hints"]["veeam"],
         },
-    },
-    {
-        "customer_key": "bright_legal",
-        "canonical_name": "Bright Legal Services",
-        "scenario": "Trading name vs legal suffix mismatch.",
-        "systems": {
-            "autotask": "Bright Legal Services",
-            "itquoter": "Bright Legal",
-            "xero": "Bright Legal Services LLP",
-            "m365": "brightlegal.onmicrosoft.com",
-            "veeam": "Bright Legal Services",
-        },
-    },
-    {
-        "customer_key": "greenfield_school",
-        "canonical_name": "Greenfield Primary School",
-        "scenario": "Missing company suffix and duplicate candidate risk.",
-        "systems": {
-            "autotask": "Greenfield Primary School",
-            "itquoter": "Greenfield School",
-            "xero": "Greenfield Primary",
-            "m365": "greenfieldprimary.onmicrosoft.com",
-            "veeam": "Greenfield Primary School",
-        },
-    },
-    {
-        "customer_key": "northview_logistics",
-        "canonical_name": "Northview Logistics",
-        "scenario": "Present in PSA + Xero, absent in Veeam (unmatched source record).",
-        "systems": {
-            "autotask": "Northview Logistics",
-            "itquoter": "Northview Logistics",
-            "xero": "Northview Logistics",
-            "m365": "northviewlogistics.onmicrosoft.com",
-            "veeam": None,
-        },
-    },
-    {
-        "customer_key": "riverside_care",
-        "canonical_name": "Riverside Care Group",
-        "scenario": "Duplicate candidate and stale/deleted source hints.",
-        "systems": {
-            "autotask": "Riverside Care Group",
-            "itquoter": "Riverside Care",
-            "xero": "Riverside Care Group",
-            "m365": "riversidecare.onmicrosoft.com",
-            "veeam": "Riverside Care Group - Legacy",
-        },
-    },
-    {
-        "customer_key": "old_mill",
-        "canonical_name": "Old Mill Engineering",
-        "scenario": "Low-confidence case with sparse data and no recent contacts.",
-        "systems": {
-            "autotask": "Old Mill Engineering",
-            "itquoter": "Old Mill Eng",
-            "xero": "Old Mill Engineering",
-            "m365": "oldmillengineering.onmicrosoft.com",
-            "veeam": "Old Mill Engineering",
-        },
-    },
+    }
+    for row in CUSTOMER_MASTER
 ]
-
 
 SIGNAL_SCENARIOS = [
-    "M365 licensed users differ from billing counts.",
-    "Inactive users remain licensed in M365.",
-    "Shared mailboxes not represented on billing snapshots.",
-    "Veeam failed backup jobs and stale jobs older than 48h.",
-    "Veeam restore-test overdue for high-priority customer.",
-    "ITQuoter lost quote and stalled quote examples.",
-    "Xero unpaid invoice and aged debt for finance risk.",
-    "Autotask high ticket volume and low-contact account.",
-    "Customer present in one system but missing in another.",
+    "exact customer match",
+    "trading name vs legal name",
+    "missing Ltd/Limited suffix",
+    "duplicate candidate-style naming",
+    "unmatched source records",
+    "stale/deleted source hints",
+    "low-confidence mapping",
+    "high ticket pressure",
+    "no recent contact",
+    "stalled quote",
+    "lost quote",
+    "accepted quote not invoiced",
+    "unpaid aged invoice",
+    "M365 licence mismatch",
+    "inactive licensed users",
+    "shared mailboxes not billed",
+    "weak MFA hygiene",
+    "Veeam failed jobs",
+    "stale backup jobs",
+    "no recent restore test",
+    "repository/storage growth",
+    "customer present in one system only",
 ]
 
 
-DATASET = {
-    "autotask": {
-        "accounts": [
-            {"id": "AT-1001", "companyName": "Acme Dental Ltd", "name": "Acme Dental Ltd", "isActive": True, "ownerResourceName": "M. Patel", "lastActivityDate": _iso("2026-01-09T12:00:00"), "updated_at": _iso("2026-01-09T12:00:00")},
-            {"id": "AT-1002", "companyName": "Bright Legal Services", "name": "Bright Legal Services", "isActive": True, "ownerResourceName": "J. Harper", "lastActivityDate": _iso("2026-01-08T09:30:00"), "updated_at": _iso("2026-01-08T09:30:00")},
-            {"id": "AT-1003", "companyName": "Greenfield Primary School", "name": "Greenfield Primary School", "isActive": True, "ownerResourceName": "N. Webb", "lastActivityDate": _iso("2026-01-10T07:45:00"), "updated_at": _iso("2026-01-10T07:45:00")},
-            {"id": "AT-1004", "companyName": "Northview Logistics", "name": "Northview Logistics", "isActive": True, "ownerResourceName": "S. Lowe", "lastActivityDate": _iso("2026-01-07T16:10:00"), "updated_at": _iso("2026-01-07T16:10:00")},
-            {"id": "AT-1005", "companyName": "Riverside Care Group", "name": "Riverside Care Group", "isActive": False, "ownerResourceName": "J. Harper", "lastActivityDate": _iso("2026-01-05T10:00:00"), "updated_at": _iso("2026-01-05T10:00:00")},
-            {"id": "AT-1006", "companyName": "Old Mill Engineering", "name": "Old Mill Engineering", "isActive": True, "ownerResourceName": "M. Patel", "lastActivityDate": _iso("2026-01-03T11:20:00"), "updated_at": _iso("2026-01-03T11:20:00")},
-        ],
-        "contacts": [
-            {"id": "ATC-1", "companyID": "AT-1001", "account_id": "AT-1001", "firstName": "Lara", "lastName": "Wells", "name": "Lara Wells", "emailAddress": "lara@acmedental.co.uk", "email": "lara@acmedental.co.uk", "updated_at": _iso("2026-01-09T12:00:00")},
-            {"id": "ATC-2", "companyID": "AT-1002", "account_id": "AT-1002", "firstName": "Jon", "lastName": "Bright", "name": "Jon Bright", "emailAddress": "jon@brightlegal.co.uk", "email": "jon@brightlegal.co.uk", "updated_at": _iso("2026-01-06T12:00:00")},
-            {"id": "ATC-3", "companyID": "AT-1006", "account_id": "AT-1006", "firstName": "No", "lastName": "Recent Contact", "name": "No Recent Contact", "emailAddress": None, "email": None, "updated_at": _iso("2025-11-14T12:00:00")},
-        ],
-        "tickets": [
-            {"id": "ATT-1", "companyID": "AT-1001", "account_id": "AT-1001", "status": "New", "priority": "high", "title": "Repeated line-of-business outage", "subject": "Repeated line-of-business outage", "updated_at": _iso("2026-01-10T08:00:00")},
-            {"id": "ATT-2", "companyID": "AT-1001", "account_id": "AT-1001", "status": "In Progress", "priority": "medium", "title": "Printer queue failures", "subject": "Printer queue failures", "updated_at": _iso("2026-01-10T08:10:00")},
-            {"id": "ATT-3", "companyID": "AT-1006", "account_id": "AT-1006", "status": "New", "priority": "low", "title": "Monthly patching question", "subject": "Monthly patching question", "updated_at": _iso("2026-01-02T07:00:00")},
-        ],
-        "opportunities": [
-            {"id": "ATO-1", "companyID": "AT-1002", "account_id": "AT-1002", "status": "Open", "title": "Security posture uplift", "amount": 24000, "updated_at": _iso("2026-01-07T15:00:00")},
-            {"id": "ATO-2", "companyID": "AT-1004", "account_id": "AT-1004", "status": "stalled", "title": "Warehouse Wi-Fi refresh", "amount": 12000, "updated_at": _iso("2025-12-18T09:00:00")},
-        ],
-        "quotes": [
-            {"id": "ATQ-1", "companyID": "AT-1005", "account_id": "AT-1005", "status": "lost", "name": "Endpoint modernization", "title": "Endpoint modernization", "totalAmount": 18000, "value": 18000, "updated_at": _iso("2026-01-04T13:00:00")},
-            {"id": "ATQ-2", "companyID": "AT-1004", "account_id": "AT-1004", "status": "open", "name": "Network segmentation phase 2", "title": "Network segmentation phase 2", "totalAmount": 9500, "value": 9500, "updated_at": _iso("2025-12-20T08:00:00")},
-        ],
-    },
-    "itquoter": {
-        "customers": [
-            {"id": "ITQ-C1", "name": "Acme Dental", "updated_at": _iso("2026-01-09T12:00:00")},
-            {"id": "ITQ-C2", "name": "Bright Legal", "updated_at": _iso("2026-01-07T12:00:00")},
-            {"id": "ITQ-C3", "name": "Greenfield School", "updated_at": _iso("2026-01-08T12:00:00")},
-            {"id": "ITQ-C4", "name": "Riverside Care", "updated_at": _iso("2026-01-02T12:00:00")},
-            {"id": "ITQ-C5", "name": "Old Mill Eng", "updated_at": _iso("2026-01-01T12:00:00")},
-        ],
-        "quotes": [
-            {"id": "ITQ-Q1", "customer_id": "ITQ-C4", "status": "lost", "title": "Continuity retainer", "updated_at": _iso("2026-01-03T10:00:00")},
-            {"id": "ITQ-Q2", "customer_id": "ITQ-C2", "status": "stalled", "title": "Legal sector endpoint hardening", "updated_at": _iso("2025-12-12T10:00:00")},
-        ],
-        "quote_lines": [
-            {"id": "ITQL-1", "quote_id": "ITQ-Q1", "sku": "SEC-RET-01", "qty": 1, "price": 4200, "updated_at": _iso("2026-01-03T10:00:00")},
-            {"id": "ITQL-2", "quote_id": "ITQ-Q2", "sku": "M365-ADV-02", "qty": 120, "price": 18, "updated_at": _iso("2025-12-12T10:00:00")},
-        ],
-        "quote_statuses": [
-            {"code": "draft", "label": "Draft"},
-            {"code": "open", "label": "Open"},
-            {"code": "stalled", "label": "Stalled"},
-            {"code": "lost", "label": "Lost"},
-            {"code": "won", "label": "Won"},
-        ],
-    },
-    "xero": {
-        "contacts": [
-            {"id": "X-C1", "ContactID": "11111111-1111-1111-1111-111111111111", "Name": "Acme Dental Limited", "name": "Acme Dental Limited", "ContactStatus": "ACTIVE", "updated_at": _iso("2026-01-08T14:00:00")},
-            {"id": "X-C2", "ContactID": "22222222-2222-2222-2222-222222222222", "Name": "Bright Legal Services LLP", "name": "Bright Legal Services LLP", "ContactStatus": "ACTIVE", "updated_at": _iso("2026-01-07T14:00:00")},
-            {"id": "X-C3", "ContactID": "33333333-3333-3333-3333-333333333333", "Name": "Northview Logistics", "name": "Northview Logistics", "ContactStatus": "ACTIVE", "updated_at": _iso("2026-01-06T14:00:00")},
-            {"id": "X-C4", "ContactID": "44444444-4444-4444-4444-444444444444", "Name": "Old Mill Engineering", "name": "Old Mill Engineering", "ContactStatus": "ACTIVE", "updated_at": _iso("2026-01-05T14:00:00")},
-        ],
-        "invoices": [
-            {"id": "X-I1", "InvoiceID": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", "Contact": {"ContactID": "11111111-1111-1111-1111-111111111111"}, "contact_id": "X-C1", "Status": "AUTHORISED", "status": "AUTHORISED", "Total": 7200, "total": 7200, "AmountDue": 0, "amount_due": 0, "updated_at": _iso("2026-01-10T08:00:00")},
-            {"id": "X-I2", "InvoiceID": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb", "Contact": {"ContactID": "22222222-2222-2222-2222-222222222222"}, "contact_id": "X-C2", "Status": "AUTHORISED", "status": "AUTHORISED", "Total": 6400, "total": 6400, "AmountDue": 6400, "amount_due": 6400, "age_days": 47, "updated_at": _iso("2026-01-09T08:00:00")},
-            {"id": "X-I3", "InvoiceID": "cccccccc-cccc-cccc-cccc-cccccccccccc", "Contact": {"ContactID": "33333333-3333-3333-3333-333333333333"}, "contact_id": "X-C3", "Status": "AUTHORISED", "status": "AUTHORISED", "Total": 5100, "total": 5100, "AmountDue": 1800, "amount_due": 1800, "age_days": 18, "updated_at": _iso("2026-01-08T08:00:00")},
-        ],
-        "invoice_lines": [
-            {"id": "X-L1", "invoice_id": "X-I2", "description": "M365 managed seats", "qty": 180, "unit_amount": 22, "updated_at": _iso("2026-01-09T08:00:00")},
-            {"id": "X-L2", "invoice_id": "X-I2", "description": "Backup retention", "qty": 1, "unit_amount": 2440, "updated_at": _iso("2026-01-09T08:00:00")},
-        ],
-        "payment_statuses": [
-            {"code": "PAID", "label": "Paid"},
-            {"code": "PARTIAL", "label": "Partially paid"},
-            {"code": "UNPAID", "label": "Unpaid"},
-        ],
-    },
-    "m365": {
-        "tenants": [
-            {"id": "M-T1", "tenant_name": "acme-dental.onmicrosoft.com", "customer_hint": "Acme Dental Ltd", "updated_at": _iso("2026-01-10T09:00:00")},
-            {"id": "M-T2", "tenant_name": "brightlegal.onmicrosoft.com", "customer_hint": "Bright Legal Services", "updated_at": _iso("2026-01-09T09:00:00")},
-        ],
-        "users": [
-            {"id": "M-U1", "tenant_id": "M-T1", "displayName": "Acme User 1", "userPrincipalName": "user1@acme-dental.co.uk", "upn": "user1@acme-dental.co.uk", "accountEnabled": True, "active_last_30d": False, "licensed": True, "updated_at": _iso("2026-01-10T09:00:00")},
-            {"id": "M-U2", "tenant_id": "M-T1", "displayName": "Acme User 2", "userPrincipalName": "user2@acme-dental.co.uk", "upn": "user2@acme-dental.co.uk", "accountEnabled": True, "active_last_30d": True, "licensed": True, "updated_at": _iso("2026-01-10T09:00:00")},
-            {"id": "M-U3", "tenant_id": "M-T2", "displayName": "Bright Paralegal 1", "userPrincipalName": "paralegal1@brightlegal.co.uk", "upn": "paralegal1@brightlegal.co.uk", "accountEnabled": True, "active_last_30d": False, "licensed": True, "updated_at": _iso("2026-01-09T09:00:00")},
-        ],
-        "licence_summary": [
-            {"tenant_id": "M-T1", "licensed_users": 145, "active_users_30d": 98, "inactive_users_30d": 47, "updated_at": _iso("2026-01-10T09:00:00")},
-            {"tenant_id": "M-T2", "licensed_users": 86, "active_users_30d": 50, "inactive_users_30d": 36, "updated_at": _iso("2026-01-09T09:00:00")},
-        ],
-        "mailbox_counts": [
-            {"tenant_id": "M-T1", "mailboxes": 132, "shared_mailboxes": 23, "updated_at": _iso("2026-01-10T09:00:00")},
-            {"tenant_id": "M-T2", "mailboxes": 78, "shared_mailboxes": 11, "updated_at": _iso("2026-01-09T09:00:00")},
-        ],
-        "hygiene_findings": [
-            {"tenant_id": "M-T1", "finding": "inactive_users_still_licensed", "severity": "medium", "updated_at": _iso("2026-01-10T09:00:00")},
-            {"tenant_id": "M-T1", "finding": "shared_mailboxes_not_billed", "severity": "high", "updated_at": _iso("2026-01-10T09:00:00")},
-        ],
-    },
-    "veeam": {
-        "customers": [
-            {"id": "V-C1", "instanceUid": "v-c1-uid", "name": "Acme Dental Ltd", "updated_at": _iso("2026-01-10T06:00:00")},
-            {"id": "V-C2", "instanceUid": "v-c2-uid", "name": "Bright Legal Services", "updated_at": _iso("2026-01-09T06:00:00")},
-            {"id": "V-C3", "instanceUid": "v-c3-uid", "name": "Riverside Care Group - Legacy", "updated_at": _iso("2025-11-30T06:00:00")},
-        ],
-        "backup_jobs": [
-            {"id": "V-J1", "customer_id": "V-C1", "status": "failed", "last_run_at": _iso("2026-01-10T03:00:00"), "updated_at": _iso("2026-01-10T06:00:00")},
-            {"id": "V-J2", "customer_id": "V-C2", "status": "warning", "last_run_at": _iso("2026-01-06T03:00:00"), "updated_at": _iso("2026-01-09T06:00:00")},
-        ],
-        "workloads": [
-            {"id": "V-W1", "customer_id": "V-C1", "workload": "M365 mailbox", "protected": True, "updated_at": _iso("2026-01-09T06:00:00")},
-            {"id": "V-W2", "customer_id": "V-C1", "workload": "File server", "protected": False, "updated_at": _iso("2026-01-09T06:00:00")},
-        ],
-        "repositories": [
-            {"id": "V-R1", "name": "London-Repo-01", "health": "degraded", "updated_at": _iso("2026-01-09T06:00:00")},
-        ],
-        "restore_tests": [
-            {"id": "V-T1", "customer_id": "V-C1", "last_tested_at": _iso("2025-09-01T06:00:00"), "status": "overdue", "updated_at": _iso("2026-01-09T06:00:00")},
-        ],
-    },
-    "3cx": {
-        "calls": [
+def _build_dataset() -> dict:
+    autotask_accounts = []
+    autotask_contacts = []
+    autotask_tickets = []
+    autotask_opps = []
+    autotask_quotes = []
+    itquoter_customers = []
+    itquoter_quotes = []
+    itquoter_quote_lines = []
+    xero_contacts = []
+    xero_invoices = []
+    xero_invoice_lines = []
+    m365_tenants = []
+    m365_users = []
+    m365_licence = []
+    m365_mailboxes = []
+    m365_hygiene = []
+    veeam_customers = []
+    veeam_jobs = []
+    veeam_workloads = []
+    veeam_repos = []
+    veeam_restore_tests = []
+    calls = []
+    extensions = []
+    for idx, row in enumerate(CUSTOMER_MASTER, start=1):
+        ts = BASE_TS - timedelta(minutes=idx * 6)
+        at_id = f"AT-{1000 + idx}"
+        itq_id = f"ITQ-C{idx:03d}"
+        x_contact = f"{idx:08d}-{idx:04d}-{idx:04d}-{idx:04d}-{idx:012d}"[:36]
+        x_inv = f"{idx+100:08d}-{idx+100:04d}-{idx+100:04d}-{idx+100:04d}-{idx+100:012d}"[:36]
+        tenant_id = f"M-T{idx:03d}"
+        veeam_id = f"V-C{idx:03d}"
+        hint = row["hints"]
+        signals = set(row["signals"])
+        autotask_accounts.append(
             {
-                "id": "C3-1",
-                "customer_hint": "Bright Legal Services",
-                "direction": "outbound",
-                "duration_seconds": 622,
-                "agent": "M. Patel",
-                "started_at": _iso("2026-01-10T10:20:00"),
-                "updated_at": _iso("2026-01-10T10:20:00"),
-            },
+                "id": at_id,
+                "companyName": hint["autotask"] or row["canonical_name"],
+                "name": hint["autotask"] or row["canonical_name"],
+                "isActive": "stale_deleted_source" not in signals,
+                "ownerResourceName": f"Owner {idx%5+1}",
+                "lastActivityDate": _iso(ts),
+                "updated_at": _iso(ts),
+            }
+        )
+        autotask_contacts.append(
             {
-                "id": "C3-2",
-                "customer_hint": "Old Mill Engineering",
+                "id": f"ATC-{idx:03d}",
+                "companyID": at_id,
+                "account_id": at_id,
+                "firstName": f"Contact{idx}",
+                "lastName": "Primary",
+                "name": f"Contact{idx} Primary",
+                "emailAddress": f"contact{idx}@example-mspintel.test",
+                "email": f"contact{idx}@example-mspintel.test",
+                "updated_at": _iso(ts),
+            }
+        )
+        ticket_count = 4 if "high_ticket_pressure" in signals else 1
+        for t in range(ticket_count):
+            autotask_tickets.append(
+                {
+                    "id": f"ATT-{idx:03d}-{t+1}",
+                    "companyID": at_id,
+                    "account_id": at_id,
+                    "status": "New" if t < 2 else "In Progress",
+                    "priority": "high" if "high_ticket_pressure" in signals else "medium",
+                    "title": f"Ticket {t+1} for {row['canonical_name']}",
+                    "subject": f"Ticket {t+1} for {row['canonical_name']}",
+                    "updated_at": _iso(ts - timedelta(minutes=t)),
+                }
+            )
+        autotask_opps.append(
+            {
+                "id": f"ATO-{idx:03d}",
+                "companyID": at_id,
+                "account_id": at_id,
+                "status": "stalled" if "stalled_quote" in signals else "Open",
+                "title": f"Opportunity for {row['canonical_name']}",
+                "amount": 12000 + idx * 300,
+                "updated_at": _iso(ts),
+            }
+        )
+        autotask_quotes.append(
+            {
+                "id": f"ATQ-{idx:03d}",
+                "companyID": at_id,
+                "account_id": at_id,
+                "status": "lost" if "lost_quote" in signals else ("open" if "stalled_quote" in signals else "won"),
+                "name": f"Quote for {row['canonical_name']}",
+                "title": f"Quote for {row['canonical_name']}",
+                "totalAmount": 9000 + idx * 250,
+                "value": 9000 + idx * 250,
+                "updated_at": _iso(ts),
+            }
+        )
+        itquoter_customers.append({"id": itq_id, "name": hint["itquoter"] or row["canonical_name"], "updated_at": _iso(ts)})
+        quote_status = "stalled" if "stalled_quote" in signals else ("lost" if "lost_quote" in signals else "won")
+        itquoter_quotes.append(
+            {"id": f"ITQ-Q{idx:03d}", "customer_id": itq_id, "status": quote_status, "title": f"ITQ quote {idx}", "updated_at": _iso(ts)}
+        )
+        itquoter_quote_lines.append(
+            {
+                "id": f"ITQL-{idx:03d}",
+                "quote_id": f"ITQ-Q{idx:03d}",
+                "sku": f"SKU-{idx:04d}",
+                "qty": 1 + (idx % 4),
+                "price": 100 + idx * 5,
+                "updated_at": _iso(ts),
+            }
+        )
+        xero_contacts.append(
+            {
+                "id": f"X-C{idx:03d}",
+                "ContactID": x_contact,
+                "Name": hint["xero"] or row["canonical_name"],
+                "name": hint["xero"] or row["canonical_name"],
+                "ContactStatus": "ACTIVE",
+                "updated_at": _iso(ts),
+            }
+        )
+        amount_due = 0
+        age = 0
+        if "unpaid_aged_invoice" in signals:
+            amount_due = 1500 + idx * 40
+            age = 45 + (idx % 30)
+        xero_invoices.append(
+            {
+                "id": f"X-I{idx:03d}",
+                "InvoiceID": x_inv,
+                "Contact": {"ContactID": x_contact},
+                "contact_id": f"X-C{idx:03d}",
+                "Status": "AUTHORISED",
+                "status": "AUTHORISED",
+                "Total": 3000 + idx * 70,
+                "total": 3000 + idx * 70,
+                "AmountDue": amount_due,
+                "amount_due": amount_due,
+                "age_days": age,
+                "updated_at": _iso(ts),
+            }
+        )
+        xero_invoice_lines.append(
+            {
+                "id": f"X-L{idx:03d}",
+                "invoice_id": f"X-I{idx:03d}",
+                "description": f"Managed services line {idx}",
+                "qty": 1,
+                "unit_amount": 3000 + idx * 70,
+                "updated_at": _iso(ts),
+            }
+        )
+        tenant_name = f"{row['key']}.onmicrosoft.com"
+        m365_tenants.append(
+            {"id": tenant_id, "tenant_name": tenant_name, "customer_hint": hint["m365"] or row["canonical_name"], "updated_at": _iso(ts)}
+        )
+        licensed = 25 + idx
+        active = licensed - (5 if "inactive_licensed_users" in signals else 1)
+        m365_licence.append(
+            {
+                "tenant_id": tenant_id,
+                "licensed_users": licensed + (8 if "m365_licence_mismatch" in signals else 0),
+                "active_users_30d": active,
+                "inactive_users_30d": max(0, licensed - active),
+                "updated_at": _iso(ts),
+            }
+        )
+        shared = 12 if "shared_mailboxes_not_billed" in signals else 3
+        m365_mailboxes.append(
+            {"tenant_id": tenant_id, "mailboxes": active, "shared_mailboxes": shared, "updated_at": _iso(ts)}
+        )
+        hygiene_code = "weak_mfa_baseline" if "weak_mfa_hygiene" in signals else "inactive_users_still_licensed"
+        m365_hygiene.append(
+            {"tenant_id": tenant_id, "finding": hygiene_code, "severity": "high" if "weak_mfa_hygiene" in signals else "medium", "updated_at": _iso(ts)}
+        )
+        m365_users.append(
+            {
+                "id": f"M-U{idx:04d}",
+                "tenant_id": tenant_id,
+                "displayName": f"{row['canonical_name']} User",
+                "userPrincipalName": f"user{idx}@{tenant_name}",
+                "upn": f"user{idx}@{tenant_name}",
+                "accountEnabled": True,
+                "active_last_30d": "inactive_licensed_users" not in signals,
+                "licensed": True,
+                "updated_at": _iso(ts),
+            }
+        )
+        if hint["veeam"]:
+            veeam_customers.append({"id": veeam_id, "instanceUid": f"{veeam_id}-uid", "name": hint["veeam"], "updated_at": _iso(ts)})
+            veeam_jobs.append(
+                {
+                    "id": f"V-J{idx:03d}",
+                    "customer_id": veeam_id,
+                    "status": "failed" if "failed_backup_jobs" in signals else ("warning" if "stale_backup_jobs" in signals else "success"),
+                    "last_run_at": _iso(ts - timedelta(hours=60 if "stale_backup_jobs" in signals else 3)),
+                    "updated_at": _iso(ts),
+                }
+            )
+            veeam_workloads.append(
+                {
+                    "id": f"V-W{idx:03d}",
+                    "customer_id": veeam_id,
+                    "workload": "M365 mailbox",
+                    "protected": "failed_backup_jobs" not in signals,
+                    "updated_at": _iso(ts),
+                }
+            )
+            veeam_repos.append(
+                {
+                    "id": f"V-R{idx:03d}",
+                    "name": f"Repo-{idx:03d}",
+                    "health": "degraded" if "repository_growth" in signals else "healthy",
+                    "updated_at": _iso(ts),
+                }
+            )
+            veeam_restore_tests.append(
+                {
+                    "id": f"V-T{idx:03d}",
+                    "customer_id": veeam_id,
+                    "last_tested_at": _iso(ts - timedelta(days=400 if "stale_restore_test" in signals else 40)),
+                    "status": "overdue" if "stale_restore_test" in signals else "ok",
+                    "updated_at": _iso(ts),
+                }
+            )
+        calls.append(
+            {
+                "id": f"C3-{idx:03d}",
+                "customer_hint": row["canonical_name"],
                 "direction": "outbound",
-                "duration_seconds": 0,
-                "agent": "J. Harper",
-                "started_at": _iso("2025-12-09T14:40:00"),
-                "updated_at": _iso("2025-12-09T14:40:00"),
-            },
-        ],
-        "extensions": [
-            {"id": "EXT-2001", "owner": "M. Patel", "status": "online", "updated_at": _iso("2026-01-10T10:21:00")},
-            {"id": "EXT-2002", "owner": "J. Harper", "status": "away", "updated_at": _iso("2026-01-10T10:15:00")},
-        ],
-    },
-}
+                "duration_seconds": 0 if "no_recent_contact" in signals else 320,
+                "agent": f"Agent {idx%6+1}",
+                "started_at": _iso(ts),
+                "updated_at": _iso(ts),
+            }
+        )
+        extensions.append({"id": f"EXT-{2000+idx}", "owner": f"Agent {idx%6+1}", "status": "online", "updated_at": _iso(ts)})
+    itquoter_statuses = [
+        {"code": "draft", "label": "Draft"},
+        {"code": "open", "label": "Open"},
+        {"code": "stalled", "label": "Stalled"},
+        {"code": "lost", "label": "Lost"},
+        {"code": "won", "label": "Won"},
+        {"code": "accepted_not_invoiced", "label": "Accepted (Not Invoiced)"},
+    ]
+    payment_statuses = [
+        {"code": "PAID", "label": "Paid"},
+        {"code": "PARTIAL", "label": "Partially paid"},
+        {"code": "UNPAID", "label": "Unpaid"},
+    ]
+    return {
+        "autotask": {
+            "accounts": autotask_accounts,
+            "contacts": autotask_contacts,
+            "tickets": autotask_tickets,
+            "opportunities": autotask_opps,
+            "quotes": autotask_quotes,
+        },
+        "itquoter": {
+            "customers": itquoter_customers,
+            "quotes": itquoter_quotes,
+            "quote_lines": itquoter_quote_lines,
+            "quote_statuses": itquoter_statuses,
+        },
+        "xero": {
+            "contacts": xero_contacts,
+            "invoices": xero_invoices,
+            "invoice_lines": xero_invoice_lines,
+            "payment_statuses": payment_statuses,
+        },
+        "m365": {
+            "tenants": m365_tenants,
+            "users": m365_users,
+            "licence_summary": m365_licence,
+            "mailbox_counts": m365_mailboxes,
+            "hygiene_findings": m365_hygiene,
+        },
+        "veeam": {
+            "customers": veeam_customers,
+            "backup_jobs": veeam_jobs,
+            "workloads": veeam_workloads,
+            "repositories": veeam_repos,
+            "restore_tests": veeam_restore_tests,
+        },
+        "3cx": {
+            "calls": calls,
+            "extensions": extensions,
+        },
+    }
+
+
+DATASET = _build_dataset()
 

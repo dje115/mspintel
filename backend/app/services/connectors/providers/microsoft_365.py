@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 from datetime import UTC, datetime
 from uuid import UUID
 
@@ -16,7 +17,11 @@ from app.services.connectors.capabilities import (
     CAP_STORAGE,
     CAP_USERS,
 )
-from app.services.connectors.constants import CONNECTOR_SYSTEM_MICROSOFT_365, ENTITY_M365_CUSTOMER_POSTURE
+from app.services.connectors.constants import (
+    CONNECTOR_SYSTEM_MICROSOFT_365,
+    ENTITY_CUSTOMER,
+    ENTITY_M365_CUSTOMER_POSTURE,
+)
 from app.services.connectors.manifest import ConnectorConfigField, ConnectorManifest
 from app.services.connectors.types import ConnectorSyncResult, ConnectorSyncStats, ConnectorTestResult
 from app.services.connectors.utils import upsert_source_entity_mapping
@@ -128,6 +133,14 @@ class Microsoft365ConnectorAdapter(ConnectorAdapter):
         if hygiene_count == 1:
             return "medium"
         return "low"
+
+    @staticmethod
+    def _norm_customer_label(value: str) -> str:
+        v = re.sub(r"[^a-z0-9]+", " ", (value or "").lower()).strip()
+        for suffix in (" limited", " ltd", " llp", " plc", " group", " holdings", " services"):
+            if v.endswith(suffix):
+                v = v[: -len(suffix)].strip()
+        return v
 
     def test_connection(
         self,
@@ -261,15 +274,39 @@ class Microsoft365ConnectorAdapter(ConnectorAdapter):
 
             stmt = select(Customer).where(Customer.tenant_id == tenant_id).order_by(Customer.name)
             customers = list(db.scalars(stmt).all())
-            customer_by_name = {c.name.lower().strip(): c for c in customers}
+            customer_by_name = {self._norm_customer_label(c.name): c for c in customers}
             for tenant_row in tenants:
                 tenant_ref = str(tenant_row.get("id") or "").strip()
                 if not tenant_ref:
                     continue
-                hint = str(tenant_row.get("customer_hint") or "").lower().strip()
+                hint = self._norm_customer_label(str(tenant_row.get("customer_hint") or ""))
                 customer = customer_by_name.get(hint)
                 if not customer:
-                    continue
+                    fallback_name = str(tenant_row.get("customer_hint") or tenant_row.get("tenant_name") or "").strip()
+                    if fallback_name:
+                        customer = Customer(
+                            tenant_id=tenant_id,
+                            name=fallback_name[:180],
+                            status="watch",
+                            owner_name=None,
+                            external_ref=f"m365:{tenant_ref}",
+                        )
+                        db.add(customer)
+                        db.flush()
+                        upsert_source_entity_mapping(
+                            db=db,
+                            tenant_id=tenant_id,
+                            source_connection_id=connection.id,
+                            entity_type=ENTITY_CUSTOMER,
+                            source_id=f"m365-customer:{tenant_ref}",
+                            canonical_entity_id=customer.id,
+                        )
+                        stats.mappings_written += 1
+                        stats.warnings.append(
+                            f"Created canonical customer '{fallback_name}' from M365 tenant hint (unmatched to existing customer)."
+                        )
+                    else:
+                        continue
                 licence = tenant_rows_by_id.get(tenant_ref, {})
                 mailbox = mailbox_rows_by_id.get(tenant_ref, {})
                 findings = hygiene_by_tenant.get(tenant_ref, [])

@@ -46,6 +46,8 @@ This allows deterministic testing of:
 Connector Lab is dev/test only and must not be treated as a production integration.
 For current vendor-by-vendor audit findings and emulator gaps, see [CONNECTOR_VENDOR_SPEC_AUDIT.md](CONNECTOR_VENDOR_SPEC_AUDIT.md).
 
+Current demo-data direction: keep app seed primarily structural/config-oriented, and materialise connector-backed business telemetry via connector syncs from Connector Lab where implemented (starting with M365 posture).
+
 ## Current storage tiers (implementation)
 
 - **Connection/config layer**  

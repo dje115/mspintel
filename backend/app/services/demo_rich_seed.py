@@ -31,7 +31,6 @@ from app.models.entities import (
     Ticket,
 )
 from app.services.finance_canonical import upsert_finance_for_customer
-from app.services.m365_canonical import upsert_m365_for_customer
 
 DEMO_TENANT_SLUG = "demo-msp"
 
@@ -1441,8 +1440,16 @@ def _seed_connectors_and_sync(db: Session, tenant_id: UUID) -> list[SourceSystem
             c.encrypted_config = encrypt_settings_payload({"demo_mode": True})
             c.auth_mode = "sandbox"
         if c.system_type == "microsoft_365":
-            c.encrypted_config = encrypt_settings_payload({"demo_mode": True})
-            c.auth_mode = "sandbox"
+            c.base_url = "http://connector-lab:8099"
+            c.auth_mode = "oauth2"
+            c.encrypted_config = encrypt_settings_payload(
+                {
+                    "tenant_id": "demo-msp",
+                    "client_id": "connector-lab-demo-client",
+                    "client_secret": "connector-lab-demo-secret",
+                    "token": "connector-lab-dev-token",
+                }
+            )
     db.flush()
     return conns
 
@@ -1498,7 +1505,6 @@ def replace_demo_tenant_workspace(db: Session, tenant_id: UUID) -> int:
         db.add(cust)
         db.flush()
         xero_conn = conn_by_type.get("xero")
-        m365_conn = conn_by_type.get("microsoft_365")
         upsert_finance_for_customer(
             db,
             tenant_id=tenant_id,
@@ -1506,14 +1512,6 @@ def replace_demo_tenant_workspace(db: Session, tenant_id: UUID) -> int:
             customer_name=name,
             demo_profile=profile,
             source_connection_id=xero_conn.id if xero_conn else None,
-            provenance="demo_seed",
-        )
-        posture = upsert_m365_for_customer(
-            db,
-            tenant_id=tenant_id,
-            customer_id=cust.id,
-            demo_profile=profile,
-            source_connection_id=m365_conn.id if m365_conn else None,
             provenance="demo_seed",
         )
         db.add(
@@ -1527,18 +1525,6 @@ def replace_demo_tenant_workspace(db: Session, tenant_id: UUID) -> int:
                 mapping_metadata={"demo_seed": True},
             )
         )
-        if posture and m365_conn:
-            db.add(
-                SourceEntityMapping(
-                    id=uuid.uuid4(),
-                    tenant_id=tenant_id,
-                    source_connection_id=m365_conn.id,
-                    entity_type="m365_customer_posture",
-                    source_id=f"m365-posture:{cust.id}",
-                    canonical_entity_id=posture.id,
-                    mapping_metadata={"demo_seed": True},
-                )
-            )
         for cn, em in contacts:
             db.add(Contact(id=uuid.uuid4(), tenant_id=tenant_id, customer_id=cust.id, name=cn, email=em, external_ref=f"{ext}-C-{cn[:6]}"))
         for tst, subj in tickets:

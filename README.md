@@ -61,7 +61,8 @@ Standing rules for Docker, versioning, env vars, validation, docs, GitHub workfl
 
 1. `cp .env.example .env`
 2. `docker compose up --build -d`
-3. `docker compose exec backend python -m app.db.seed` (first run / when you reset the DB — **re-applies the rich `demo-msp` workspace** each time; see [docs/DEMO_SEED_DATA.md](docs/DEMO_SEED_DATA.md))
+3. `docker compose exec backend python -m app.db.seed` (first run / when you reset the DB — seeds structural/config baseline plus demo tenant business scaffolding; see [docs/DEMO_SEED_DATA.md](docs/DEMO_SEED_DATA.md))
+4. For connector-backed slices (starting with M365), run connector sync from Integrations or API (`POST /api/v1/integrations/connections/{id}/sync`) so canonical rows are populated from Connector Lab payloads.
 
 **Implementation audit (what is real vs placeholder):** [docs/IMPLEMENTATION_STATUS_REVIEW.md](docs/IMPLEMENTATION_STATUS_REVIEW.md)
 
@@ -95,7 +96,7 @@ The backend image runs **`alembic upgrade head` on container start**, then **ide
 | Tenant AI settings | [http://localhost:5173/app/ai-settings](http://localhost:5173/app/ai-settings) |
 | Tenant prompts | [http://localhost:5173/app/prompts](http://localhost:5173/app/prompts) |
 | Tenant customers | [http://localhost:5173/app/customers](http://localhost:5173/app/customers) |
-| Customer 360 | From [customers](http://localhost:5173/app/customers), open any account row. The **`demo-msp`** tenant is reseeded with **31 fictional UK-style accounts** (PSA-shaped tickets/opps/quotes + per-account **`demo_profile`** JSON for simulated billing/M365/backup). See [docs/DEMO_SEED_DATA.md](docs/DEMO_SEED_DATA.md). Example: `http://localhost:5173/app/customers/<customer-uuid>?ai=risk` (risk AI). **Prepare review:** `/app/reviews?customer_id=<customer-uuid>`. |
+| Customer 360 | From [customers](http://localhost:5173/app/customers), open any account row. The **`demo-msp`** tenant is reseeded with fictional UK-style accounts and transitional `demo_profile` context; connector-backed domains should increasingly come from Connector Lab syncs (M365 first). See [docs/DEMO_SEED_DATA.md](docs/DEMO_SEED_DATA.md). Example: `http://localhost:5173/app/customers/<customer-uuid>?ai=risk` (risk AI). **Prepare review:** `/app/reviews?customer_id=<customer-uuid>`. |
 | **Platform console login** | [http://localhost:5173/platform/login](http://localhost:5173/platform/login) |
 | **Platform console** | [http://localhost:5173/platform](http://localhost:5173/platform) |
 | **Platform AI provider catalog** | [http://localhost:5173/platform/ai-providers](http://localhost:5173/platform/ai-providers) |
@@ -136,7 +137,7 @@ Example curl:
 - `curl -H "Authorization: Bearer connector-lab-dev-token" -H "Xero-Tenant-Id: demo-tenant-id" "http://localhost:8099/xero/invoices?mode=rate_limit"`
 - `curl -H "Authorization: Bearer connector-lab-dev-token" "http://localhost:8099/m365/users?updated_since=2026-01-01T00:00:00Z"`
 
-Connector Lab includes deliberate identity and signal scenarios (name mismatches, unmatched records, stale/deleted hints, billing-vs-M365 gaps, failed backups, aged debt) to validate mapping review and data-confidence behavior. See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) and [docs/DATA_INGESTION_AND_WAREHOUSE.md](docs/DATA_INGESTION_AND_WAREHOUSE.md).
+Connector Lab includes expanded identity and signal scenarios (name mismatches, unmatched records, stale/deleted hints, billing-vs-M365 gaps, failed backups, aged debt) to validate mapping review and data-confidence behavior. It is the preferred source of realistic connector-backed demo data where connector syncs are implemented. See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) and [docs/DATA_INGESTION_AND_WAREHOUSE.md](docs/DATA_INGESTION_AND_WAREHOUSE.md).
 
 ## Key Endpoints (Access-Control Slice)
 
