@@ -181,6 +181,7 @@ export type MappingReviewRow = {
   id: string;
   source_connection_id: string;
   source_connection_name: string | null;
+  source_system_key: string | null;
   entity_type: string;
   source_external_id: string;
   source_display_name: string | null;
@@ -191,8 +192,12 @@ export type MappingReviewRow = {
   suggested_score: number | null;
   suggested_reasons: string[];
   status: string;
+  status_label: string | null;
   mapped_customer_id: string | null;
   mapped_customer_name: string | null;
+  last_sync_run_id: string | null;
+  last_sync_status: string | null;
+  last_sync_started_at: string | null;
   reviewed_at: string | null;
   notes: string | null;
 };

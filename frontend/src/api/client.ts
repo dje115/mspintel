@@ -410,13 +410,28 @@ export const api = {
     request<IntegrationCoverageResponse>("/api/v1/integrations/coverage", {
       headers: authHeaders(accessToken, tenantId)
     }),
-  integrationMappings: (accessToken: string, tenantId: string, connectionId?: string) =>
-    request<MappingReviewRow[]>(
-      `/api/v1/integrations/mappings${connectionId ? `?connection_id=${encodeURIComponent(connectionId)}` : ""}`,
-      {
-        headers: authHeaders(accessToken, tenantId)
-      }
-    ),
+  integrationMappings: (
+    accessToken: string,
+    tenantId: string,
+    query?: {
+      connection_id?: string;
+      status_filter?: string;
+      confidence?: string;
+      search?: string;
+      customer_id?: string;
+    }
+  ) => {
+    const qs = new URLSearchParams();
+    if (query?.connection_id) qs.set("connection_id", query.connection_id);
+    if (query?.status_filter) qs.set("status_filter", query.status_filter);
+    if (query?.confidence) qs.set("confidence", query.confidence);
+    if (query?.search) qs.set("search", query.search);
+    if (query?.customer_id) qs.set("customer_id", query.customer_id);
+    const suffix = qs.size > 0 ? `?${qs.toString()}` : "";
+    return request<MappingReviewRow[]>(`/api/v1/integrations/mappings${suffix}`, {
+      headers: authHeaders(accessToken, tenantId)
+    });
+  },
   integrationMappingAction: (
     accessToken: string,
     tenantId: string,

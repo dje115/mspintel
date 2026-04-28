@@ -1,10 +1,12 @@
+from uuid import UUID
+
 from fastapi import APIRouter, Depends, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.deps.access import AccessContext, require_permission
 from app.api.deps.db import get_db
-from app.models.entities import Customer, SourceSystemConnection
+from app.models.entities import ConnectorMappingReview, Customer, SourceSystemConnection
 from app.schemas.integrations import (
     ConnectionImportScopeUpdateRequest,
     ConnectionLifecycleUpdateRequest,
@@ -20,6 +22,14 @@ from app.services.connectors.onboarding import ConnectorOnboardingService
 from app.services.connectors.runtime import ConnectorRuntimeService
 
 router = APIRouter(prefix="/api/v1/integrations", tags=["integrations"])
+
+STATUS_LABELS = {
+    "pending": "Needs review",
+    "accepted": "Confirmed",
+    "remapped": "Confirmed",
+    "rejected": "Rejected",
+    "unlinked": "Unlinked",
+}
 
 
 @router.get("/connections", response_model=list[SourceConnectionResponse])
@@ -235,39 +245,30 @@ def integration_coverage(
 @router.get("/mappings", response_model=list[MappingReviewRow])
 def list_mapping_reviews(
     connection_id: str | None = None,
+    status_filter: str | None = None,
+    confidence: str | None = None,
+    search: str | None = None,
+    customer_id: str | None = None,
     ctx: AccessContext = Depends(require_permission("customer:read")),
     db: Session = Depends(get_db),
 ):
-    from uuid import UUID
-
     svc = ConnectorOnboardingService(db)
-    rows = svc.list_mapping_reviews(ctx.tenant.id, UUID(connection_id) if connection_id else None)
-    conn_map = {
-        c.id: c.display_name for c in ConnectorRuntimeService(db).list_connections(ctx.tenant.id)
-    }
+    statuses = {s.strip() for s in (status_filter or "").split(",") if s.strip()} or None
+    confidence_labels = {s.strip() for s in (confidence or "").split(",") if s.strip()} or None
+    selected_customer = UUID(customer_id) if customer_id else None
+    rows = svc.list_mapping_reviews(
+        ctx.tenant.id,
+        connection_id=UUID(connection_id) if connection_id else None,
+        statuses=statuses,
+        confidence_labels=confidence_labels,
+        search=search,
+        customer_id=selected_customer,
+    )
+    connections = ConnectorRuntimeService(db).list_connections(ctx.tenant.id)
+    conn_map = {c.id: c for c in connections}
+    latest_runs = svc.latest_sync_runs_by_connection(ctx.tenant.id, {r.source_connection_id for r in rows})
     customers = {c.id: c.name for c in db.scalars(select(Customer).where(Customer.tenant_id == ctx.tenant.id)).all()}
-    return [
-        MappingReviewRow(
-            id=r.id,
-            source_connection_id=r.source_connection_id,
-            source_connection_name=conn_map.get(r.source_connection_id),
-            entity_type=r.entity_type,
-            source_external_id=r.source_external_id,
-            source_display_name=r.source_display_name,
-            source_domain=r.source_domain,
-            suggested_customer_id=r.suggested_customer_id,
-            suggested_customer_name=customers.get(r.suggested_customer_id),
-            suggested_confidence=r.suggested_confidence,
-            suggested_score=float(r.suggested_score) if r.suggested_score is not None else None,
-            suggested_reasons=list(r.suggested_reasons or []),
-            status=r.status,
-            mapped_customer_id=r.mapped_customer_id,
-            mapped_customer_name=customers.get(r.mapped_customer_id),
-            reviewed_at=r.reviewed_at.isoformat() if r.reviewed_at else None,
-            notes=r.notes,
-        )
-        for r in rows
-    ]
+    return [_to_mapping_review_row(r, conn_map, customers, latest_runs) for r in rows]
 
 
 @router.post("/mappings/{review_id}/action", response_model=MappingReviewRow)
@@ -277,8 +278,6 @@ def mapping_review_action(
     ctx: AccessContext = Depends(require_permission("membership:write")),
     db: Session = Depends(get_db),
 ):
-    from uuid import UUID
-
     svc = ConnectorOnboardingService(db)
     row = svc.apply_mapping_action(
         tenant_id=ctx.tenant.id,
@@ -291,29 +290,51 @@ def mapping_review_action(
     db.commit()
     db.refresh(row)
     customer_names = {c.id: c.name for c in db.scalars(select(Customer).where(Customer.tenant_id == ctx.tenant.id)).all()}
-    connection_name = db.scalars(
-        select(SourceSystemConnection.display_name).where(
+    connection = db.scalars(
+        select(SourceSystemConnection).where(
             SourceSystemConnection.tenant_id == ctx.tenant.id, SourceSystemConnection.id == row.source_connection_id
         )
     ).first()
+    latest_runs = svc.latest_sync_runs_by_connection(ctx.tenant.id, {row.source_connection_id})
+    return _to_mapping_review_row(
+        row,
+        {row.source_connection_id: connection} if connection else {},
+        customer_names,
+        latest_runs,
+    )
+
+
+def _to_mapping_review_row(
+    r: ConnectorMappingReview,
+    connection_map: dict[UUID, SourceSystemConnection],
+    customer_names: dict[UUID, str],
+    latest_runs: dict[UUID, object],
+) -> MappingReviewRow:
+    conn = connection_map.get(r.source_connection_id)
+    last_run = latest_runs.get(r.source_connection_id)
     return MappingReviewRow(
-        id=row.id,
-        source_connection_id=row.source_connection_id,
-        source_connection_name=connection_name,
-        entity_type=row.entity_type,
-        source_external_id=row.source_external_id,
-        source_display_name=row.source_display_name,
-        source_domain=row.source_domain,
-        suggested_customer_id=row.suggested_customer_id,
-        suggested_customer_name=customer_names.get(row.suggested_customer_id),
-        suggested_confidence=row.suggested_confidence,
-        suggested_score=float(row.suggested_score) if row.suggested_score is not None else None,
-        suggested_reasons=list(row.suggested_reasons or []),
-        status=row.status,
-        mapped_customer_id=row.mapped_customer_id,
-        mapped_customer_name=customer_names.get(row.mapped_customer_id),
-        reviewed_at=row.reviewed_at.isoformat() if row.reviewed_at else None,
-        notes=row.notes,
+        id=r.id,
+        source_connection_id=r.source_connection_id,
+        source_connection_name=conn.display_name if conn else None,
+        source_system_key=conn.system_type if conn else None,
+        entity_type=r.entity_type,
+        source_external_id=r.source_external_id,
+        source_display_name=r.source_display_name,
+        source_domain=r.source_domain,
+        suggested_customer_id=r.suggested_customer_id,
+        suggested_customer_name=customer_names.get(r.suggested_customer_id),
+        suggested_confidence=r.suggested_confidence,
+        suggested_score=float(r.suggested_score) if r.suggested_score is not None else None,
+        suggested_reasons=list(r.suggested_reasons or []),
+        status=r.status,
+        status_label=STATUS_LABELS.get(r.status, r.status.title()),
+        mapped_customer_id=r.mapped_customer_id,
+        mapped_customer_name=customer_names.get(r.mapped_customer_id),
+        last_sync_run_id=getattr(last_run, "id", None),
+        last_sync_status=getattr(last_run, "status", None),
+        last_sync_started_at=getattr(last_run, "started_at", None).isoformat() if getattr(last_run, "started_at", None) else None,
+        reviewed_at=r.reviewed_at.isoformat() if r.reviewed_at else None,
+        notes=r.notes,
     )
 def _to_connection_response(svc: ConnectorRuntimeService, r) -> SourceConnectionResponse:
     return SourceConnectionResponse(

@@ -279,6 +279,104 @@ def test_mapping_review_action_remap_and_unlink(client, db_session: Session):
     assert mapping is None
 
 
+def test_mapping_review_action_rejects_cross_tenant_customer(client, db_session: Session):
+    tenant = _make_tenant(db_session, slug="mapx", name="Mapping Isolated MSP")
+    other_tenant = _make_tenant(db_session, slug="other-x", name="Other Tenant")
+    admin = create_user_with_membership(db_session, "admin-mapx@example.com", "tenant_admin", tenant)
+    create = client.post(
+        "/api/v1/integrations/connections",
+        headers=auth_headers(admin, str(tenant.id)),
+        json={
+            "system_type": "autotask",
+            "display_name": "Auto",
+            "base_url": "https://example.autotask.net/ATServicesRest",
+            "sync_cadence_minutes": 30,
+            "config": {"username": "api", "integration_code": "code", "secret": "sec"},
+        },
+    )
+    assert create.status_code == 201, create.text
+    cid = uuid.UUID(create.json()["id"])
+    tenant_customer = Customer(tenant_id=tenant.id, name="Tenant Co", status="active")
+    other_customer = Customer(tenant_id=other_tenant.id, name="Other Co", status="active")
+    db_session.add(tenant_customer)
+    db_session.add(other_customer)
+    db_session.flush()
+    review = ConnectorMappingReview(
+        tenant_id=tenant.id,
+        source_connection_id=cid,
+        entity_type="customer",
+        source_external_id="ext-safe-1",
+        source_display_name="Tenant Company",
+        suggested_customer_id=tenant_customer.id,
+        suggested_confidence="medium",
+        status="pending",
+    )
+    db_session.add(review)
+    db_session.commit()
+
+    bad = client.post(
+        f"/api/v1/integrations/mappings/{review.id}/action",
+        headers=auth_headers(admin, str(tenant.id)),
+        json={"action": "remap", "customer_id": str(other_customer.id)},
+    )
+    assert bad.status_code == 404
+    assert "Target customer not found" in bad.text
+
+
+def test_mapping_review_list_supports_filters(client, db_session: Session):
+    tenant = _make_tenant(db_session, slug="mapfilter", name="Mapping Filter MSP")
+    admin = create_user_with_membership(db_session, "admin-mapfilter@example.com", "tenant_admin", tenant)
+    create = client.post(
+        "/api/v1/integrations/connections",
+        headers=auth_headers(admin, str(tenant.id)),
+        json={
+            "system_type": "autotask",
+            "display_name": "Auto",
+            "base_url": "https://example.autotask.net/ATServicesRest",
+            "sync_cadence_minutes": 30,
+            "config": {"username": "api", "integration_code": "code", "secret": "sec"},
+        },
+    )
+    assert create.status_code == 201, create.text
+    cid = uuid.UUID(create.json()["id"])
+    customer = Customer(tenant_id=tenant.id, name="Filter Co", status="active")
+    db_session.add(customer)
+    db_session.flush()
+    db_session.add_all(
+        [
+            ConnectorMappingReview(
+                tenant_id=tenant.id,
+                source_connection_id=cid,
+                entity_type="customer",
+                source_external_id="fil-1",
+                source_display_name="Filter Company Ltd",
+                suggested_customer_id=customer.id,
+                suggested_confidence="medium",
+                status="pending",
+            ),
+            ConnectorMappingReview(
+                tenant_id=tenant.id,
+                source_connection_id=cid,
+                entity_type="customer",
+                source_external_id="fil-2",
+                source_display_name="Another Company",
+                suggested_confidence="low",
+                status="rejected",
+            ),
+        ]
+    )
+    db_session.commit()
+
+    pending = client.get(
+        "/api/v1/integrations/mappings?status_filter=pending&search=Filter",
+        headers=auth_headers(admin, str(tenant.id)),
+    )
+    assert pending.status_code == 200, pending.text
+    body = pending.json()
+    assert len(body) == 1
+    assert body[0]["source_external_id"] == "fil-1"
+
+
 def test_integration_coverage_endpoint_shapes_counts(client, db_session: Session):
     tenant = _make_tenant(db_session, slug="cov", name="Coverage MSP")
     admin = create_user_with_membership(db_session, "admin-cov@example.com", "tenant_admin", tenant)

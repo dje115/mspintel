@@ -14,6 +14,7 @@ from app.models.entities import (
     ConnectorMappingReview,
     Contact,
     Customer,
+    IntegrationSyncRun,
     SourceEntityMapping,
     SourceSystemConnection,
 )
@@ -132,10 +133,34 @@ class ConnectorOnboardingService:
         row.status = "pending"
         return row
 
-    def list_mapping_reviews(self, tenant_id: UUID, connection_id: UUID | None = None) -> list[ConnectorMappingReview]:
+    def list_mapping_reviews(
+        self,
+        tenant_id: UUID,
+        connection_id: UUID | None = None,
+        statuses: set[str] | None = None,
+        confidence_labels: set[str] | None = None,
+        search: str | None = None,
+        customer_id: UUID | None = None,
+    ) -> list[ConnectorMappingReview]:
         stmt = select(ConnectorMappingReview).where(ConnectorMappingReview.tenant_id == tenant_id)
         if connection_id:
             stmt = stmt.where(ConnectorMappingReview.source_connection_id == connection_id)
+        if statuses:
+            stmt = stmt.where(ConnectorMappingReview.status.in_(statuses))
+        if confidence_labels:
+            stmt = stmt.where(ConnectorMappingReview.suggested_confidence.in_(confidence_labels))
+        if customer_id:
+            stmt = stmt.where(
+                (ConnectorMappingReview.mapped_customer_id == customer_id)
+                | (ConnectorMappingReview.suggested_customer_id == customer_id)
+            )
+        if search:
+            like_q = f"%{search.strip()}%"
+            stmt = stmt.where(
+                (ConnectorMappingReview.source_display_name.ilike(like_q))
+                | (ConnectorMappingReview.source_external_id.ilike(like_q))
+                | (ConnectorMappingReview.source_domain.ilike(like_q))
+            )
         return list(self.db.scalars(stmt.order_by(ConnectorMappingReview.updated_at.desc())).all())
 
     def apply_mapping_action(
@@ -159,6 +184,11 @@ class ConnectorOnboardingService:
         if action in {"accept", "remap"}:
             if not target_customer_id:
                 raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="customer_id is required for accept/remap")
+            target_customer = self.db.scalars(
+                select(Customer).where(Customer.tenant_id == tenant_id, Customer.id == target_customer_id)
+            ).first()
+            if not target_customer:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Target customer not found")
             mapping = self.db.scalars(
                 select(SourceEntityMapping).where(
                     SourceEntityMapping.tenant_id == tenant_id,
@@ -211,4 +241,21 @@ class ConnectorOnboardingService:
         )
         self.db.flush()
         return row
+
+    def latest_sync_runs_by_connection(self, tenant_id: UUID, connection_ids: set[UUID]) -> dict[UUID, IntegrationSyncRun]:
+        if not connection_ids:
+            return {}
+        rows = self.db.scalars(
+            select(IntegrationSyncRun)
+            .where(
+                IntegrationSyncRun.tenant_id == tenant_id,
+                IntegrationSyncRun.source_connection_id.in_(connection_ids),
+            )
+            .order_by(IntegrationSyncRun.started_at.desc().nullslast(), IntegrationSyncRun.created_at.desc())
+        ).all()
+        latest: dict[UUID, IntegrationSyncRun] = {}
+        for row in rows:
+            if row.source_connection_id not in latest:
+                latest[row.source_connection_id] = row
+        return latest
 

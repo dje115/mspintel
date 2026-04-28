@@ -93,6 +93,7 @@ class MappingReviewRow(BaseModel):
     id: UUID
     source_connection_id: UUID
     source_connection_name: str | None = None
+    source_system_key: str | None = None
     entity_type: str
     source_external_id: str
     source_display_name: str | None = None
@@ -103,8 +104,12 @@ class MappingReviewRow(BaseModel):
     suggested_score: float | None = None
     suggested_reasons: list[str] = Field(default_factory=list)
     status: str
+    status_label: str | None = None
     mapped_customer_id: UUID | None = None
     mapped_customer_name: str | None = None
+    last_sync_run_id: UUID | None = None
+    last_sync_status: str | None = None
+    last_sync_started_at: str | None = None
     reviewed_at: str | None = None
     notes: str | None = None
 
