@@ -84,12 +84,12 @@ Classification used per area:
 | Connector | Status | Notes |
 |-----------|--------|-------|
 | Framework (connections, sync runs, mappings) | **Working** | Tables + APIs align with `DATA_INGESTION_AND_WAREHOUSE.md`. |
-| Autotask | **Partial** | Adapter + tests; real sync needs credentials. |
-| ConnectWise | **Stub / partial** | Registry presence; depth below Autotask in practice. |
-| ITQuoter | **Stub** | Scaffold. |
-| Veeam | **Stub** | Scaffold. |
-| Microsoft 365 | **Stub** | No Graph sync in codebase for tenant product. |
-| Accounting (Xero/Sage) | **Stub** | No invoice tables in canonical schema; **demo** simulates finance in `demo_profile` JSON only. |
+| Autotask | **Partial (beta adapter)** | Adapter + tests; real sync needs credentials and zone-aware base URL. |
+| ConnectWise | **Stub / planned** | Registry presence; no production ingestion path yet. |
+| ITQuoter | **Stub** | Scaffold + updated auth metadata; live API integration still pending. |
+| Veeam | **Stub / planned** | Scaffold; VSPC-first API direction documented. |
+| Microsoft 365 | **Partial (practical slice)** | Tenant product has M365 posture ingestion with explicit live-depth limits. |
+| Accounting (Xero/Sage) | **Partial** | Canonical finance tables exist; Xero live ingestion remains limited and demo-backed. |
 | Warehouse / snapshots | **Documented only** | No `warehouse_*` tables yet. |
 
 ---
@@ -126,6 +126,7 @@ Classification used per area:
 |-------|--------|-------|
 | `docker compose config` | **Working** | Should be run after Compose edits. |
 | Stack startup | **Working** | Typical path: up -d; backend runs Alembic + prompt ensure + optional seed. |
+| Connector Lab mock APIs | **Working** | Dev-only `connector-lab` service exposes mock vendor namespaces + UI at `:8099` for connector/mapping testing without live vendor credentials. |
 | Frontend stale bundle (Windows) | **Rough** | Documented in `CURSOR_RULES.md` (polling / restart). |
 | Seed determinism | **Working** | `demo-msp` workspace fully replaced each `seed_all`; counts stable for a given `demo_rich_seed` version. |
 

@@ -41,8 +41,11 @@ Connectors declare capabilities in manifest metadata; product surfaces must stay
 
 - **Autotask** (`beta`) — implemented PSA sync path for customers/contacts/tickets/opportunities/quotes.
 - **Xero** (`experimental`) — implemented demo/sandbox finance materialization with clear non-live caveat.
-- **ITQuoter** (`stub`) — declared manifest + safe failure behavior.
-- **ConnectWise / Veeam / Sage / Microsoft 365 / Entra / Azure / 3CX** (`planned`) — catalog-visible metadata for roadmap and UX gating.
+- **Microsoft 365 / Entra** (`beta`) — implemented practical posture sync (demo-backed fallback; live depth intentionally limited).
+- **ITQuoter** (`stub`) — declared manifest + safe failure behavior (auth metadata aligned to OAuth2/API-key reality).
+- **Veeam / 3CX / ConnectWise / Sage / Azure** (`planned`/`stub`) — catalog-visible metadata for roadmap and UX gating.
+
+Vendor API realism notes and Connector Lab alignment gaps are tracked in [CONNECTOR_VENDOR_SPEC_AUDIT.md](CONNECTOR_VENDOR_SPEC_AUDIT.md).
 
 ## Scaffold workflow
 

@@ -17,6 +17,7 @@ Standing rules for Docker, versioning, env vars, validation, docs, GitHub workfl
 - Cache/queue: Redis 7
 - Dev mail: Mailpit (SMTP + inbox UI)
 - Worker: Python 3.12 poller (invitation expiry sweep; see [docs/WORKER.md](docs/WORKER.md))
+- Connector Lab: Docker-hosted mock vendor API emulator + dev UI (`http://localhost:8099`) for connector development/testing without live vendor access
 - Orchestration: Docker Compose
 
 ## Versioning
@@ -101,11 +102,41 @@ The backend image runs **`alembic upgrade head` on container start**, then **ide
 | **Platform default prompts** | [http://localhost:5173/platform/prompts](http://localhost:5173/platform/prompts) |
 | **Platform AI task runs** | [http://localhost:5173/platform/ai-task-runs](http://localhost:5173/platform/ai-task-runs) |
 | **Platform security / sessions** | [http://localhost:5173/platform/security](http://localhost:5173/platform/security) |
+| Connector Lab UI (dev-only) | [http://localhost:8099](http://localhost:8099) |
+| Connector Lab status | [http://localhost:8099/ui/status](http://localhost:8099/ui/status) |
 
 - API health: [http://localhost:8001/health](http://localhost:8001/health)
 - API v1 health: [http://localhost:8001/api/v1/health](http://localhost:8001/api/v1/health)
 - Mailpit UI: [http://localhost:8025](http://localhost:8025)
 - Mailpit SMTP: `mailpit:1025` (inside Docker network)
+
+## Connector Lab (dev-only mock vendor APIs)
+
+Connector Lab is a Docker-hosted emulator used for connector development and mapping-confidence testing without hitting live vendor APIs.
+
+- UI overview: `http://localhost:8099/`
+- Status page: `http://localhost:8099/ui/status`
+- Health endpoint: `http://localhost:8099/health`
+- Auth (for JSON API calls):  
+  - `Authorization: Bearer ${CONNECTOR_LAB_TOKEN}` (default `connector-lab-dev-token`)  
+  - or `X-API-Key: ${CONNECTOR_LAB_API_KEY}` (default `connector-lab-api-key`)
+
+Mock namespaces currently available:
+
+- `/autotask` — accounts, contacts, tickets, opportunities, quotes
+- `/itquoter` — customers, quotes, quote lines, quote statuses
+- `/xero` — contacts, invoices, invoice lines, payment statuses
+- `/m365` — tenants, users, licence summary, mailbox counts, hygiene findings
+- `/veeam` — customers, backup jobs, workloads, repositories, restore tests
+- `/3cx` — calls, extensions (thin optional namespace)
+
+Example curl:
+
+- `curl -H "Authorization: Bearer connector-lab-dev-token" "http://localhost:8099/autotask/accounts?page=1&page_size=2"`
+- `curl -H "Authorization: Bearer connector-lab-dev-token" -H "Xero-Tenant-Id: demo-tenant-id" "http://localhost:8099/xero/invoices?mode=rate_limit"`
+- `curl -H "Authorization: Bearer connector-lab-dev-token" "http://localhost:8099/m365/users?updated_since=2026-01-01T00:00:00Z"`
+
+Connector Lab includes deliberate identity and signal scenarios (name mismatches, unmatched records, stale/deleted hints, billing-vs-M365 gaps, failed backups, aged debt) to validate mapping review and data-confidence behavior. See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) and [docs/DATA_INGESTION_AND_WAREHOUSE.md](docs/DATA_INGESTION_AND_WAREHOUSE.md).
 
 ## Key Endpoints (Access-Control Slice)
 

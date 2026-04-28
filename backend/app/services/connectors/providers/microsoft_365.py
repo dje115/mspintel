@@ -50,7 +50,8 @@ class Microsoft365ConnectorAdapter(ConnectorAdapter):
             ConnectorConfigField(key="include_azure_summary", label="Include Azure summary", required=False, secret=False),
         ),
         ui_help_text=(
-            "Supports tenant-scoped M365/Entra posture sync with safe demo-mode fallback. Live Graph depth is intentionally limited."
+            "Supports tenant-scoped M365/Entra posture sync with safe demo-mode fallback. Live Graph depth is "
+            "intentionally limited; planned scopes include Organization.Read.All, User.Read.All, Reports.Read.All, and Directory.Read.All."
         ),
     )
 

@@ -26,6 +26,26 @@ This phase introduces a real connector runtime foundation with Autotask v1 and a
 6. Source-to-canonical lineage is persisted in `source_entity_mappings`.
 7. **(Future)** Successful sync completion or schedules **enqueue knowledge-object refresh** jobs for affected accounts (tier **4**)—see master spec maintenance lifecycle.
 
+## Connector Lab support (development/testing)
+
+For connector development without live vendor access, Compose includes a dev-only mock API service (`connector-lab`) reachable at:
+
+- host: `http://localhost:8099`
+- container DNS: `http://connector-lab:8099`
+
+Connector Lab provides thin vendor namespaces (`/autotask`, `/itquoter`, `/xero`, `/m365`, `/veeam`, optional `/3cx`) with intentionally messy cross-system identity data and product-signal scenarios.
+It now includes a few vendor-shape hints (for example Xero-style IDs and required `Xero-Tenant-Id` header checks) while remaining a pragmatic emulator rather than a full vendor clone.
+
+This allows deterministic testing of:
+
+- connector sync ingestion behavior (pagination, updated-since, partial fields)
+- mapping confidence + review queue behavior (exact/near/unmatched/stale records)
+- error handling (`401`, `429`, `500`, slow responses, empty datasets)
+- downstream confidence and gap-to-action surfaces
+
+Connector Lab is dev/test only and must not be treated as a production integration.
+For current vendor-by-vendor audit findings and emulator gaps, see [CONNECTOR_VENDOR_SPEC_AUDIT.md](CONNECTOR_VENDOR_SPEC_AUDIT.md).
+
 ## Current storage tiers (implementation)
 
 - **Connection/config layer**  

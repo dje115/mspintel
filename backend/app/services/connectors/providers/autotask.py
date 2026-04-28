@@ -55,7 +55,10 @@ class AutotaskConnectorAdapter(ConnectorAdapter):
             ConnectorConfigField(key="integration_code", label="Integration code", required=True, secret=False),
             ConnectorConfigField(key="secret", label="Secret", required=True, secret=True),
         ),
-        ui_help_text="Requires Autotask REST API credentials (integration code, username, secret).",
+        ui_help_text=(
+            "Requires Autotask REST API credentials (integration code, API user username, secret) and the tenant "
+            "zone base URL. Recommended: resolve zone via /zoneInformation and use API-only user with tracking id."
+        ),
     )
 
     def _customer_for_company(self, db: Session, tenant_id: UUID, connection_id: UUID, company_id: str) -> Customer | None:

@@ -50,7 +50,10 @@ class XeroConnectorAdapter(ConnectorAdapter):
             ConnectorConfigField(key="refresh_token", label="Refresh token", required=False, secret=True),
             ConnectorConfigField(key="xero_tenant_id", label="Xero tenant ID", required=False, secret=False),
         ),
-        ui_help_text="Use demo_mode for in-repo sandbox sync. Live OAuth read path is not yet enabled.",
+        ui_help_text=(
+            "Use demo_mode for in-repo sandbox sync. For live path planning, Xero uses OAuth2 + Xero-Tenant-Id with "
+            "accounting.contacts/accounting.transactions/offline_access scopes."
+        ),
     )
 
     def _is_demo_mode(self, config: dict) -> bool:
