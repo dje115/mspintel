@@ -296,6 +296,21 @@ class Microsoft365ConnectorAdapter(ConnectorAdapter):
                 mapped_customer = customer
                 if not mapped_customer and review.suggested_customer_id and review.suggested_confidence == "high":
                     mapped_customer = customer_by_id.get(review.suggested_customer_id)
+                if not mapped_customer and bool(tenant_row.get("auto_confirm_customer")) and source_display_name:
+                    mapped_customer = Customer(
+                        tenant_id=tenant_id,
+                        name=source_display_name[:180],
+                        status="watch",
+                        owner_name=None,
+                        external_ref=f"m365:{tenant_ref}",
+                    )
+                    db.add(mapped_customer)
+                    db.flush()
+                    customer_by_name[self._norm_customer_label(mapped_customer.name)] = mapped_customer
+                    customer_by_id[mapped_customer.id] = mapped_customer
+                    review.suggested_customer_id = mapped_customer.id
+                    review.suggested_confidence = "high"
+                    review.suggested_reasons = list(review.suggested_reasons or []) + ["connector_lab_auto_confirm"]
                 if mapped_customer:
                     review.status = "accepted"
                     review.mapped_customer_id = mapped_customer.id

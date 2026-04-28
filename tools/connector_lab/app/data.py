@@ -360,7 +360,13 @@ def _build_dataset() -> dict:
         )
         tenant_name = f"{row['key']}.onmicrosoft.com"
         m365_tenants.append(
-            {"id": tenant_id, "tenant_name": tenant_name, "customer_hint": hint["m365"] or row["canonical_name"], "updated_at": _iso(ts)}
+            {
+                "id": tenant_id,
+                "tenant_name": tenant_name,
+                "customer_hint": hint["m365"] or row["canonical_name"],
+                "auto_confirm_customer": bool("exact_match" in signals and idx <= 3),
+                "updated_at": _iso(ts),
+            }
         )
         licensed = 25 + idx
         active = licensed - (5 if "inactive_licensed_users" in signals else 1)
