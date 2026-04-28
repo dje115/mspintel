@@ -61,7 +61,7 @@ Standing rules for Docker, versioning, env vars, validation, docs, GitHub workfl
 
 1. `cp .env.example .env`
 2. `docker compose up --build -d`
-3. `docker compose exec backend python -m app.db.seed` (first run / when you reset the DB — seeds structural/config baseline plus demo tenant business scaffolding; see [docs/DEMO_SEED_DATA.md](docs/DEMO_SEED_DATA.md))
+3. `docker compose exec backend python -m app.db.seed` (first run / when you reset the DB — seeds structural/config baseline and Connector Lab connection bootstrap; see [docs/DEMO_SEED_DATA.md](docs/DEMO_SEED_DATA.md))
 4. For connector-backed slices (starting with M365), run connector sync from Integrations or API (`POST /api/v1/integrations/connections/{id}/sync`) so canonical rows are populated from Connector Lab payloads.
 
 **Implementation audit (what is real vs placeholder):** [docs/IMPLEMENTATION_STATUS_REVIEW.md](docs/IMPLEMENTATION_STATUS_REVIEW.md)
@@ -96,7 +96,7 @@ The backend image runs **`alembic upgrade head` on container start**, then **ide
 | Tenant AI settings | [http://localhost:5173/app/ai-settings](http://localhost:5173/app/ai-settings) |
 | Tenant prompts | [http://localhost:5173/app/prompts](http://localhost:5173/app/prompts) |
 | Tenant customers | [http://localhost:5173/app/customers](http://localhost:5173/app/customers) |
-| Customer 360 | From [customers](http://localhost:5173/app/customers), open any account row. The **`demo-msp`** tenant is reseeded with fictional UK-style accounts and transitional `demo_profile` context; connector-backed domains should increasingly come from Connector Lab syncs (M365 first). See [docs/DEMO_SEED_DATA.md](docs/DEMO_SEED_DATA.md). Example: `http://localhost:5173/app/customers/<customer-uuid>?ai=risk` (risk AI). **Prepare review:** `/app/reviews?customer_id=<customer-uuid>`. |
+| Customer 360 | From [customers](http://localhost:5173/app/customers), open any account row once connector sync has populated customer data. In current demo strategy, runtime seed is structural-only and connector-backed telemetry is loaded via Connector Lab syncs (M365 first). See [docs/DEMO_SEED_DATA.md](docs/DEMO_SEED_DATA.md). Example: `http://localhost:5173/app/customers/<customer-uuid>?ai=risk` (risk AI). **Prepare review:** `/app/reviews?customer_id=<customer-uuid>`. |
 | **Platform console login** | [http://localhost:5173/platform/login](http://localhost:5173/platform/login) |
 | **Platform console** | [http://localhost:5173/platform](http://localhost:5173/platform) |
 | **Platform AI provider catalog** | [http://localhost:5173/platform/ai-providers](http://localhost:5173/platform/ai-providers) |

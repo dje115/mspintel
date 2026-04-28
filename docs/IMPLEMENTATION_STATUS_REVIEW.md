@@ -88,7 +88,7 @@ Classification used per area:
 | ConnectWise | **Stub / planned** | Registry presence; no production ingestion path yet. |
 | ITQuoter | **Stub** | Scaffold + updated auth metadata; live API integration still pending. |
 | Veeam | **Stub / planned** | Scaffold; VSPC-first API direction documented. |
-| Microsoft 365 | **Partial (practical slice)** | Tenant product has canonical M365 posture ingestion with Connector Lab-backed connection test/sync, explicit confidence notes, and live-depth limits for real Graph. Demo seed no longer directly upserts canonical M365 posture rows. |
+| Microsoft 365 | **Partial (practical slice)** | Tenant product has canonical M365 posture ingestion with Connector Lab-backed connection test/sync, explicit confidence notes, and live-depth limits for real Graph. Runtime demo seed is structural-only; posture rows appear after sync. |
 | Accounting (Xero/Sage) | **Partial** | Canonical finance tables exist; Xero live ingestion remains limited and demo-backed. |
 | Warehouse / snapshots | **Documented only** | No `warehouse_*` tables yet. |
 
@@ -98,14 +98,14 @@ Classification used per area:
 
 | Intelligence area | Status | Reality |
 |--------------------|--------|---------|
-| Billing integrity | **Placeholder + demo JSON** | No finance connector or billing tables; `demo_profile.billing` feeds narrative only. |
+| Billing integrity | **Placeholder** | Finance connector depth is still limited; with structural-only seed, billing views depend on connector-synced canonical finance data and may be empty in demo until implemented syncs run. |
 | Relationship health | **Partial** | Inferrable from tickets + contacts counts; no CDR/telephony. |
 | Stalled work | **Partial** | Opportunities can be `stalled` status in seed; no dedicated stalled-work queue engine. |
 | AM guidance | **Partial** | AI routes + UI shell; depends on LLM + prompt. |
 | Campaign / event matching | **Placeholder** | Marketing shell only. |
-| Data confidence | **Partial** | `demo_profile.data_quality`; no tenant-wide coverage API. |
-| Backup posture | **Demo JSON + service-risk placeholder** | |
-| Microsoft posture | **Partial (canonical + mock-backed)** | Canonical `m365_customer_postures` rows are populated from Connector Lab thin endpoints or demo fallback; still not full live Graph depth. |
+| Data confidence | **Partial** | Coverage and confidence notes are exposed, but many domains remain connector-depth limited and can be empty after structural-only seed. |
+| Backup posture | **Placeholder / connector-waiting** | Runtime seed does not inject backup facts; waits for connector sync depth. |
+| Microsoft posture | **Partial (canonical + mock-backed)** | Canonical `m365_customer_postures` rows are populated from Connector Lab thin endpoints after sync; still not full live Graph depth. |
 
 ---
 

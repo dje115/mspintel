@@ -33,14 +33,14 @@ All require tenant JWT and tenant context (`X-Tenant-Id` from session).
 |------|------|-------|
 | `/app` | `DashboardPage` | Default post-login landing; executive KPIs + **Risk Engine v1-driven** at-risk/attention priority lists and workspace links. |
 | `/app/dashboard` | `DashboardPage` | Alias route for direct links/bookmarks; same content as `/app`. |
-| `/app/recommendations` | `RecommendationsPage` | Cross-account recommendation queue; per-row **Explain** calls workspace AI explanation endpoint. |
-| `/app/opportunities` | `OpportunitiesPage` | Commercial hub; optional `?tab=opportunities`, `pipeline`, or `lost`. |
+| `/app/recommendations` | `RecommendationsPage` | Cross-account recommendation queue; per-row **Explain** calls workspace AI explanation endpoint. Shows safe empty state when no connector-synced data exists. |
+| `/app/opportunities` | `OpportunitiesPage` | Commercial hub; optional `?tab=opportunities`, `pipeline`, or `lost`, with honest empty states when no synced commercial data is present. |
 | `/app/lost-quotes` | redirect to `/app/opportunities?tab=lost` | Backward-compatible route alias for lost-quote workflows. |
 | `/app/marketing` | `MarketingPage` | Marketing / events / campaigns workspace: segment previews, themed **event idea board**, customer→campaign **matching placeholders**, notes area. Optional **`?customer_id=`** enables compact **AI account manager guidance** (next conversation + call script). Without it, shows prompt-key preview. |
 | `/app/at-risk` | `AtRiskAccountsPage` | **Risk Engine v1** at-risk queue (`risk_score`, bands, reasons, confidence notes, owner, next-step placeholder) with search/owner filters and manual recompute action. |
 | `/app/attention` | `NeedsAttentionAccountsPage` | **Risk Engine v1** attention queue (`attention_score`, reasons, confidence notes, owner, next-step placeholder) with drill-through to Customer 360. |
-| `/app/service-risk` | `ServiceRiskPage` | Backup + service delivery risk overview. |
-| `/app/customers` | `CustomersPage` | Account directory. |
+| `/app/service-risk` | `ServiceRiskPage` | Backup + service delivery risk overview with placeholder/empty guidance until connector-backed depth is synced. |
+| `/app/customers` | `CustomersPage` | Account directory; with structural-only seed this can be empty until connector sync populates canonical customers. |
 | `/app/customers/:id` | `CustomerDetailPage` | Customer 360; `#workspace` opens the recommendations tab; **Overview** includes **AI insights** (account summary, risk, churn), **Finance & billing alignment**, and **Microsoft 365 posture** panels when canonical data exists. `?ai=risk` highlights risk AI (linked from at-risk queue). **Prepare review / QBR** → `/app/reviews?customer_id={id}`; **AI account manager guidance** preview shell on Overview. |
 | `/app/onboarding` | `OnboardingPage` | Workspace checklist. |
 | `/app/integrations` | `IntegrationsPage` | Connector management: add/edit connections, test, run sync, and latest run status. |

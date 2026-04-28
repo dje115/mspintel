@@ -112,6 +112,7 @@ Preferred flow for connector-backed demo domains:
    - `/app/m365-health`
 
 The direction is to keep seed mostly structural and let connector syncs materialise realistic business telemetry into canonical tables.
+Runtime demo seed should not directly create synthetic customer/ticket/finance/posture rows.
 
 ## Migration Commands
 

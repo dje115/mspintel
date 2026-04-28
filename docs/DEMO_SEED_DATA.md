@@ -2,58 +2,38 @@
 
 Synthetic, **tenant-scoped** data for the **`demo-msp`** workspace. All companies, people, and situations are **fictional** (UK-style names and industries for realism). Nothing is copied from real customers.
 
-## Seed data classification (current transition state)
+## Seed data classification (current)
 
 | Class | Current status |
 |------|----------------|
 | Structural/app-required | Seeded directly (tenant/users/roles/memberships/onboarding/plans/subscription). |
 | Prompt/config seed | Seeded directly (platform prompt catalog, AI provider catalog, default tenant AI provider/routes). |
-| Demo business/customer data | Still seeded directly for broad app coverage (customers/contacts/tickets/opportunities/quotes/recommendations/scores/actions). |
-| Connector-backed demo data | **M365 posture is now connector-sync-driven** (Connector Lab -> integration sync -> canonical posture), not directly seeded. |
-| Legacy direct connector-like data | Finance canonical rows still materialised from demo profile during seed as an interim step. |
+| Demo business/customer data | **Not seeded directly** in runtime demo seed. |
+| Connector-backed demo data | Populated by connector syncs from Connector Lab (M365 currently wired end-to-end). |
+| Legacy direct connector-like data | None in runtime seed for demo tenant. |
 
 ## What gets replaced
 
 On every `seed_all` run (`python -m app.db.seed` or Docker entrypoint seed), for **`tenants.slug = demo-msp`** only:
 
-- **Deleted** for that tenant: customers, contacts, tickets, opportunities, quotes, account scores, recommendations, actions, `ai_task_runs`, `source_entity_mappings`, `integration_sync_runs`, `source_system_connections` (canonical **`finance_*`** rows cascade with customers).
-- **Recreated**: multi-connector **simulation** rows (Autotask, ConnectWise label, ITQuoter, Veeam, Microsoft 365, Xero, Sage), **31 customers**, related PSA-style entities, per-customer **`demo_profile`** JSON (billing / M365 / backup / relationship / data-quality narratives), and **canonical finance** rows (`finance_billing_accounts`, `finance_billing_snapshots`, `finance_invoices`) materialised from each profile.
-- The seeded **M365** connection is configured for Connector Lab and is expected to populate canonical `m365_customer_postures` through sync, rather than direct seed upserts.
+- **Deleted** for that tenant: connector/business telemetry rows including customers, contacts, tickets, opportunities, quotes, recommendations/actions/scores, mapping reviews, source mappings, sync runs, and connector connection rows.
+- **Recreated**: structural connector connection rows pointing to Connector Lab (Autotask, ITQuoter, Xero, M365, Veeam, 3CX) with safe dev config.
+- No synthetic customer or business telemetry rows are seeded directly.
 
 **Not** wiped: users, memberships, plans, subscriptions, onboarding state, AI providers (a default OpenAI row is ensured if missing), prompt definitions, tenant AI routes.
 
 Other tenants are untouched.
 
-## Record counts (order of magnitude)
+## Record counts after seed (order of magnitude)
 
 | Area | Approximate count |
 |------|-------------------|
-| Customers | 31 |
-| Source connections | 7 (simulated vendors) |
-| Integration sync runs | 7 (one per connection, succeeded) |
-| Source entity mappings | 31+ (PSA customer id ↔ canonical customer) |
-| Contacts | 40+ |
-| Tickets | 35+ |
-| Opportunities | 20+ |
-| Quotes | 15+ |
-| Recommendations | 40+ |
-| Actions | 15+ |
-| Account scores | 31 |
-
-Exact counts may drift slightly if `ACCOUNT_SPECS` in `backend/app/services/demo_rich_seed.py` change.
-
-## `demo_profile` JSON (per customer)
-
-Nullable column `customers.demo_profile`. For seeded accounts it includes:
-
-- `synthetic`, `uk_demo`, `industry`, `city_line`, `scenario_note`
-- **`billing`**: simulated Xero/Sage-style fields (seat/storage counts, aged debt GBP, invoice friction enum)
-- **`microsoft_365`**: legacy fallback fields for UI/testing compatibility during transition (primary M365 canonical posture should come from connector sync)
-- **`backup`**: protected vs billed TB, failed jobs (7d), days since restore test
-- **`relationship`**: days since strategic touch, stakeholder count, last QBR, notes
-- **`data_quality`**: missing_fields list, confidence, optional `conflicts` for testing “cannot conclude” paths
-
-Exposed on **`GET /api/v1/customers/{id}`** as `demo_profile` and rendered on Customer 360 when `synthetic` is true. Fed into **AI variable maps** under `customer.demo_profile` for richer prompts.
+| Customers | 0 (until connector sync creates/matches) |
+| Source connections | 6 (Connector Lab-targeted demo connections) |
+| Integration sync runs | 0 (until manual or scheduled sync runs) |
+| Source entity mappings | 0 (until sync runs) |
+| Contacts/tickets/opportunities/quotes | 0 (until sync runs for those domains) |
+| M365 posture | 0 pre-sync; populated after M365 connector sync |
 
 ## Credentials (unchanged)
 
@@ -73,19 +53,19 @@ Platform admin: see root **README** seed table (`SEED_PLATFORM_ADMIN_*` env).
 
 Requires migration **`0012_customer_demo_profile`** applied (`alembic upgrade head` — normally automatic on backend container start).
 
-## Preferred demo flow (connector-first where available)
+## Preferred demo flow (connector-first)
 
 1. Seed structural/config baseline: `docker compose exec backend python -m app.db.seed`
 2. Run connector syncs for connector-backed slices:
    - M365 (current): `POST /api/v1/integrations/connections/{m365_connection_id}/sync`
-3. Product surfaces read canonical rows generated by connector syncs.
+3. Product surfaces read canonical rows generated by syncs.
 
-M365 is the first moved slice; additional connector-backed domains should follow this pattern.
+M365 is the first visible connector-sourced product slice. Non-migrated connector domains should show honest empty/setup states until their connector sync paths are implemented.
 
 ## Assumptions
 
 - **No live customer systems** are called in demo seed or Connector Lab flow.
 - Connector Lab is the preferred source for realistic connector-backed demo telemetry when that slice is implemented.
-- Some direct seeded business data remains temporarily for non-migrated domains.
+- Runtime demo seed intentionally does not create direct fake business telemetry.
 
 See also: **[IMPLEMENTATION_STATUS_REVIEW.md](IMPLEMENTATION_STATUS_REVIEW.md)** for what in the product is real vs placeholder vs spec-only.

@@ -88,8 +88,8 @@ export function CustomersPage() {
             <div className="tenant-skeleton">Loading accounts…</div>
           ) : data.items.length === 0 ? (
             <div className="tenant-empty">
-              <p className="tenant-empty-title">No accounts match this view</p>
-              <p>Adjust search or filters, or seed demo data from the backend seed script.</p>
+              <p className="tenant-empty-title">No synced customer data yet</p>
+              <p>Run a connector sync from Integrations (Connector Lab in demo) to populate customer records.</p>
             </div>
           ) : (
             <div className="tenant-table-wrap">
