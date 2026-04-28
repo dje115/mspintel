@@ -86,7 +86,7 @@ Scope: connector realism audit for Autotask, ITQuoter, Xero, Microsoft Graph, Ve
 - **Privacy caveat:** usage reports may conceal names (`displayConcealedNames`) depending on tenant report settings.
 - **Delta/pagination:** `@odata.nextLink` pagination and delta tokens for incremental user sync.
 - **Throttling:** HTTP 429 with `Retry-After`; backoff policy required.
-- **Current Connector Lab emulation:** tenant summary, users, license summary, mailbox counts, hygiene findings.
+- **Current Connector Lab emulation:** tenant summary, users, license summary, mailbox counts, hygiene findings; MSPIntel thin slice now uses these endpoints for connector test + canonical posture sync in dev.
 - **Gap vs real API:** no OData paging tokens or permissions error realism yet.
 
 ### 5) Veeam (VSPC-first recommendation)

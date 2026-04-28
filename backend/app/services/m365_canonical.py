@@ -29,6 +29,13 @@ def _confidence_from_profile(profile: dict | None) -> str:
     return "medium"
 
 
+def _coerce_confidence(value: str | None) -> str:
+    confidence = str(value or "medium").lower()
+    if confidence in {"high", "medium", "low"}:
+        return confidence
+    return "medium"
+
+
 def upsert_m365_for_customer(
     db: Session,
     *,
@@ -41,6 +48,49 @@ def upsert_m365_for_customer(
     m365 = (demo_profile or {}).get("microsoft_365") or {}
     if not m365:
         return None
+    payload = {
+        "tenant_ref": str((demo_profile or {}).get("city_line") or "")[:180] or None,
+        "tenant_name": None,
+        "tenant_domains": [str(d) for d in (m365.get("tenant_domains") or []) if str(d).strip()],
+        "licensed_users": _norm_int(m365.get("licensed_users")),
+        "active_users_30d": _norm_int(m365.get("active_sign_ins_30d")),
+        "inactive_users_30d": None,
+        "disabled_users": _norm_int(m365.get("disabled_users")),
+        "stale_users_90d": _norm_int(m365.get("stale_users_90d")),
+        "privileged_admin_users": _norm_int(m365.get("privileged_admin_users")),
+        "mailboxes": _norm_int(m365.get("active_sign_ins_30d")),
+        "shared_mailboxes": _norm_int(m365.get("shared_mailboxes")),
+        "unused_licences": _norm_int(m365.get("unused_licences")),
+        "mfa_coverage_pct": m365.get("mfa_coverage_pct"),
+        "hygiene_findings": [str(m365.get("hygiene"))] if m365.get("hygiene") else [],
+        "coverage_notes": [
+            "Materialised from demo profile connector path; live Graph/Azure read depth is intentionally limited in v1."
+        ],
+        "confidence_level": _confidence_from_profile(demo_profile),
+    }
+    if not payload["tenant_domains"]:
+        guessed = (demo_profile or {}).get("website_domain")
+        if guessed:
+            payload["tenant_domains"] = [str(guessed)]
+    return upsert_m365_for_customer_payload(
+        db,
+        tenant_id=tenant_id,
+        customer_id=customer_id,
+        source_connection_id=source_connection_id,
+        payload=payload,
+        provenance=provenance,
+    )
+
+
+def upsert_m365_for_customer_payload(
+    db: Session,
+    *,
+    tenant_id: UUID,
+    customer_id: UUID,
+    source_connection_id: UUID | None,
+    payload: dict,
+    provenance: str,
+) -> M365CustomerPosture:
     stmt = select(M365CustomerPosture).where(
         M365CustomerPosture.tenant_id == tenant_id,
         M365CustomerPosture.customer_id == customer_id,
@@ -56,17 +106,19 @@ def upsert_m365_for_customer(
         db.add(row)
         db.flush()
 
-    licensed = _norm_int(m365.get("licensed_users"))
-    active = _norm_int(m365.get("active_sign_ins_30d"))
-    disabled = _norm_int(m365.get("disabled_users"))
-    stale_90d = _norm_int(m365.get("stale_users_90d"))
-    admin_users = _norm_int(m365.get("privileged_admin_users"))
-    mailboxes = active
-    shared_mailboxes = _norm_int(m365.get("shared_mailboxes"))
+    licensed = _norm_int(payload.get("licensed_users"))
+    active = _norm_int(payload.get("active_users_30d"))
+    disabled = _norm_int(payload.get("disabled_users"))
+    stale_90d = _norm_int(payload.get("stale_users_90d"))
+    admin_users = _norm_int(payload.get("privileged_admin_users"))
+    mailboxes = _norm_int(payload.get("mailboxes"))
+    if mailboxes is None:
+        mailboxes = active
+    shared_mailboxes = _norm_int(payload.get("shared_mailboxes"))
     if shared_mailboxes is None and mailboxes is not None:
         shared_mailboxes = max(0, int(mailboxes * 0.08))
-    inactive = None
-    if licensed is not None and active is not None:
+    inactive = _norm_int(payload.get("inactive_users_30d"))
+    if inactive is None and licensed is not None and active is not None:
         inactive = max(0, licensed - active)
     if stale_90d is None and inactive is not None:
         stale_90d = max(0, int(inactive * 0.6))
@@ -75,15 +127,10 @@ def upsert_m365_for_customer(
     if admin_users is None and licensed is not None:
         admin_users = max(1, int(licensed * 0.04))
 
-    tenant_domains = [str(d) for d in (m365.get("tenant_domains") or []) if str(d).strip()]
-    if not tenant_domains:
-        guessed = (demo_profile or {}).get("website_domain")
-        if guessed:
-            tenant_domains = [str(guessed)]
-
-    hygiene = [str(m365.get("hygiene"))] if m365.get("hygiene") else []
+    tenant_domains = [str(d) for d in (payload.get("tenant_domains") or []) if str(d).strip()]
+    hygiene = [str(x) for x in (payload.get("hygiene_findings") or []) if str(x).strip()]
     opt: list[str] = []
-    unused = _norm_int(m365.get("unused_licences"))
+    unused = _norm_int(payload.get("unused_licences"))
     if unused and unused > 0:
         opt.append(f"{unused} potentially unused licence(s) to review.")
     if shared_mailboxes and shared_mailboxes >= 10:
@@ -94,9 +141,9 @@ def upsert_m365_for_customer(
         opt.append(f"{disabled} disabled accounts should be validated for licence assignment.")
 
     row.source_connection_id = source_connection_id or row.source_connection_id
-    row.external_tenant_ref = str((demo_profile or {}).get("city_line") or "")[:180] or row.external_tenant_ref
-    row.tenant_display_name = None
-    row.domain_name = None
+    row.external_tenant_ref = str(payload.get("tenant_ref") or "")[:180] or row.external_tenant_ref
+    row.tenant_display_name = str(payload.get("tenant_name") or "")[:200] or row.tenant_display_name
+    row.domain_name = tenant_domains[0] if tenant_domains else row.domain_name
     row.licensed_users = licensed
     row.active_users_30d = active
     row.inactive_users_30d = inactive
@@ -106,10 +153,10 @@ def upsert_m365_for_customer(
     row.mailbox_count = mailboxes
     row.shared_mailbox_count = shared_mailboxes
     row.unused_licences = unused
-    mfa = m365.get("mfa_coverage_pct")
+    mfa = payload.get("mfa_coverage_pct")
     row.mfa_coverage_pct = Decimal(str(mfa)) if mfa is not None else None
     row.tenant_domains_json = tenant_domains
-    row.licence_summary_json = [{"sku": "Microsoft 365", "assigned_users": licensed, "unused": unused}]
+    row.licence_summary_json = list(payload.get("licence_summary") or [{"sku": "Microsoft 365", "assigned_users": licensed, "unused": unused}])
     row.usage_summary_json = {
         "active_sign_ins_30d": active,
         "inactive_users_30d": inactive,
@@ -122,15 +169,13 @@ def upsert_m365_for_customer(
         "mfa_coverage_pct": float(mfa) if mfa is not None else None,
     }
     row.azure_summary_json = {
-        "tenant_posture": m365.get("azure_tenant_posture") or "not_collected",
+        "tenant_posture": payload.get("azure_tenant_posture") or "not_collected",
         "note": "Azure metrics are high-level placeholders unless explicit source data is synced.",
     }
     row.hygiene_findings = hygiene
     row.optimisation_findings = opt
-    row.confidence_level = _confidence_from_profile(demo_profile)
-    row.coverage_notes = (
-        "Materialised from demo profile connector path; live Graph/Azure read depth is intentionally limited in v1."
-    )
+    row.confidence_level = _coerce_confidence(str(payload.get("confidence_level") or "medium"))
+    row.coverage_notes = " | ".join(str(n) for n in (payload.get("coverage_notes") or []) if str(n).strip()) or row.coverage_notes
     row.measured_at = datetime.now(UTC)
     row.extra = {"provenance": provenance}
     db.flush()

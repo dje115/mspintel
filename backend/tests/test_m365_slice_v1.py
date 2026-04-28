@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.entities import Customer, M365CustomerPosture, SourceEntityMapping, SourceSystemConnection, Tenant
+from app.services.connectors.providers.microsoft_365 import Microsoft365ConnectorAdapter
 from app.services.connectors.registry import ConnectorRegistry
 from tests.helpers import auth_headers, create_user_with_membership
 
@@ -80,6 +81,106 @@ def test_m365_connection_redacts_secret_and_syncs_postures(client, db_session: S
     assert len(mappings) >= 1
 
 
+def test_m365_connection_test_uses_connector_lab_namespace(client, db_session: Session, monkeypatch):
+    tenant = _tenant(db_session, "m365-test-lab")
+    admin = create_user_with_membership(db_session, "m365-test-lab@example.com", "tenant_admin", tenant)
+
+    def _fake_fetch(self, *, base_url: str, path: str, config: dict, page_size: int = 200):
+        assert base_url.endswith("/m365")
+        assert path == "tenants"
+        return [{"id": "M-T1", "tenant_name": "acme-dental.onmicrosoft.com"}]
+
+    monkeypatch.setattr(Microsoft365ConnectorAdapter, "_fetch_resource", _fake_fetch)
+
+    create = client.post(
+        "/api/v1/integrations/connections",
+        headers=auth_headers(admin, str(tenant.id)),
+        json={
+            "system_type": "microsoft_365",
+            "display_name": "M365 lab",
+            "base_url": "http://connector-lab:8099",
+            "auth_mode": "oauth2",
+            "sync_cadence_minutes": 60,
+            "config": {"tenant_id": "t", "client_id": "c", "client_secret": "secret"},
+        },
+    )
+    assert create.status_code == 201, create.text
+    cid = create.json()["id"]
+    tested = client.post(f"/api/v1/integrations/connections/{cid}/test", headers=auth_headers(admin, str(tenant.id)))
+    assert tested.status_code == 200, tested.text
+    assert tested.json()["test_status"] == "succeeded"
+    assert "namespace is reachable" in (tested.json()["test_message"] or "").lower()
+
+
+def test_m365_connection_test_reports_auth_failure(client, db_session: Session, monkeypatch):
+    tenant = _tenant(db_session, "m365-auth-fail")
+    admin = create_user_with_membership(db_session, "m365-auth-fail@example.com", "tenant_admin", tenant)
+
+    def _fake_fetch(self, *, base_url: str, path: str, config: dict, page_size: int = 200):
+        raise ValueError("M365 connector auth rejected by Connector Lab.")
+
+    monkeypatch.setattr(Microsoft365ConnectorAdapter, "_fetch_resource", _fake_fetch)
+
+    create = client.post(
+        "/api/v1/integrations/connections",
+        headers=auth_headers(admin, str(tenant.id)),
+        json={
+            "system_type": "microsoft_365",
+            "display_name": "M365 auth fail",
+            "base_url": "http://connector-lab:8099",
+            "auth_mode": "oauth2",
+            "sync_cadence_minutes": 60,
+            "config": {"tenant_id": "t", "client_id": "c", "client_secret": "secret"},
+        },
+    )
+    assert create.status_code == 201, create.text
+    cid = create.json()["id"]
+    tested = client.post(f"/api/v1/integrations/connections/{cid}/test", headers=auth_headers(admin, str(tenant.id)))
+    assert tested.status_code == 200, tested.text
+    assert tested.json()["test_status"] == "failed"
+    assert "auth rejected" in (tested.json()["test_message"] or "").lower()
+
+
+def test_m365_sync_handles_empty_connector_lab_data(client, db_session: Session, monkeypatch):
+    tenant = _tenant(db_session, "m365-empty")
+    admin = create_user_with_membership(db_session, "m365-empty@example.com", "tenant_admin", tenant)
+    db_session.add(
+        Customer(
+            id=uuid.uuid4(),
+            tenant_id=tenant.id,
+            name="No Data Customer",
+            status="active",
+            owner_name="Owner",
+            demo_profile={},
+        )
+    )
+    db_session.commit()
+
+    def _fake_fetch(self, *, base_url: str, path: str, config: dict, page_size: int = 200):
+        return []
+
+    monkeypatch.setattr(Microsoft365ConnectorAdapter, "_fetch_resource", _fake_fetch)
+
+    create = client.post(
+        "/api/v1/integrations/connections",
+        headers=auth_headers(admin, str(tenant.id)),
+        json={
+            "system_type": "microsoft_365",
+            "display_name": "M365 empty",
+            "base_url": "http://connector-lab:8099",
+            "auth_mode": "oauth2",
+            "sync_cadence_minutes": 60,
+            "config": {"tenant_id": "t", "client_id": "c", "client_secret": "secret"},
+        },
+    )
+    assert create.status_code == 201, create.text
+    cid = create.json()["id"]
+    sync = client.post(f"/api/v1/integrations/connections/{cid}/sync", headers=auth_headers(admin, str(tenant.id)))
+    assert sync.status_code == 202, sync.text
+    assert sync.json()["status"] == "succeeded"
+    assert sync.json()["records_processed"] == 0
+
+
 def test_m365_workspace_and_customer_detail_shapes(client, db_session: Session):
     tenant = _tenant(db_session, "m365-b")
     admin = create_user_with_membership(db_session, "m365-b@example.com", "tenant_admin", tenant)
@@ -128,6 +229,8 @@ def test_m365_workspace_and_customer_detail_shapes(client, db_session: Session):
     assert ws.status_code == 200, ws.text
     body = ws.json()
     assert body["summary"]["linked_count"] == 1
+    assert body["summary"]["connector_configured"] is True
+    assert "last_sync_status" in body["summary"]
     assert "stale_users_total" in body["summary"]
     assert body["customers"][0]["customer_name"] == "B Customer"
     assert "billing_impact_signals" in body["customers"][0]

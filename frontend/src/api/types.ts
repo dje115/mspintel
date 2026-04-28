@@ -387,6 +387,12 @@ export type BillingIntegrityWorkspaceResponse = {
 export type M365WorkspaceSummary = {
   customer_count: number;
   linked_count: number;
+  connector_configured: boolean;
+  connector_health_status: string;
+  connector_lifecycle_state: string;
+  last_sync_status: string | null;
+  last_sync_started_at: string | null;
+  last_sync_completed_at: string | null;
   licensed_users_total: number;
   active_users_total: number;
   inactive_users_total: number;

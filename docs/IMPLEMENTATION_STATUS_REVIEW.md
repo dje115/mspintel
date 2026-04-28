@@ -30,7 +30,7 @@ Classification used per area:
 | Reviews / QBR | **Partial** | Workspace UI, customer picker, AI agenda + AM panels (`GET|POST` customer AI routes). | No calendar sync, no persisted meeting notes DB. | Notes + calendar integration. |
 | Marketing | **Placeholder** | Shell, links, placeholder copy. | No idea bank DB, no matching engine. | Idea entity + segment API. |
 | Data quality | **Placeholder** | Static shell pointing to Integrations. | No coverage scores API in tenant UI. | Sync health + coverage API. |
-| Integrations | **Partial** | Connection list/detail, test + manual sync for supported types, sync run history. | ConnectWise/Veeam/M365/Sage mostly **stub** adapters; **Autotask** is the live-shaped path in code/tests. | Harden CW + finance connectors. |
+| Integrations | **Partial** | Connection list/detail, test + manual sync for supported types, sync run history. | ConnectWise/Veeam/Sage still mostly **stub** adapters; **Autotask** and **M365 Connector Lab path** now have realistic thin sync flows. | Harden CW + finance connectors. |
 | AI settings | **Working** | Tenant AI settings PATCH, provider list, resolve. | Provider “test” may be limited per family. | Azure adapter when ready. |
 | Prompts | **Working** | List definitions/versions, activate, tenant overrides, revert. | No diff UI / shadow mode. | Prompt compare tooling. |
 | Roadmap | **Placeholder** | Static topic cards + placeholder detail. | No data binding. | OK as low priority. |
@@ -88,7 +88,7 @@ Classification used per area:
 | ConnectWise | **Stub / planned** | Registry presence; no production ingestion path yet. |
 | ITQuoter | **Stub** | Scaffold + updated auth metadata; live API integration still pending. |
 | Veeam | **Stub / planned** | Scaffold; VSPC-first API direction documented. |
-| Microsoft 365 | **Partial (practical slice)** | Tenant product has M365 posture ingestion with explicit live-depth limits. |
+| Microsoft 365 | **Partial (practical slice)** | Tenant product has canonical M365 posture ingestion with Connector Lab-backed connection test/sync, explicit confidence notes, and live-depth limits for real Graph. |
 | Accounting (Xero/Sage) | **Partial** | Canonical finance tables exist; Xero live ingestion remains limited and demo-backed. |
 | Warehouse / snapshots | **Documented only** | No `warehouse_*` tables yet. |
 
@@ -105,7 +105,7 @@ Classification used per area:
 | Campaign / event matching | **Placeholder** | Marketing shell only. |
 | Data confidence | **Partial** | `demo_profile.data_quality`; no tenant-wide coverage API. |
 | Backup posture | **Demo JSON + service-risk placeholder** | |
-| Microsoft posture | **Demo JSON** | |
+| Microsoft posture | **Partial (canonical + mock-backed)** | Canonical `m365_customer_postures` rows are populated from Connector Lab thin endpoints or demo fallback; still not full live Graph depth. |
 
 ---
 
@@ -140,7 +140,7 @@ Classification used per area:
 | Core MSP CRM tables + workspace APIs | **Strong** |
 | AI runtime + prompts + `ai_task_runs` | **Medium-strong** |
 | Integrations UI + Autotask-shaped sync | **Medium** |
-| Finance / M365 / backup **product** truth | **Weak (stubs + demo JSON)** |
+| Finance / M365 / backup **product** truth | **Medium-low (finance + M365 canonical slices, backup still stub-heavy)** |
 | Marketing / data quality / stalled-work **product** surfaces | **Weak (mostly shells)** |
 | Knowledge layer (persistent objects) | **None (spec only)** |
 
@@ -148,7 +148,7 @@ Classification used per area:
 
 ## 10. Five largest product gaps
 
-1. **No canonical finance or M365/backup facts** — intelligence there is demo JSON or placeholders, not operational truth.  
+1. **Backup canonical depth still missing** — finance and M365 now have practical canonical slices, but backup remains mostly placeholder/stub.  
 2. **Marketing and campaign matching** — almost entirely non-functional beyond navigation.  
 3. **Service-risk backup section** — explicitly placeholder despite customer need.  
 4. **No automated risk/status** — `Customer.status` is seeded, not derived from rules across connectors.  

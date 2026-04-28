@@ -34,6 +34,31 @@ export function M365HealthPage() {
         <div className="tenant-skeleton">Loading Microsoft posture…</div>
       ) : (
         <>
+          {!data.summary.connector_configured ? (
+            <section className="tenant-card" style={{ marginBottom: "1rem" }}>
+              <div className="tenant-panel-head">
+                <h3 style={{ margin: 0 }}>Needs connector setup</h3>
+                <span className="tenant-badge tenant-badge--warn">Needs connector setup</span>
+              </div>
+              <p className="muted" style={{ marginTop: "0.5rem" }}>
+                No Microsoft 365 connection is configured for this tenant yet.
+              </p>
+              <Link to="/app/integrations" className="tenant-btn-inline tenant-btn-inline--ghost">
+                Open integrations
+              </Link>
+            </section>
+          ) : null}
+          {data.summary.connector_configured && data.summary.linked_count < data.summary.customer_count ? (
+            <section className="tenant-card" style={{ marginBottom: "1rem" }}>
+              <div className="tenant-panel-head">
+                <h3 style={{ margin: 0 }}>Partially connected</h3>
+                <span className="tenant-badge tenant-badge--watch">Partially connected</span>
+              </div>
+              <p className="muted" style={{ marginTop: "0.5rem" }}>
+                Only {data.summary.linked_count} of {data.summary.customer_count} customers have canonical M365 posture rows.
+              </p>
+            </section>
+          ) : null}
           <section className="tenant-metric-grid">
             <article className="tenant-metric-card">
               <h3>Linked accounts</h3>
@@ -85,6 +110,16 @@ export function M365HealthPage() {
               <h3 style={{ marginTop: 0 }}>Opportunities</h3>
               <p className="muted">Optimisation candidates: {data.summary.optimisation_candidate_count}</p>
               <p className="muted">Use Review/QBR prep to turn hygiene findings into customer actions.</p>
+            </article>
+            <article className="tenant-card">
+              <h3 style={{ marginTop: 0 }}>Last sync</h3>
+              <p className="muted">Status: {data.summary.last_sync_status ?? "not_run"}</p>
+              <p className="muted">
+                Completed:{" "}
+                {data.summary.last_sync_completed_at
+                  ? new Date(data.summary.last_sync_completed_at).toLocaleString()
+                  : "Not yet"}
+              </p>
             </article>
           </section>
 

@@ -8,6 +8,12 @@ from pydantic import BaseModel, Field
 class M365WorkspaceSummary(BaseModel):
     customer_count: int
     linked_count: int
+    connector_configured: bool
+    connector_health_status: str
+    connector_lifecycle_state: str
+    last_sync_status: str | None
+    last_sync_started_at: str | None
+    last_sync_completed_at: str | None
     licensed_users_total: int
     active_users_total: int
     inactive_users_total: int

@@ -20,7 +20,7 @@ This phase introduces a real connector runtime foundation with Autotask v1 and a
 
 1. Tenant admin configures a source connection in `/app/integrations`.
 2. Config is encrypted at rest in `source_system_connections.encrypted_config`.
-3. Connector runtime resolves an adapter by `system_type` via the in-repo plugin registry (`ConnectorRegistry` + `ConnectorManifest`), including M365 v1 posture ingestion.
+3. Connector runtime resolves an adapter by `system_type` via the in-repo plugin registry (`ConnectorRegistry` + `ConnectorManifest`), including M365 v1 posture ingestion from Connector Lab (or demo fallback) in dev slices.
 4. Sync run writes lifecycle into `integration_sync_runs` and updates connection health/status timestamps.
 5. Adapter upserts canonical operational entities (`customers`, `contacts`, `tickets`, `opportunities`, optional `quotes`).
 6. Source-to-canonical lineage is persisted in `source_entity_mappings`.

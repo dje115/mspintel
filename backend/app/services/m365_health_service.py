@@ -6,7 +6,14 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.entities import Customer, FinanceBillingAccount, FinanceBillingSnapshot, M365CustomerPosture
+from app.models.entities import (
+    Customer,
+    FinanceBillingAccount,
+    FinanceBillingSnapshot,
+    IntegrationSyncRun,
+    M365CustomerPosture,
+    SourceSystemConnection,
+)
 
 
 class M365HealthService:
@@ -46,6 +53,22 @@ class M365HealthService:
     def build_workspace(self, tenant_id: UUID) -> dict[str, Any]:
         customers = list(self.db.scalars(select(Customer).where(Customer.tenant_id == tenant_id)).all())
         postures = self._rows(tenant_id)
+        connection = self.db.scalars(
+            select(SourceSystemConnection)
+            .where(SourceSystemConnection.tenant_id == tenant_id, SourceSystemConnection.system_type == "microsoft_365")
+            .order_by(SourceSystemConnection.created_at.desc())
+        ).first()
+        last_run = None
+        if connection:
+            last_run = self.db.scalars(
+                select(IntegrationSyncRun)
+                .where(
+                    IntegrationSyncRun.tenant_id == tenant_id,
+                    IntegrationSyncRun.source_connection_id == connection.id,
+                )
+                .order_by(IntegrationSyncRun.created_at.desc())
+                .limit(1)
+            ).first()
         posture_by_customer = {p.customer_id: p for p in postures}
         out_rows: list[dict[str, Any]] = []
         licensed_total = 0
@@ -126,10 +149,30 @@ class M365HealthService:
                     "coverage_notes": notes,
                 }
             )
+        coverage_notes = [
+            "Microsoft slice is practical but not full Graph security analytics; treat values as operational guidance.",
+            "Demo-mode sync materialises seeded profile facts into canonical posture rows unless live read depth is configured.",
+        ]
+        if not connection:
+            coverage_notes.insert(0, "Needs connector setup: configure a Microsoft 365 connection to populate canonical posture rows.")
+        elif connection.health_status != "healthy":
+            coverage_notes.insert(0, "Partially connected: latest Microsoft connection status is not healthy.")
+        elif linked < len(customers):
+            coverage_notes.insert(0, "Partially connected: some customers still have no canonical M365 posture row.")
         return {
             "summary": {
                 "customer_count": len(customers),
                 "linked_count": linked,
+                "connector_configured": connection is not None,
+                "connector_health_status": connection.health_status if connection else "not_configured",
+                "connector_lifecycle_state": connection.lifecycle_state if connection else "not_configured",
+                "last_sync_status": getattr(last_run, "status", None),
+                "last_sync_started_at": (
+                    getattr(last_run, "started_at", None).isoformat() if getattr(last_run, "started_at", None) else None
+                ),
+                "last_sync_completed_at": (
+                    getattr(last_run, "completed_at", None).isoformat() if getattr(last_run, "completed_at", None) else None
+                ),
                 "licensed_users_total": licensed_total,
                 "active_users_total": active_total,
                 "inactive_users_total": inactive_total,
@@ -140,10 +183,7 @@ class M365HealthService:
                 "optimisation_candidate_count": opt_count,
                 "billing_mismatch_candidate_count": billing_mismatch_count,
             },
-            "coverage_notes": [
-                "Microsoft slice is practical but not full Graph security analytics; treat values as operational guidance.",
-                "Demo-mode sync materialises seeded profile facts into canonical posture rows unless live read depth is configured.",
-            ],
+            "coverage_notes": coverage_notes,
             "customers": out_rows,
         }
 
