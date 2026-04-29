@@ -184,7 +184,50 @@ def _latest_m365_connection_and_run(db: Session, tenant_id: UUID) -> tuple[Sourc
     return connection, run
 
 
-def build_m365_workspace_summary_variables(db: Session, tenant_id: UUID) -> dict:
+def _top_portfolio_findings(customers: list[dict], *, limit: int = 6) -> list[dict]:
+    finding_counts: dict[str, int] = {}
+    for row in customers:
+        findings = list(row.get("hygiene_findings") or []) + list(row.get("optimisation_findings") or [])
+        for finding in findings:
+            key = str(finding).strip()
+            if not key:
+                continue
+            finding_counts[key] = finding_counts.get(key, 0) + 1
+    ranked = sorted(finding_counts.items(), key=lambda item: (-item[1], item[0]))[:limit]
+    out: list[dict] = []
+    for title, count in ranked:
+        severity = "high" if count >= 6 else ("medium" if count >= 3 else "low")
+        out.append({"title": title, "customer_count": count, "severity": severity})
+    return out
+
+
+def _top_customer_outliers(customers: list[dict], *, limit: int = 8) -> list[dict]:
+    def _score(row: dict) -> int:
+        return int(row.get("inactive_users_30d") or 0) + int(row.get("unused_licences") or 0) + int(row.get("shared_mailbox_count") or 0)
+
+    ranked = sorted(customers, key=lambda row: (-_score(row), str(row.get("customer_name") or "")))[:limit]
+    out: list[dict] = []
+    for row in ranked:
+        out.append(
+            {
+                "customer_id": str(row.get("customer_id")) if row.get("customer_id") is not None else None,
+                "customer_name": row.get("customer_name"),
+                "confidence_level": row.get("confidence_level"),
+                "inactive_users_30d": row.get("inactive_users_30d"),
+                "unused_licences": row.get("unused_licences"),
+                "shared_mailbox_count": row.get("shared_mailbox_count"),
+                "stale_users_90d": row.get("stale_users_90d"),
+                "disabled_users": row.get("disabled_users"),
+                "billing_impact_signals": list(row.get("billing_impact_signals") or []),
+                "hygiene_findings": list(row.get("hygiene_findings") or []),
+                "optimisation_findings": list(row.get("optimisation_findings") or []),
+                "portfolio_rank_reason": "High inactive users / unused licences / shared mailbox concentration.",
+            }
+        )
+    return out
+
+
+def _m365_portfolio_scope_context(db: Session, tenant_id: UUID) -> dict:
     m365 = M365HealthService(db).build_workspace(tenant_id)
     connection, last_run = _latest_m365_connection_and_run(db, tenant_id)
     reviewable_statuses = {"pending", "unlinked"}
@@ -199,26 +242,38 @@ def build_m365_workspace_summary_variables(db: Session, tenant_id: UUID) -> dict
         for row in rows:
             if row.status in reviewable_statuses:
                 mapping_review_counts[row.status] = mapping_review_counts.get(row.status, 0) + 1
-    representative_rows_raw = sorted(
-        m365.get("customers", []),
-        key=lambda row: (
-            -(int(row.get("inactive_users_30d") or 0) + int(row.get("unused_licences") or 0)),
-            str(row.get("customer_name") or ""),
-        ),
-    )[:8]
-    representative_rows: list[dict] = []
-    for row in representative_rows_raw:
-        cleaned = dict(row)
-        if cleaned.get("customer_id") is not None:
-            cleaned["customer_id"] = str(cleaned["customer_id"])
-        representative_rows.append(cleaned)
+    customers = list(m365.get("customers", []))
+    top_findings = _top_portfolio_findings(customers)
+    outliers = _top_customer_outliers(customers)
+    summary = dict(m365.get("summary") or {})
     tenant_profile_context = build_tenant_ai_context(db, tenant_id).model_dump(mode="json")
+    msp_profile = dict(tenant_profile_context.get("msp_profile_summary") or {})
+    msp_name = msp_profile.get("brand_name") or msp_profile.get("legal_name") or "MSP tenant"
+    base_url = str(connection.base_url or "") if connection else ""
+    connector_mode = "connector_lab_or_dev" if ("connector-lab" in base_url or "localhost" in base_url) else "connector_or_live"
+    confidence_notes = list(m365.get("coverage_notes", []))
+    if connector_mode == "connector_lab_or_dev":
+        confidence_notes.append(
+            "Source mode indicates Connector Lab/dev telemetry. Recommendations are directional and should be validated before customer-facing decisions."
+        )
     return {
-        "task": "m365_hygiene_summary",
-        "workspace": {
-            "summary": m365.get("summary", {}),
-            "coverage_notes": list(m365.get("coverage_notes", [])),
-            "representative_customers": representative_rows,
+        "analysis_scope": "portfolio_m365_workspace",
+        "scope_rules": {
+            "portfolio_totals_are_not_single_customer_values": True,
+            "customer_examples_must_only_use_top_customer_outliers": True,
+            "do_not_invent_missing_security_or_compliance_facts": True,
+        },
+        "msp_context": {
+            "msp_display_name": msp_name,
+            "tenant_profile_summary": msp_profile,
+            "selected_services": list(tenant_profile_context.get("selected_services") or []),
+            "business_goals": list(tenant_profile_context.get("business_goals") or []),
+            "vertical_focus": list(tenant_profile_context.get("vertical_focus") or []),
+            "regions_served": list(tenant_profile_context.get("regions_served") or []),
+        },
+        "source_context": {
+            "source_family": "microsoft_365",
+            "source_mode": connector_mode,
             "connector_status": {
                 "configured": connection is not None,
                 "connection_id": str(connection.id) if connection else None,
@@ -235,21 +290,74 @@ def build_m365_workspace_summary_variables(db: Session, tenant_id: UUID) -> dict
             "mapping_review": {
                 "pending_count": mapping_review_counts.get("pending", 0),
                 "unlinked_count": mapping_review_counts.get("unlinked", 0),
+                "reviewable_total": mapping_review_counts.get("pending", 0) + mapping_review_counts.get("unlinked", 0),
             },
-            "data_confidence_notes": list(m365.get("coverage_notes", []))
-            + [
-                "AI analysis is generated from connector-synced canonical M365 posture rows.",
-                "For Connector Lab/dev data, recommendations are directional and must be validated before customer-facing decisions.",
-            ],
         },
-        "tenant_profile_context": tenant_profile_context,
+        "portfolio_totals": {
+            "customer_count": int(summary.get("customer_count") or 0),
+            "linked_count": int(summary.get("linked_count") or 0),
+            "licensed_users_total": int(summary.get("licensed_users_total") or 0),
+            "active_users_total": int(summary.get("active_users_total") or 0),
+            "inactive_users_total": int(summary.get("inactive_users_total") or 0),
+            "mailbox_total": int(summary.get("mailbox_total") or 0),
+            "shared_mailbox_total": int(summary.get("shared_mailbox_total") or 0),
+            "stale_users_total": int(summary.get("stale_users_total") or 0),
+            "disabled_users_total": int(summary.get("disabled_users_total") or 0),
+            "billing_mismatch_candidate_count": int(summary.get("billing_mismatch_candidate_count") or 0),
+            "optimisation_candidate_count": int(summary.get("optimisation_candidate_count") or 0),
+            "label": "These values are portfolio-level totals across linked customers, not single-customer values.",
+        },
+        "top_findings": top_findings,
+        "top_customer_outliers": outliers,
+        "data_confidence_notes": confidence_notes,
+        "missing_telemetry_notes": [
+            "MFA/security analytics can be partial depending on connector depth and upstream availability.",
+            "Mapping-review gaps reduce cross-customer certainty for the portfolio summary.",
+        ],
+    }
+
+
+def build_m365_customer_context_variables(db: Session, tenant_id: UUID, customer_id: UUID) -> dict:
+    """Customer-only M365 context (no portfolio totals) for customer-level AI routes."""
+    repo = CustomerRepository(db)
+    customer = repo.get_customer(tenant_id, customer_id)
+    if not customer:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Customer not found")
+    panel = M365HealthService(db).customer_panel(tenant_id, customer_id)
+    tenant_profile_context = build_tenant_ai_context(db, tenant_id).model_dump(mode="json")
+    return {
+        "analysis_scope": "customer_m365_profile",
+        "scope_rules": {
+            "customer_only_values": True,
+            "portfolio_totals_excluded": True,
+        },
+        "customer": {
+            "id": str(customer.id),
+            "name": customer.name,
+            "status": customer.status,
+            "owner_name": customer.owner_name,
+            "mapping_confidence_status": panel.get("confidence_level"),
+            "m365_posture": panel,
+        },
+        "msp_context": {
+            "tenant_profile_summary": dict(tenant_profile_context.get("msp_profile_summary") or {}),
+            "selected_services": list(tenant_profile_context.get("selected_services") or []),
+        },
+    }
+
+
+def build_m365_workspace_summary_variables(db: Session, tenant_id: UUID) -> dict:
+    return {
+        "task": "m365_hygiene_summary",
+        "portfolio_context": _m365_portfolio_scope_context(db, tenant_id),
     }
 
 
 def build_m365_workspace_opportunity_variables(db: Session, tenant_id: UUID) -> dict:
-    payload = build_m365_workspace_summary_variables(db, tenant_id)
-    payload["task"] = "m365_upsell_opportunity"
-    return payload
+    return {
+        "task": "m365_upsell_opportunity",
+        "portfolio_context": _m365_portfolio_scope_context(db, tenant_id),
+    }
 
 
 def build_recommendation_explanation_variables(db: Session, tenant_id: UUID, recommendation_id: UUID) -> dict:

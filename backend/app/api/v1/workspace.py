@@ -146,7 +146,7 @@ def post_m365_health_ai_summary(
     db: Session = Depends(get_db),
 ):
     variables = build_m365_workspace_summary_variables(db, ctx.tenant.id)
-    linked_count = int((variables.get("workspace") or {}).get("summary", {}).get("linked_count") or 0)
+    linked_count = int((variables.get("portfolio_context") or {}).get("portfolio_totals", {}).get("linked_count") or 0)
     if linked_count <= 0:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -174,7 +174,7 @@ def post_m365_health_ai_opportunity(
     db: Session = Depends(get_db),
 ):
     variables = build_m365_workspace_opportunity_variables(db, ctx.tenant.id)
-    linked_count = int((variables.get("workspace") or {}).get("summary", {}).get("linked_count") or 0)
+    linked_count = int((variables.get("portfolio_context") or {}).get("portfolio_totals", {}).get("linked_count") or 0)
     if linked_count <= 0:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

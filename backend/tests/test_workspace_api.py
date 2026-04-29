@@ -46,7 +46,7 @@ def _seed_m365_workspace_ai_route(db_session, tenant: Tenant, user, *, task_type
         id=uuid.uuid4(),
         prompt_definition_id=prompt_def.id,
         version_number=1,
-        prompt_text="Summarize workspace posture: {{workspace}}",
+        prompt_text="Summarize portfolio M365 posture: {{portfolio_context}}",
         change_note="test",
         created_by_user_id=user.id,
         is_active=True,
@@ -230,6 +230,10 @@ def test_m365_workspace_ai_summary_generates_and_reads_latest(mock_chat, client,
     assert latest.status_code == 200
     assert latest.json()["status"] == "succeeded"
     assert "Executive summary" in (latest.json().get("text") or "")
+    user_payload = mock_chat.call_args.kwargs["user_content"]
+    assert "portfolio_m365_workspace" in user_payload
+    assert "portfolio-level totals across linked customers" in user_payload
+    assert "top_customer_outliers" in user_payload
 
 
 @patch("app.services.ai_execution_service.execute_chat_completion")

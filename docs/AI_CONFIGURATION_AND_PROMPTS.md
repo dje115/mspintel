@@ -39,6 +39,8 @@ This document describes the **tenant-scoped AI engine configuration**, **task ro
 
 For the M365 workspace slice, generation is explicit user action from `/app/m365-health` (not page-load auto-run). Latest successful output is read from `ai_task_runs` state and includes provider/model/prompt lineage metadata.
 
+Current M365 workspace variables are shaped as portfolio-scoped context (`portfolio_context`) with explicit scope rules, labelled portfolio totals, connector/mapping status, top findings, top customer outliers, and tenant MSP profile context. Prompt defaults for `m365_hygiene_summary.system` and `m365_upsell_opportunity.system` are structured-output oriented (JSON-first) so frontend surfaces can render section cards instead of raw text blobs.
+
 **Platform observability:** `GET /api/v1/platform/ai/task-runs?limit=…`
 
 ---

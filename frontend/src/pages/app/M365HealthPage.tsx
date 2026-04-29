@@ -1,10 +1,53 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { api } from "../../api/client";
 import type { AIProductBlockState, M365WorkspaceResponse } from "../../api/types";
 import { useSession } from "../../state/session";
 import { TenantAiContextNotice } from "../../components/TenantAiContextNotice";
+
+type AiFinding = { title: string; severity?: string; detail?: string; evidence?: string };
+type AiOutlier = { customer_name: string; finding?: string; detail?: string; angle?: string; talking_point?: string };
+type AiAction = { owner_role?: string; action?: string; why?: string; next_action?: string };
+type AiOpportunity = { title: string; service_area?: string; detail?: string; evidence?: string; next_action?: string };
+type StructuredAiPayload = {
+  summary?: string;
+  key_findings?: AiFinding[];
+  customer_outliers?: AiOutlier[];
+  risks_gaps?: string[];
+  opportunities?: AiOpportunity[];
+  customer_conversation_angles?: AiOutlier[];
+  recommended_next_actions?: AiAction[];
+  confidence_notes?: string[];
+  delivery_risks_or_dependencies?: string[];
+};
+
+type M365Tab = "summary" | "ai" | "customers" | "findings" | "confidence";
+
+function parseStructuredAi(text?: string | null): StructuredAiPayload | null {
+  if (!text) return null;
+  const trimmed = text.trim();
+  if (!trimmed) return null;
+  const candidates = [trimmed];
+  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fenced?.[1]) candidates.push(fenced[1].trim());
+  for (const candidate of candidates) {
+    try {
+      const parsed = JSON.parse(candidate) as StructuredAiPayload;
+      if (parsed && typeof parsed === "object") return parsed;
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
+
+function severityBadgeClass(level?: string): string {
+  const normalized = String(level || "").toLowerCase();
+  if (normalized === "high") return "tenant-badge tenant-badge--warn";
+  if (normalized === "medium") return "tenant-badge tenant-badge--watch";
+  return "tenant-badge";
+}
 
 export function M365HealthPage() {
   const { accessToken, currentTenantId } = useSession();
@@ -14,6 +57,7 @@ export function M365HealthPage() {
   const [aiOpportunity, setAiOpportunity] = useState<AIProductBlockState | null>(null);
   const [aiBusy, setAiBusy] = useState<"" | "summary" | "opportunity">("");
   const [aiErr, setAiErr] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<M365Tab>("summary");
 
   useEffect(() => {
     if (!accessToken || !currentTenantId) return;
@@ -66,6 +110,20 @@ export function M365HealthPage() {
   const noProviderConfigured =
     aiSummary?.status === "unavailable" &&
     (aiSummary.message || "").toLowerCase().includes("configure a default ai provider");
+  const summaryStructured = useMemo(() => parseStructuredAi(aiSummary?.text), [aiSummary?.text]);
+  const opportunityStructured = useMemo(() => parseStructuredAi(aiOpportunity?.text), [aiOpportunity?.text]);
+  const findingsCount = useMemo(
+    () => data?.customers.reduce((acc, row) => acc + (row.hygiene_findings?.length || 0) + (row.optimisation_findings?.length || 0), 0) ?? 0,
+    [data?.customers]
+  );
+  const highConfidenceCount = useMemo(
+    () => data?.customers.filter((row) => row.confidence_level === "high").length ?? 0,
+    [data?.customers]
+  );
+  const mediumConfidenceCount = useMemo(
+    () => data?.customers.filter((row) => row.confidence_level === "medium").length ?? 0,
+    [data?.customers]
+  );
 
   return (
     <div>
@@ -106,15 +164,98 @@ export function M365HealthPage() {
               </p>
             </section>
           ) : null}
-          <section className="tenant-panel" style={{ marginBottom: "1rem" }}>
+          <div className="tenant-segmented">
+            {[
+              { key: "summary", label: "Summary" },
+              { key: "ai", label: "AI insights" },
+              { key: "customers", label: "Customers", count: data.customers.length },
+              { key: "findings", label: "Findings", count: findingsCount },
+              { key: "confidence", label: "Data confidence" },
+            ].map((tab) => (
+              <button
+                key={tab.key}
+                type="button"
+                className={`tenant-segment ${activeTab === tab.key ? "is-active" : ""}`}
+                onClick={() => setActiveTab(tab.key as M365Tab)}
+              >
+                {tab.label}
+                {typeof tab.count === "number" ? <span className="tenant-segment-count">{tab.count}</span> : null}
+              </button>
+            ))}
+          </div>
+
+          {activeTab === "summary" ? <section className="tenant-metric-grid">
+            <article className="tenant-metric-card">
+              <h3>Linked accounts</h3>
+              <p className="tenant-metric-big">{data.summary.linked_count}</p>
+              <p className="tenant-metric-note">Customers with canonical M365 posture rows.</p>
+            </article>
+            <article className="tenant-metric-card">
+              <h3>Licensed / active</h3>
+              <p className="tenant-metric-big">
+                {data.summary.licensed_users_total} / {data.summary.active_users_total}
+              </p>
+              <p className="tenant-metric-note">Directional portfolio-level M365 identity usage.</p>
+            </article>
+            <article className="tenant-metric-card">
+              <h3>Inactive users</h3>
+              <p className="tenant-metric-big">{data.summary.inactive_users_total}</p>
+              <p className="tenant-metric-note">Potential lifecycle/optimisation conversation queue.</p>
+            </article>
+            <article className="tenant-metric-card">
+              <h3>Stale / disabled</h3>
+              <p className="tenant-metric-big">
+                {data.summary.stale_users_total} / {data.summary.disabled_users_total}
+              </p>
+              <p className="tenant-metric-note">Identity hygiene indicators (directional).</p>
+            </article>
+            <article className="tenant-metric-card">
+              <h3>Mailboxes / shared</h3>
+              <p className="tenant-metric-big">
+                {data.summary.mailbox_total} / {data.summary.shared_mailbox_total}
+              </p>
+              <p className="tenant-metric-note">Shared mailbox sprawl is directional, not an audit-grade count.</p>
+            </article>
+          </section> : null}
+
+          {activeTab === "summary" ? <section className="tenant-grid tenant-grid--cards-3" style={{ marginTop: "1rem" }}>
+            <article className="tenant-card">
+              <h3 style={{ marginTop: 0 }}>Licensing</h3>
+              <p className="muted">Licensed users: {data.summary.licensed_users_total}</p>
+              <p className="muted">Unused/stale identities should drive true-up and cleanup discussions.</p>
+            </article>
+            <article className="tenant-card">
+              <h3 style={{ marginTop: 0 }}>Billing impact</h3>
+              <p className="muted">Mismatch candidates: {data.summary.billing_mismatch_candidate_count}</p>
+              <Link to="/app/billing-integrity" className="tenant-btn-inline tenant-btn-inline--ghost">
+                Open billing integrity
+              </Link>
+            </article>
+            <article className="tenant-card">
+              <h3 style={{ marginTop: 0 }}>Opportunities</h3>
+              <p className="muted">Optimisation candidates: {data.summary.optimisation_candidate_count}</p>
+              <p className="muted">Use Review/QBR prep to turn hygiene findings into customer actions.</p>
+            </article>
+            <article className="tenant-card">
+              <h3 style={{ marginTop: 0 }}>Last sync</h3>
+              <p className="muted">Status: {data.summary.last_sync_status ?? "not_run"}</p>
+              <p className="muted">
+                Completed:{" "}
+                {data.summary.last_sync_completed_at
+                  ? new Date(data.summary.last_sync_completed_at).toLocaleString()
+                  : "Not yet"}
+              </p>
+            </article>
+          </section> : null}
+
+          {activeTab === "ai" ? <section className="tenant-panel tenant-panel--m365-ai" style={{ marginBottom: "1rem" }}>
             <div className="tenant-panel-head">
               <h2 className="tenant-panel-title">AI M365 insights</h2>
-              <span className="tenant-badge tenant-badge--watch">Connector-backed AI</span>
+              <span className="tenant-badge tenant-badge--watch">Portfolio scope</span>
             </div>
             <div className="tenant-panel-body">
               <p className="muted" style={{ marginTop: 0 }}>
-                AI summary is based on latest synced Microsoft 365 canonical posture and tenant MSP context. It can be incomplete
-                when connector coverage or mapping review is incomplete.
+                AI uses scoped portfolio context plus tenant MSP profile. It does not run automatically and records lineage per task run.
               </p>
               {aiErr ? <p className="tenant-error">{aiErr}</p> : null}
               {noM365Data ? (
@@ -148,7 +289,7 @@ export function M365HealthPage() {
                 </button>
               </div>
               <div className="tenant-grid tenant-grid--cards-2">
-                <article className="tenant-card">
+                <article className="tenant-card tenant-card--m365-ai">
                   <h3 style={{ marginTop: 0 }}>Hygiene summary</h3>
                   <p className="muted" style={{ marginTop: 0 }}>
                     Status: {aiSummary?.status ?? "not_generated"}
@@ -157,11 +298,28 @@ export function M365HealthPage() {
                       ? ` · ${new Date(aiSummary.last_completed_at).toLocaleString()}`
                       : ""}
                   </p>
-                  <p style={{ whiteSpace: "pre-wrap" }}>
-                    {aiSummary?.text || aiSummary?.message || "Not generated yet. Use the button above."}
+                  <p className="tenant-m365-ai-summary">
+                    {summaryStructured?.summary || aiSummary?.message || "Not generated yet. Use the button above."}
                   </p>
+                  {summaryStructured?.key_findings?.length ? (
+                    <div className="tenant-m365-ai-list">
+                      {summaryStructured.key_findings.slice(0, 4).map((finding) => (
+                        <div key={finding.title} className="tenant-m365-ai-list-item">
+                          <div style={{ display: "flex", justifyContent: "space-between", gap: "0.5rem", flexWrap: "wrap" }}>
+                            <strong>{finding.title}</strong>
+                            <span className={severityBadgeClass(finding.severity)}>{finding.severity ?? "info"}</span>
+                          </div>
+                          {finding.detail ? <p className="muted">{finding.detail}</p> : null}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="tenant-m365-ai-fallback">
+                      {aiSummary?.text || aiSummary?.message || "No structured output yet."}
+                    </p>
+                  )}
                 </article>
-                <article className="tenant-card">
+                <article className="tenant-card tenant-card--m365-ai">
                   <h3 style={{ marginTop: 0 }}>Opportunity guidance</h3>
                   <p className="muted" style={{ marginTop: 0 }}>
                     Status: {aiOpportunity?.status ?? "not_generated"}
@@ -170,98 +328,33 @@ export function M365HealthPage() {
                       ? ` · ${new Date(aiOpportunity.last_completed_at).toLocaleString()}`
                       : ""}
                   </p>
-                  <p style={{ whiteSpace: "pre-wrap" }}>
-                    {aiOpportunity?.text || aiOpportunity?.message || "Not generated yet. Use the button above."}
+                  <p className="tenant-m365-ai-summary">
+                    {opportunityStructured?.summary || aiOpportunity?.message || "Not generated yet. Use the button above."}
                   </p>
+                  {opportunityStructured?.opportunities?.length ? (
+                    <div className="tenant-m365-ai-list">
+                      {opportunityStructured.opportunities.slice(0, 4).map((op) => (
+                        <div key={op.title} className="tenant-m365-ai-list-item">
+                          <strong>{op.title}</strong>
+                          {op.detail ? <p className="muted">{op.detail}</p> : null}
+                          {op.evidence ? <p className="muted">Evidence: {op.evidence}</p> : null}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="tenant-m365-ai-fallback">
+                      {aiOpportunity?.text || aiOpportunity?.message || "No structured output yet."}
+                    </p>
+                  )}
                 </article>
               </div>
             </div>
-          </section>
-          <section className="tenant-metric-grid">
-            <article className="tenant-metric-card">
-              <h3>Linked accounts</h3>
-              <p className="tenant-metric-big">{data.summary.linked_count}</p>
-              <p className="tenant-metric-note">Customers with canonical M365 posture rows.</p>
-            </article>
-            <article className="tenant-metric-card">
-              <h3>Licensed / active</h3>
-              <p className="tenant-metric-big">
-                {data.summary.licensed_users_total} / {data.summary.active_users_total}
-              </p>
-              <p className="tenant-metric-note">Directional portfolio-level M365 identity usage.</p>
-            </article>
-            <article className="tenant-metric-card">
-              <h3>Inactive users</h3>
-              <p className="tenant-metric-big">{data.summary.inactive_users_total}</p>
-              <p className="tenant-metric-note">Potential lifecycle/optimisation conversation queue.</p>
-            </article>
-            <article className="tenant-metric-card">
-              <h3>Stale / disabled</h3>
-              <p className="tenant-metric-big">
-                {data.summary.stale_users_total} / {data.summary.disabled_users_total}
-              </p>
-              <p className="tenant-metric-note">Identity hygiene indicators (directional).</p>
-            </article>
-            <article className="tenant-metric-card">
-              <h3>Mailboxes / shared</h3>
-              <p className="tenant-metric-big">
-                {data.summary.mailbox_total} / {data.summary.shared_mailbox_total}
-              </p>
-              <p className="tenant-metric-note">Shared mailbox sprawl is directional, not an audit-grade count.</p>
-            </article>
-          </section>
+          </section> : null}
 
-          <section className="tenant-grid tenant-grid--cards-3" style={{ marginTop: "1rem" }}>
-            <article className="tenant-card">
-              <h3 style={{ marginTop: 0 }}>Licensing</h3>
-              <p className="muted">Licensed users: {data.summary.licensed_users_total}</p>
-              <p className="muted">Unused/stale identities should drive true-up and cleanup discussions.</p>
-            </article>
-            <article className="tenant-card">
-              <h3 style={{ marginTop: 0 }}>Billing impact</h3>
-              <p className="muted">Mismatch candidates: {data.summary.billing_mismatch_candidate_count}</p>
-              <Link to="/app/billing-integrity" className="tenant-btn-inline tenant-btn-inline--ghost">
-                Open billing integrity
-              </Link>
-            </article>
-            <article className="tenant-card">
-              <h3 style={{ marginTop: 0 }}>Opportunities</h3>
-              <p className="muted">Optimisation candidates: {data.summary.optimisation_candidate_count}</p>
-              <p className="muted">Use Review/QBR prep to turn hygiene findings into customer actions.</p>
-            </article>
-            <article className="tenant-card">
-              <h3 style={{ marginTop: 0 }}>Last sync</h3>
-              <p className="muted">Status: {data.summary.last_sync_status ?? "not_run"}</p>
-              <p className="muted">
-                Completed:{" "}
-                {data.summary.last_sync_completed_at
-                  ? new Date(data.summary.last_sync_completed_at).toLocaleString()
-                  : "Not yet"}
-              </p>
-            </article>
-          </section>
-
-          <section className="tenant-panel" style={{ marginTop: "1rem" }}>
-            <div className="tenant-panel-head">
-              <h2 className="tenant-panel-title">Portfolio findings</h2>
-              <span className="tenant-badge tenant-badge--watch">
-                Optimisation candidates: {data.summary.optimisation_candidate_count}
-              </span>
-            </div>
-            <div className="tenant-panel-body">
-              <ul className="tenant-list-plain">
-                {data.coverage_notes.map((n) => (
-                  <li key={n} className="tenant-rec-card muted">
-                    {n}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </section>
-
-          <section className="tenant-panel">
+          {activeTab === "customers" ? <section className="tenant-panel">
             <div className="tenant-panel-head">
               <h2 className="tenant-panel-title">Customer posture rows</h2>
+              <span className="tenant-badge">Portfolio totals shown separately</span>
             </div>
             <div className="tenant-panel-body">
               <div className="tenant-table-wrap">
@@ -310,7 +403,70 @@ export function M365HealthPage() {
                 </table>
               </div>
             </div>
-          </section>
+          </section> : null}
+
+          {activeTab === "findings" ? <section className="tenant-grid tenant-grid--cards-2" style={{ marginTop: "1rem" }}>
+            <article className="tenant-card">
+              <h3 style={{ marginTop: 0 }}>Portfolio findings</h3>
+              <ul className="tenant-list-plain">
+                {data.coverage_notes.map((n) => (
+                  <li key={n} className="tenant-rec-card muted">
+                    {n}
+                  </li>
+                ))}
+              </ul>
+            </article>
+            <article className="tenant-card">
+              <h3 style={{ marginTop: 0 }}>Top customer outliers</h3>
+              <ul className="tenant-list-plain">
+                {data.customers
+                  .slice()
+                  .sort(
+                    (a, b) =>
+                      (b.inactive_users_30d ?? 0) +
+                      (b.unused_licences ?? 0) +
+                      (b.shared_mailbox_count ?? 0) -
+                      ((a.inactive_users_30d ?? 0) + (a.unused_licences ?? 0) + (a.shared_mailbox_count ?? 0))
+                  )
+                  .slice(0, 8)
+                  .map((row) => (
+                    <li key={row.customer_id} className="tenant-rec-card">
+                      <strong>{row.customer_name}</strong>
+                      <span className="muted">
+                        inactive: {row.inactive_users_30d ?? 0} · unused licences: {row.unused_licences ?? 0} · shared mailboxes:{" "}
+                        {row.shared_mailbox_count ?? 0}
+                      </span>
+                    </li>
+                  ))}
+              </ul>
+            </article>
+          </section> : null}
+
+          {activeTab === "confidence" ? <section className="tenant-grid tenant-grid--cards-3" style={{ marginTop: "1rem" }}>
+            <article className="tenant-card">
+              <h3 style={{ marginTop: 0 }}>Confidence distribution</h3>
+              <p className="muted">
+                High: {highConfidenceCount} · Medium: {mediumConfidenceCount} · Low:{" "}
+                {Math.max((data.customers?.length ?? 0) - highConfidenceCount - mediumConfidenceCount, 0)}
+              </p>
+            </article>
+            <article className="tenant-card">
+              <h3 style={{ marginTop: 0 }}>Connector and sync status</h3>
+              <p className="muted">Health: {data.summary.connector_health_status}</p>
+              <p className="muted">Lifecycle: {data.summary.connector_lifecycle_state}</p>
+              <p className="muted">Last sync: {data.summary.last_sync_status ?? "not_run"}</p>
+            </article>
+            <article className="tenant-card">
+              <h3 style={{ marginTop: 0 }}>Data confidence notes</h3>
+              <ul className="tenant-list-plain">
+                {data.coverage_notes.map((n) => (
+                  <li key={n} className="tenant-rec-card muted">
+                    {n}
+                  </li>
+                ))}
+              </ul>
+            </article>
+          </section> : null}
         </>
       )}
     </div>
