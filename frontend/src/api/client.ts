@@ -15,6 +15,11 @@ import type {
   MappingCreateCustomersResponse,
   CustomerDetailResponse,
   CustomerListResponse,
+  CustomerReviewArtifactListResponse,
+  CustomerReviewArtifactOut,
+  CustomerReviewLatestArtifactsResponse,
+  ReviewAiGenerationResponse,
+  ReviewWorkspaceContextResponse,
   ExecutiveDashboardResponse,
   Invitation,
   MeResponse,
@@ -663,6 +668,62 @@ export const api = {
     }),
   postRecommendationExplanationAi: (accessToken: string, tenantId: string, recommendationId: string) =>
     request<AIExecutionOutcome>(`/api/v1/workspace/recommendations/${recommendationId}/ai/explanation`, {
+      method: "POST",
+      headers: authHeaders(accessToken, tenantId)
+    }),
+  reviewWorkspaceContext: (accessToken: string, tenantId: string, customerId: string) =>
+    request<ReviewWorkspaceContextResponse>(`/api/v1/reviews/${customerId}/context`, {
+      headers: authHeaders(accessToken, tenantId)
+    }),
+  reviewArtifactsList: (
+    accessToken: string,
+    tenantId: string,
+    customerId: string,
+    opts?: { artifact_type?: string; limit?: number }
+  ) => {
+    const q = new URLSearchParams();
+    if (opts?.artifact_type) q.set("artifact_type", opts.artifact_type);
+    if (opts?.limit != null) q.set("limit", String(opts.limit));
+    const qs = q.toString();
+    return request<CustomerReviewArtifactListResponse>(
+      `/api/v1/reviews/${customerId}/ai/artifacts${qs ? `?${qs}` : ""}`,
+      { headers: authHeaders(accessToken, tenantId) }
+    );
+  },
+  reviewArtifactsLatest: (accessToken: string, tenantId: string, customerId: string) =>
+    request<CustomerReviewLatestArtifactsResponse>(`/api/v1/reviews/${customerId}/ai/artifacts/latest`, {
+      headers: authHeaders(accessToken, tenantId)
+    }),
+  reviewArtifactGet: (accessToken: string, tenantId: string, customerId: string, artifactId: string) =>
+    request<CustomerReviewArtifactOut>(`/api/v1/reviews/${customerId}/ai/artifacts/${artifactId}`, {
+      headers: authHeaders(accessToken, tenantId)
+    }),
+  postReviewAgendaAi: (accessToken: string, tenantId: string, customerId: string) =>
+    request<ReviewAiGenerationResponse>(`/api/v1/reviews/${customerId}/ai/agenda`, {
+      method: "POST",
+      headers: authHeaders(accessToken, tenantId)
+    }),
+  postReviewAccountNotesAi: (accessToken: string, tenantId: string, customerId: string) =>
+    request<ReviewAiGenerationResponse>(`/api/v1/reviews/${customerId}/ai/account-notes`, {
+      method: "POST",
+      headers: authHeaders(accessToken, tenantId)
+    }),
+  postReviewCallScriptAi: (accessToken: string, tenantId: string, customerId: string) =>
+    request<ReviewAiGenerationResponse>(`/api/v1/reviews/${customerId}/ai/call-script`, {
+      method: "POST",
+      headers: authHeaders(accessToken, tenantId)
+    }),
+  postReviewEmailDraftAi: (accessToken: string, tenantId: string, customerId: string, opts?: { tone?: string | null }) => {
+    const q = new URLSearchParams();
+    if (opts?.tone) q.set("tone", opts.tone);
+    const qs = q.toString();
+    return request<ReviewAiGenerationResponse>(`/api/v1/reviews/${customerId}/ai/email-draft${qs ? `?${qs}` : ""}`, {
+      method: "POST",
+      headers: authHeaders(accessToken, tenantId)
+    });
+  },
+  postReviewCustomerReportAi: (accessToken: string, tenantId: string, customerId: string) =>
+    request<ReviewAiGenerationResponse>(`/api/v1/reviews/${customerId}/ai/customer-report`, {
       method: "POST",
       headers: authHeaders(accessToken, tenantId)
     })

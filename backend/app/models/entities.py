@@ -698,6 +698,46 @@ class TenantAiTaskRoute(Base, TimestampMixin):
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
 
 
+class CustomerReviewAiArtifact(Base, TimestampMixin):
+    """Persisted Review/QBR AI outputs per customer (agenda, email, report, AM prep)."""
+
+    __tablename__ = "customer_review_ai_artifacts"
+    __table_args__ = (
+        Index("ix_crai_tenant_customer_created", "tenant_id", "customer_id", "created_at"),
+        Index("ix_crai_tenant_customer_type_created", "tenant_id", "customer_id", "artifact_type", "created_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), index=True)
+    customer_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("customers.id", ondelete="CASCADE"), index=True
+    )
+    artifact_type: Mapped[str] = mapped_column(String(64))
+    title: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    status: Mapped[str] = mapped_column(String(24), default="succeeded")
+    full_output_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    full_output_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    short_context_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    user_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    ai_task_run_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("ai_task_runs.id", ondelete="SET NULL"), nullable=True
+    )
+    prompt_key: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    prompt_version_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("prompt_versions.id", ondelete="SET NULL"), nullable=True
+    )
+    provider_family: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    deployment_mode: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    model_used: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    source_data_version: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    source_coverage_summary: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    generated_from_connector_state: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    output_warnings: Mapped[list | None] = mapped_column(JSON, nullable=True)
+
+
 class AITaskRun(Base, TimestampMixin):
     __tablename__ = "ai_task_runs"
 

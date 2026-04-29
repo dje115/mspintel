@@ -1,3 +1,10 @@
+## 2026-04-29 Review & QBR workspace (`v2.9.0`)
+
+- **Review/QBR AI** uses **`POST /api/v1/reviews/{customer_id}/ai/...`** (agenda, account-notes, call-script, email-draft, customer-report) with the same `AIExecutionService` + prompt DB + tenant routes as other tasks.
+- Each generation persists **`customer_review_ai_artifacts`** (full structured JSON or raw text, **`short_context_json`**, prompt/version/provider/model, **`ai_task_run_id`**). Prior short summaries are included in **`previous_ai_artifacts`** on the next run as **historical guidance only** (see shaped `GET /api/v1/reviews/{customer_id}/context`).
+- New platform prompt keys: **`customer_review_email_draft.system`**, **`customer_review_report.system`**. **`customer_review_agenda.system`** default text is JSON-first for structured agenda cards.
+- **`GET /api/v1/customers/{id}/ai/customer-review-agenda`** remains for reading the latest **`ai_task_runs`** block state without artefact persistence.
+
 ## 2026-04 Autotask + Customer 360 AI slice
 
 - `account_manager_next_conversation.system` now receives richer connector-backed customer context, including synced contacts and open ticket snippets in addition to existing risk/commercial/M365/tenant-profile context.
@@ -31,6 +38,7 @@ This document describes the **tenant-scoped AI engine configuration**, **task ro
 - `GET|POST /api/v1/customers/{id}/ai/customer-review-agenda`
 - `GET|POST /api/v1/customers/{id}/ai/account-manager-next-conversation`
 - `GET|POST /api/v1/customers/{id}/ai/account-manager-call-script`
+- **Review workspace (persisted artefacts):** `GET /api/v1/reviews/{id}/context` · `GET /api/v1/reviews/{id}/ai/artifacts` · `GET …/artifacts/latest` · `GET …/artifacts/{artifact_id}` · `POST …/ai/agenda` · `POST …/ai/account-notes` · `POST …/ai/call-script` · `POST …/ai/email-draft` · `POST …/ai/customer-report`
 - `GET|POST /api/v1/workspace/recommendations/{id}/ai/explanation`
 - `GET /api/v1/workspace/m365-health/ai/latest`
 - `POST /api/v1/workspace/m365-health/ai/summary`

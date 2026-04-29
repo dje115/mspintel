@@ -1353,3 +1353,355 @@ button.tenant-btn-inline {
 .tenant-page-tail {
   margin-top: 0.75rem;
 }
+
+/* Review & QBR workspace */
+.tenant-review-page {
+  max-width: 1120px;
+}
+
+.tenant-review-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin: 1rem 0 1.25rem;
+}
+
+.tenant-review-tab {
+  border: 1px solid #cbd5e1;
+  background: linear-gradient(180deg, #fff 0%, #f8fafc 100%);
+  color: #334155;
+  font-weight: 600;
+  font-size: 0.82rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.tenant-review-tab:hover {
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
+.tenant-review-tab--active {
+  background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%);
+  border-color: #0f766e;
+  color: #ecfdf5;
+  box-shadow: 0 2px 10px rgba(13, 148, 136, 0.25);
+}
+
+.tenant-review-panel-accent {
+  border-color: rgba(13, 148, 136, 0.35);
+  background: linear-gradient(160deg, rgba(240, 253, 250, 0.9) 0%, #fff 55%);
+}
+
+.tenant-review-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.65rem;
+}
+
+.tenant-review-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.28rem 0.65rem;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.tenant-review-chip--ok {
+  background: rgba(16, 185, 129, 0.12);
+  color: #047857;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+}
+
+.tenant-review-chip--warn {
+  background: rgba(251, 191, 36, 0.15);
+  color: #92400e;
+  border: 1px solid rgba(251, 191, 36, 0.45);
+}
+
+.tenant-review-chip--muted {
+  background: #f1f5f9;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+}
+
+.tenant-review-pill-warn {
+  margin-top: 0.65rem;
+  padding: 0.5rem 0.65rem;
+  border-radius: 10px;
+  background: rgba(251, 113, 133, 0.12);
+  border: 1px solid rgba(251, 113, 133, 0.35);
+  font-size: 0.84rem;
+  color: #9f1239;
+}
+
+.tenant-review-latest-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 0.88rem;
+  color: #475569;
+}
+
+.tenant-review-latest-list li {
+  padding: 0.35rem 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.tenant-review-ai-panel {
+  border-color: rgba(59, 130, 246, 0.25);
+}
+
+.tenant-review-ai-meta {
+  font-size: 0.78rem;
+  margin: 0 0 0.75rem;
+}
+
+.tenant-review-warn-list {
+  margin: 0 0 1rem;
+  padding-left: 1.1rem;
+  color: #b45309;
+  font-size: 0.84rem;
+}
+
+.tenant-review-structured h4 {
+  margin: 0.85rem 0 0.35rem;
+  font-size: 0.92rem;
+  color: #0f172a;
+}
+
+.tenant-review-structured-title {
+  margin: 0 0 0.5rem;
+  font-size: 1.15rem;
+  color: #0f172a;
+}
+
+.tenant-review-agenda-section {
+  padding: 0.5rem 0 0.25rem;
+  border-left: 3px solid #14b8a6;
+  padding-left: 0.75rem;
+  margin-bottom: 0.35rem;
+}
+
+.tenant-review-disclaimer {
+  font-size: 0.84rem;
+  color: #92400e;
+  background: rgba(251, 191, 36, 0.12);
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  padding: 0.55rem 0.65rem;
+  border-radius: 10px;
+  margin: 0 0 0.85rem;
+}
+
+.tenant-review-field-label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #64748b;
+  margin: 0.5rem 0 0.25rem;
+}
+
+.tenant-review-input {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  padding: 0.5rem 0.65rem;
+  font-size: 0.9rem;
+}
+
+.tenant-review-textarea {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  padding: 0.65rem 0.75rem;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  font-family: inherit;
+  resize: vertical;
+}
+
+.tenant-review-copy-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.tenant-review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  align-items: center;
+}
+
+.tenant-review-select--inline {
+  max-width: 200px;
+}
+
+.tenant-review-chart {
+  margin-top: 0.25rem;
+}
+
+.tenant-review-chart-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #64748b;
+  margin: 0 0 0.35rem;
+}
+
+.tenant-review-chart-bar {
+  display: flex;
+  height: 14px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #e2e8f0;
+}
+
+.tenant-review-chart-seg {
+  display: block;
+  height: 100%;
+}
+
+.tenant-review-chart-seg--active {
+  background: linear-gradient(90deg, #0d9488, #14b8a6);
+}
+
+.tenant-review-chart-seg--inactive {
+  background: linear-gradient(90deg, #94a3b8, #cbd5e1);
+}
+
+.tenant-review-chart-legend {
+  margin: 0.35rem 0 0;
+  font-size: 0.82rem;
+}
+
+.tenant-review-kpi--risk {
+  border-color: rgba(244, 63, 94, 0.35);
+  background: linear-gradient(180deg, #fff1f2 0%, #fff 100%);
+}
+
+.tenant-review-kpi--attention {
+  border-color: rgba(251, 191, 36, 0.45);
+  background: linear-gradient(180deg, #fffbeb 0%, #fff 100%);
+}
+
+.tenant-review-pre,
+.tenant-review-prose {
+  white-space: pre-wrap;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: #334155;
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid #e2e8f0;
+  max-height: 320px;
+  overflow: auto;
+}
+
+.tenant-review-subhead {
+  margin: 1rem 0 0.35rem;
+  font-size: 0.95rem;
+  color: #0f172a;
+}
+
+.tenant-review-history-list {
+  list-style: none;
+  padding: 0;
+  margin: 0.75rem 0 0;
+}
+
+.tenant-review-history-item {
+  padding: 0.65rem 0.75rem;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  margin-bottom: 0.5rem;
+  background: #fff;
+}
+
+.tenant-review-report-doc {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 1.25rem 1.5rem 2rem;
+  background: linear-gradient(180deg, #fafbfc 0%, #fff 18%);
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+}
+
+.tenant-review-report-header h1 {
+  margin: 0.35rem 0;
+  font-size: 1.45rem;
+  color: #0f172a;
+}
+
+.tenant-review-report-brand {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #0d9488;
+}
+
+.tenant-review-report-block {
+  margin-top: 1.25rem;
+  page-break-inside: avoid;
+}
+
+.tenant-review-report-block h2 {
+  font-size: 1rem;
+  color: #0f172a;
+  border-bottom: 2px solid #ccfbf1;
+  padding-bottom: 0.25rem;
+}
+
+.tenant-review-report-card {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.tenant-review-report-footer {
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e2e8f0;
+  font-size: 0.78rem;
+  color: #64748b;
+}
+
+.tenant-review-card-pick {
+  border-color: rgba(13, 148, 136, 0.25);
+}
+
+@media print {
+  .tenant-review-no-print,
+  .tenant-app-sidebar,
+  .tenant-app-header,
+  .tenant-review-toolbar,
+  .tenant-review-tabs {
+    display: none !important;
+  }
+
+  .tenant-review-page--print-mode,
+  .tenant-review-page--print-mode .tenant-panel {
+    background: #fff !important;
+    box-shadow: none !important;
+  }
+
+  #review-customer-report-root {
+    border: none !important;
+  }
+}

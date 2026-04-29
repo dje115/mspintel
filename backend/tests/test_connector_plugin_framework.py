@@ -23,8 +23,13 @@ def test_manifest_required_fields_validation() -> None:
     reg = ConnectorRegistry()
     adapter = reg.get("autotask")
     missing = adapter.validate_config("api_key", {"username": "u"})
-    assert "integration_code" in missing
-    assert "secret" in missing
+    assert "base_url" in missing
+    missing2 = adapter.validate_config(
+        "api_key",
+        {"base_url": "https://webservices.autotask.net/atservicesrest/", "username": "u"},
+    )
+    assert "integration_code" in missing2
+    assert "secret" in missing2
 
 
 def test_connector_scaffold_script_creates_files_and_template() -> None:

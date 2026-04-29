@@ -694,6 +694,51 @@ export type AIExecutionOutcome = {
   completed_at?: string | null;
 };
 
+export type ReviewAiGenerationResponse = AIExecutionOutcome & {
+  artifact_id?: string | null;
+  structured_output?: Record<string, unknown> | null;
+  short_context?: Record<string, unknown> | null;
+  output_warnings?: string[];
+};
+
+export type CustomerReviewArtifactOut = {
+  id: string;
+  tenant_id: string;
+  customer_id: string;
+  artifact_type: string;
+  title?: string | null;
+  status: string;
+  full_output_json?: Record<string, unknown> | null;
+  full_output_text?: string | null;
+  short_context_json?: Record<string, unknown> | null;
+  created_by_user_id?: string | null;
+  ai_task_run_id?: string | null;
+  prompt_key?: string | null;
+  prompt_version_id?: string | null;
+  provider_family?: string | null;
+  deployment_mode?: string | null;
+  model_used?: string | null;
+  source_data_version?: string | null;
+  source_coverage_summary?: Record<string, unknown> | null;
+  output_warnings?: string[] | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+};
+
+export type CustomerReviewArtifactListResponse = {
+  items: CustomerReviewArtifactOut[];
+};
+
+export type CustomerReviewLatestArtifactsResponse = {
+  by_type: Record<string, CustomerReviewArtifactOut | null>;
+};
+
+export type ReviewWorkspaceContextResponse = {
+  review_workspace: Record<string, unknown>;
+  previous_ai_artifacts: Record<string, unknown>[];
+  source_data_version?: string | null;
+};
+
 export type AITaskRunRow = {
   id: string;
   tenant_id: string;

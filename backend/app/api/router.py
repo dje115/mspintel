@@ -15,6 +15,7 @@ from app.api.v1.tenant_profile import router as tenant_profile_router
 from app.api.v1.tenant_ai import router as tenant_ai_router
 from app.api.v1.tenant_prompts import router as tenant_prompts_router
 from app.api.v1.workspace import router as workspace_router
+from app.api.v1.reviews import router as reviews_router
 
 api_router = APIRouter()
 api_router.include_router(health_router)
@@ -30,5 +31,6 @@ api_router.include_router(customer_router)
 api_router.include_router(dashboard_router)
 api_router.include_router(system_router)
 api_router.include_router(workspace_router)
+api_router.include_router(reviews_router)
 api_router.include_router(tenant_ai_router)
 api_router.include_router(tenant_prompts_router)

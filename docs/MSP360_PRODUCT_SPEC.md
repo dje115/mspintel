@@ -192,7 +192,7 @@ Columns: **section** · **purpose** · **key users** · **core data sources** ·
 | Needs attention | Watch list | AM, Service | Customer status | `risk_summary` | **Existing** | Same |
 | Service risk | Backup + delivery snapshot | Service | Tickets + backup placeholder | `backup_risk_summary`, `stalled_work_explanation` | **Partial** | Veeam connector |
 | Backup & recovery | Protection posture | Service, Technical | Backup jobs, workloads | `backup_gap_opportunity`, `backup_event_matching` | **Future** | Veeam + billing correlation |
-| Reviews / QBR prep | Review cadence | AM, Director | Customer detail API + meetings (later) | `customer_review_agenda.system`, AM guidance keys | **Partial** (full prep workspace + `?customer_id=`; agenda AI later) | Calendar + CRM + autosave notes |
+| Reviews / QBR prep | Review cadence | AM, Director | Customer detail API + **`customer_review_ai_artifacts`** + meetings (later) | `customer_review_agenda.system`, AM guidance keys, **`customer_review_email_draft.system`**, **`customer_review_report.system`** | **Rough** (tabbed workspace, persisted artefacts + `short_context_json`, `/api/v1/reviews/...`; explicit generate) | Calendar + CRM + autosave collaborative notes |
 | Members | Team & invites | Admin | Memberships | — | **Existing** | SSO |
 | Integrations | Connectors | Admin | Connections, sync runs | — | **Existing** | CW, ITQuoter, Veeam, M365… |
 | AI engines | Provider routing | Admin | `ai_providers`, routes | — | **Existing** | More adapters |
@@ -418,7 +418,9 @@ Each row: **purpose** · **widgets** · **actions** · **signals** · **sources*
 | `relationship_health_summary.system` | Summarise relationship strength | Contacts, tickets, meetings, calls | Narrative + drivers | Relationship health page, 360 |
 | `account_manager_next_conversation.system` | Next best touch | 360 snapshot, open recs | Bullets + rationale | AM workspace |
 | `account_manager_call_script.system` | Talk track | Same | Short script | AM workspace |
-| `customer_review_agenda.system` | QBR outline | Commercial + service summary | Agenda sections | Reviews, 360 |
+| `customer_review_agenda.system` | QBR outline | Commercial + service summary + prior artefact summaries | Structured agenda JSON | Reviews workspace, 360 |
+| `customer_review_email_draft.system` | Customer-safe meeting email | Same + tone | JSON subject/body | Reviews workspace |
+| `customer_review_report.system` | Printable customer brief | Same | JSON report sections | Reviews workspace |
 | `stakeholder_gap_explanation.system` | Explain DM/coverage gaps | Contacts, roles | Gap list + suggested actions | 360, relationship |
 
 ### 21.2 Risk / recommendations / stalled
@@ -472,7 +474,7 @@ Each row: **purpose** · **widgets** · **actions** · **signals** · **sources*
 | `account_confidence_explanation.system` | Per-account confidence | Field presence | Explanation | 360 |
 | `missing_data_next_steps.system` | How to improve data | Gaps | Steps | Data quality, onboarding |
 
-**Wired in product (tenant):** `customer_review_agenda.system`, `account_manager_next_conversation.system`, and `account_manager_call_script.system` are registered as AI task types with `GET|POST /api/v1/customers/{id}/ai/...` and power the Review/QBR prep and Customer 360 **AI account manager guidance** panel.
+**Wired in product (tenant):** `customer_review_agenda.system`, `account_manager_next_conversation.system`, `account_manager_call_script.system`, **`customer_review_email_draft.system`**, and **`customer_review_report.system`** are registered as AI task types. **Review workspace** uses **`POST /api/v1/reviews/{id}/ai/...`** (plus artefact **`GET`**s) with **`customer_review_ai_artifacts`** persistence; legacy **`GET|POST /api/v1/customers/{id}/ai/customer-review-agenda`** remains for `ai_task_runs` block state. Customer 360 **AI account manager guidance** continues to use **`GET|POST /api/v1/customers/{id}/ai/account-manager-...`**.
 
 **Existing codebase keys** (non-exhaustive): align new keys with patterns in [AI_CONFIGURATION_AND_PROMPTS.md](AI_CONFIGURATION_AND_PROMPTS.md) and seed migrations—extend registry when adding tasks.
 
@@ -526,7 +528,7 @@ Full **workflow automation** ( unattended emails ), **embedding-heavy** personal
 |---------|------------------|----------------|--------------|-------------|--------------|------------------|
 | Dashboard | Daily priorities | Director | PSA + canonical | *(future exec summary)* | Existing | Widgets from new domains |
 | Customer 360 | One truth | AM, Sales, Service | PSA + future M365/backup | account/risk/churn/rec explain | Partial | Enrich panels |
-| Review & QBR prep | Meeting-ready narrative | AM, Director | Customer API + calendar later | customer_review_agenda.system, account_manager_* | Partial (workspace + `?customer_id=`) | AI agenda + notes sync |
+| Review & QBR prep | Meeting-ready narrative | AM, Director | Customer API + **`customer_review_ai_artifacts`** + calendar later | customer_review_agenda.system, account_manager_*, customer_review_email_draft.system, customer_review_report.system | Rough (tabbed workspace, persisted artefacts, `/api/v1/reviews/...`) | Collaborative notes sync |
 | Stalled work | Unlock revenue in pipeline | Ops, Sales | PSA projects/quotes | stalled_work_* | Planned | PSA project sync |
 | Relationship health | Prevent silent churn | AM | Tickets, contacts, CDR | relationship_*, stakeholder_* | Planned | Activity model |
 | AM workspace | Faster better visits | AM | 360 + recs | account_manager_* | Planned | UI + prompts |
