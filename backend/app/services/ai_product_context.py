@@ -8,6 +8,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.models.entities import Contact, Ticket
 from app.models.entities import ConnectorMappingReview, IntegrationSyncRun, SourceSystemConnection
 from app.repositories.customers import CustomerRepository
 from app.repositories.workspace import WorkspaceRepository
@@ -27,6 +28,22 @@ def _customer_ai_context_variables(db: Session, tenant_id: UUID, customer_id: UU
     tickets, opps, quotes = repo.open_counts(tenant_id, customer_id)
     rec_summaries = repo.recommendation_summary(tenant_id, customer_id)
     actions = repo.recent_actions(tenant_id, customer_id)
+    contacts = list(
+        db.scalars(
+            select(Contact)
+            .where(Contact.tenant_id == tenant_id, Contact.customer_id == customer_id)
+            .order_by(Contact.name.asc())
+            .limit(20)
+        ).all()
+    )
+    open_ticket_rows = list(
+        db.scalars(
+            select(Ticket)
+            .where(Ticket.tenant_id == tenant_id, Ticket.customer_id == customer_id, Ticket.status == "open")
+            .order_by(Ticket.created_at.asc())
+            .limit(12)
+        ).all()
+    )
     ws = WorkspaceService(db)
     rec_rows, opp_rows, quote_rows = ws.customer_workspace_slices(tenant_id, customer_id)
     fin = BillingIntegrityService(db).customer_finance_panel(tenant_id, customer_id)
@@ -66,6 +83,26 @@ def _customer_ai_context_variables(db: Session, tenant_id: UUID, customer_id: UU
             "growth_score": score.growth_score if score else None,
         },
         "open_counts": {"open_tickets": tickets, "open_opportunities": opps, "open_quotes": quotes},
+        "contacts": [
+            {
+                "id": str(row.id),
+                "name": row.name,
+                "email": row.email,
+                "external_ref": row.external_ref,
+            }
+            for row in contacts
+        ],
+        "open_tickets": [
+            {
+                "id": str(row.id),
+                "status": row.status,
+                "subject": row.subject,
+                "external_ref": row.external_ref,
+                "created_at": row.created_at.isoformat() if row.created_at else None,
+                "updated_at": row.updated_at.isoformat() if row.updated_at else None,
+            }
+            for row in open_ticket_rows
+        ],
         "recommendation_summaries": rec_summaries,
         "recent_actions": actions,
         "open_recommendations": [r.model_dump(mode="json") for r in rec_rows],

@@ -43,6 +43,7 @@ class CustomerDetailResponse(BaseModel):
     open_quotes_count: int
     recommendation_summary: list[str]
     recent_actions: list[str]
+    contacts: list[dict[str, str | None]] = Field(default_factory=list)
     recommendations: list[RecommendationRow] = Field(default_factory=list)
     opportunities: list[OpportunityRow] = Field(default_factory=list)
     quotes: list[QuoteRow] = Field(default_factory=list)

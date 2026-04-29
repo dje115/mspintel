@@ -78,7 +78,7 @@ class ConnectorOnboardingService:
             reasons: list[str] = []
             norm_customer = _norm_name(c.name)
             if norm_target and norm_target == norm_customer:
-                score += 0.75
+                score += 0.9
                 reasons.append("exact_normalized_name")
             elif norm_target and (norm_target in norm_customer or norm_customer in norm_target):
                 score += 0.55

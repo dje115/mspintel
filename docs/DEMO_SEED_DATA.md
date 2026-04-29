@@ -74,5 +74,6 @@ Connector Lab M365 vendor payloads are Graph-inspired (`organization`, `users`, 
 - **No live customer systems** are called in demo seed or Connector Lab flow.
 - Connector Lab is the preferred source for realistic connector-backed demo telemetry when that slice is implemented.
 - Runtime demo seed intentionally does not create direct fake business telemetry.
+- Practical thin-slice flow is now: M365 sync + mapping import (customer baseline) -> Autotask sync (accounts + contacts/tickets/opportunities/quotes) -> Customer 360 + AI AM guidance from connector-sourced context.
 
 See also: **[IMPLEMENTATION_STATUS_REVIEW.md](IMPLEMENTATION_STATUS_REVIEW.md)** for what in the product is real vs placeholder vs spec-only.

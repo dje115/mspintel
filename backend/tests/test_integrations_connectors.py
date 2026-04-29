@@ -3,6 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime
 
+import httpx
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -128,6 +129,57 @@ def test_create_connection_rejects_missing_required_manifest_config(client, db_s
     assert "Missing connector config keys" in r.text
 
 
+def test_autotask_connector_lab_connection_test_success(monkeypatch, client, db_session: Session):
+    tenant = _make_tenant(db_session, slug="autotest", name="Autotask Test MSP")
+    admin = create_user_with_membership(db_session, "admin-autotest@example.com", "tenant_admin", tenant)
+    create = client.post(
+        "/api/v1/integrations/connections",
+        headers=auth_headers(admin, str(tenant.id)),
+        json={
+            "system_type": "autotask",
+            "display_name": "Autotask Connector Lab",
+            "base_url": "http://connector-lab:8099/autotask",
+            "sync_cadence_minutes": 30,
+            "config": {"api_key": "connector-lab-api-key"},
+        },
+    )
+    assert create.status_code == 201, create.text
+    cid = create.json()["id"]
+
+    class _FakeResponse:
+        def __init__(self, status_code: int, payload: dict | None = None):
+            self.status_code = status_code
+            self._payload = payload or {}
+            self.content = b"{}"
+
+        def json(self):
+            return self._payload
+
+    class _FakeClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def get(self, url: str, headers=None, params=None):
+            if url.endswith("/health"):
+                return _FakeResponse(200, {"status": "ok"})
+            if url.endswith("/accounts"):
+                return _FakeResponse(200, {"items": [{"id": "A-1"}]})
+            return _FakeResponse(404, {})
+
+    monkeypatch.setattr(httpx, "Client", _FakeClient)
+    tested = client.post(f"/api/v1/integrations/connections/{cid}/test", headers=auth_headers(admin, str(tenant.id)))
+    assert tested.status_code == 200, tested.text
+    body = tested.json()
+    assert body["test_status"] == "succeeded"
+    assert "accounts endpoint checks passed" in (body["test_message"] or "").lower()
+
+
 def test_autotask_sync_writes_customers_mappings_and_run(monkeypatch, client, db_session: Session):
     tenant = _make_tenant(db_session, slug="delta", name="Delta MSP")
     admin = create_user_with_membership(db_session, "admin-delta@example.com", "tenant_admin", tenant)
@@ -185,6 +237,48 @@ def test_autotask_sync_writes_customers_mappings_and_run(monkeypatch, client, db
     assert conn.last_sync_at is not None
     assert conn.last_successful_sync_at is not None
     assert datetime.fromisoformat(conn.connection_metadata["last_cursor"].replace("Z", "+00:00")).tzinfo == UTC
+
+
+def test_autotask_sync_skips_unmapped_accounts_when_customer_baseline_exists(monkeypatch, client, db_session: Session):
+    tenant = _make_tenant(db_session, slug="delta-skip", name="Delta Skip MSP")
+    admin = create_user_with_membership(db_session, "admin-delta-skip@example.com", "tenant_admin", tenant)
+    baseline = Customer(tenant_id=tenant.id, name="Known Baseline Co", status="active")
+    db_session.add(baseline)
+    db_session.commit()
+    create = client.post(
+        "/api/v1/integrations/connections",
+        headers=auth_headers(admin, str(tenant.id)),
+        json={
+            "system_type": "autotask",
+            "display_name": "Delta Autotask",
+            "base_url": "http://connector-lab:8099/autotask",
+            "sync_cadence_minutes": 30,
+            "config": {"api_key": "connector-lab-api-key"},
+        },
+    )
+    assert create.status_code == 201, create.text
+    cid = create.json()["id"]
+
+    def fake_fetch(self, base_url: str, headers: dict[str, str], path: str, since_cursor: str | None):
+        if "accounts" in path:
+            return [{"id": "AT-404", "companyName": "Unmatched External Co", "ownerResourceName": "Owner X"}]
+        return []
+
+    monkeypatch.setattr(AutotaskConnectorAdapter, "_fetch_entities", fake_fetch)
+    run = client.post(f"/api/v1/integrations/connections/{cid}/sync", headers=auth_headers(admin, str(tenant.id)))
+    assert run.status_code == 202, run.text
+    body = run.json()
+    assert body["status"] == "succeeded"
+    assert body["records_processed"] == 0
+    warnings = (body.get("stats_json") or {}).get("warnings") or []
+    assert any("requires mapping review" in w.lower() for w in warnings)
+    customers = db_session.scalars(select(Customer).where(Customer.tenant_id == tenant.id)).all()
+    assert len(customers) == 1
+    mapping_rows = db_session.scalars(
+        select(ConnectorMappingReview).where(ConnectorMappingReview.tenant_id == tenant.id)
+    ).all()
+    assert len(mapping_rows) == 1
+    assert mapping_rows[0].status in {"pending", "unlinked"}
 
 
 def test_lifecycle_and_import_scope_updates_are_audited(client, db_session: Session):

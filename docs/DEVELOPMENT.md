@@ -92,6 +92,7 @@ Use `/ui/scenarios` and `/ui/signals` to inspect:
 Set connection base URLs (or environment hints) to:
 
 - `AUTOTASK_BASE_URL=http://connector-lab:8099/autotask`
+- `AUTOTASK_API_KEY=connector-lab-api-key`
 - `ITQUOTER_BASE_URL=http://connector-lab:8099/itquoter`
 - `XERO_BASE_URL=http://connector-lab:8099/xero`
 - `M365_BASE_URL=http://connector-lab:8099/m365`
@@ -127,6 +128,7 @@ Preferred flow for connector-backed demo domains:
    - `/app/integrations/mappings`
    - Use "Create customers from all eligible rows" (or selected rows) in mapping review when starting from an empty customer baseline.
    - `/app/customers` (verify imported canonical customers exist)
+   - Run an Autotask sync, then verify `/app/customers/{id}` has connector-synced contacts plus service/commercial counts
    - `/app/m365-health`
    - Use **Generate AI hygiene summary** / **Generate AI opportunity guidance** in `/app/m365-health` after linked posture rows exist
    - If generation fails, verify provider health in `/app/ai-settings` and test the configured default provider

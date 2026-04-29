@@ -1,3 +1,9 @@
+## 2026-04 Autotask + Customer 360 AI slice
+
+- `account_manager_next_conversation.system` now receives richer connector-backed customer context, including synced contacts and open ticket snippets in addition to existing risk/commercial/M365/tenant-profile context.
+- Customer-level AI runs remain explicit user-triggered from Customer 360 and continue to write lineage in `ai_task_runs`.
+- Missing-provider and provider-failure states are surfaced as safe runtime outcomes (`unavailable` / `failed`) and routed back to `/app/ai-settings`.
+
 # AI configuration and prompts
 
 This document describes the **tenant-scoped AI engine configuration**, **task routing**, **versioned prompt registry**, and **runtime execution** (`v2.0+`) used by product features.

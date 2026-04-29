@@ -499,6 +499,7 @@ export type CustomerDetailResponse = {
   open_quotes_count: number;
   recommendation_summary: string[];
   recent_actions: string[];
+  contacts: { id: string; name: string; email: string | null; external_ref: string | null }[];
   recommendations: RecommendationRow[];
   opportunities: OpportunityRow[];
   quotes: QuoteRow[];

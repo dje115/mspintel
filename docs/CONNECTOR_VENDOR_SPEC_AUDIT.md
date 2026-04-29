@@ -131,6 +131,8 @@ Scope: connector realism audit for Autotask, ITQuoter, Xero, Microsoft Graph, Ve
 - Expanded Connector Lab datasets to include ~20+ additional customer/account-level scenarios per vendor namespace, with deliberately messy identity and signal cases (match/no-match, legal-name variants, stalled/lost quotes, aged invoices, M365 hygiene mismatches, failed/stale backups, restore-test gaps).
 - Customer naming now uses realistic UK-style organisations across namespaces; generic `ConnectorLab Scenario Customer XX` labels are removed from normal payloads.
 - M365 sync behavior should emit mapping-review states (`accepted`, `pending`, `unlinked`) so uncertain identity links remain visible in `/app/integrations/mappings`.
+- Autotask adapter now supports Connector Lab auth/namespace/account-endpoint checks in `test_connection` and keeps vendor-style credential checks available for real API mode.
+- Autotask sync now avoids silent duplicate customer creation when canonical baseline customers already exist; unmatched accounts are sent to mapping review and downstream entities are skipped with explicit sync warnings.
 
 ## Manifest/catalog alignment updates in this slice
 

@@ -158,6 +158,7 @@ export function CustomerDetailPage() {
   const recommendations = data.recommendations ?? [];
   const opportunities = data.opportunities ?? [];
   const quotes = data.quotes ?? [];
+  const contacts = data.contacts ?? [];
 
   return (
     <div>
@@ -537,6 +538,32 @@ export function CustomerDetailPage() {
                   Includes lost rows worth revisiting.
                 </p>
               </div>
+            </div>
+          </section>
+
+          <section className="tenant-panel" style={{ marginTop: "1rem" }}>
+            <div className="tenant-panel-head">
+              <h2 className="tenant-panel-title">Contacts & stakeholders</h2>
+            </div>
+            <div className="tenant-panel-body">
+              {contacts.length === 0 ? (
+                <p className="muted" style={{ margin: 0 }}>
+                  No synced PSA contacts yet. Mapping review and next sync may be required.
+                </p>
+              ) : (
+                <ul className="tenant-list-plain">
+                  {contacts.map((contact) => (
+                    <li key={contact.id} className="tenant-rec-card">
+                      <strong>{contact.name}</strong>
+                      <span className="muted">
+                        {" "}
+                        · {contact.email ?? "No email"}
+                        {contact.external_ref ? ` · source ${contact.external_ref}` : ""}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           </section>
 

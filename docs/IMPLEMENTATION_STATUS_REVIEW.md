@@ -22,7 +22,7 @@ Classification used per area:
 |------|--------|-------------|--------------|------|
 | Dashboard | **Partial** | KPIs from real counts (customers, high risk, open recs, lost quotes); links into workspaces. | “High risk” uses `account_scores` threshold in repo, not full ML; executive narrative mostly absent. | Richer widgets from `demo_profile` once surfaced in APIs. |
 | Customers list | **Working** | Paginated list, status filter, scores, next action from first recommendation. | Search is simple `ILIKE`; no saved views. | Column for industry when exposed. |
-| Customer 360 | **Partial** | Scores, counts, recs/opps/quotes tables, AI panels, AM guidance shell, **demo_profile** JSON panel when seeded. | No M365/backup/billing **live** tiles — narrative lives in `demo_profile` for demo only. | Domain panels when connectors ship. |
+| Customer 360 | **Partial** | Scores, counts, recs/opps/quotes tables, synced contact list, AI panels, AM guidance shell, **demo_profile** JSON panel when seeded. | No M365/backup/billing **live** tiles — narrative lives in `demo_profile` for demo only. | Domain panels when connectors ship. |
 | Recommendations | **Working** | List, filters, patch status, AI explain with lineage. | Priority heuristic from scope only. | Owner assignment workflow. |
 | Opportunities / quotes | **Working** | Commercial hub API + SPA tables from canonical rows. | No ITQuoter-native deep fields; `revisit_reason` partly static strings. | Lost-reason capture from PSA. |
 | At-risk / Needs attention | **Working** | Queues by `Customer.status` + score columns. | Status is seed-driven; not computed pipeline. | Risk model + automated status transitions. |
@@ -84,7 +84,7 @@ Classification used per area:
 | Connector | Status | Notes |
 |-----------|--------|-------|
 | Framework (connections, sync runs, mappings) | **Working** | Tables + APIs align with `DATA_INGESTION_AND_WAREHOUSE.md`. |
-| Autotask | **Partial (beta adapter)** | Adapter + tests; real sync needs credentials and zone-aware base URL. |
+| Autotask | **Partial (beta adapter)** | Adapter + tests; Connector Lab connection test now validates base URL/auth/namespace/accounts endpoint and sync avoids silent duplicate customer creation when baseline exists (uses mapping review for unmatched rows). |
 | ConnectWise | **Stub / planned** | Registry presence; no production ingestion path yet. |
 | ITQuoter | **Stub** | Scaffold + updated auth metadata; live API integration still pending. |
 | Veeam | **Stub / planned** | Scaffold; VSPC-first API direction documented. |

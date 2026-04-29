@@ -137,6 +137,10 @@ Example curl:
 - `curl -H "Authorization: Bearer connector-lab-dev-token" -H "Xero-Tenant-Id: demo-tenant-id" "http://localhost:8099/xero/invoices?mode=rate_limit"`
 - `curl -H "Authorization: Bearer connector-lab-dev-token" "http://localhost:8099/m365/users?updated_since=2026-01-01T00:00:00Z"`
 
+Autotask connection tests in this slice support both credential styles:
+- Connector Lab style: `base_url=${AUTOTASK_BASE_URL}` + `api_key=${AUTOTASK_API_KEY}` (or Connector Lab bearer token).
+- Vendor-style Autotask REST: `base_url` + `integration_code` + `username` + `secret`.
+
 Connector Lab includes expanded identity and signal scenarios (name mismatches, unmatched records, stale/deleted hints, billing-vs-M365 gaps, failed backups, aged debt) to validate mapping review and data-confidence behavior. M365 mapping-control metadata is exposed only on dev-only scenario endpoints, not vendor-shaped payloads. It is the preferred source of realistic connector-backed demo data where connector syncs are implemented. See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) and [docs/DATA_INGESTION_AND_WAREHOUSE.md](docs/DATA_INGESTION_AND_WAREHOUSE.md).
 
 ### Local Ollama demo default (env-driven)

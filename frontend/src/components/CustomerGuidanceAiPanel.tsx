@@ -162,7 +162,8 @@ export function CustomerGuidanceAiPanel({
       </div>
       <div className="tenant-panel-body tenant-ai-shell-body">
         <p className="tenant-ai-shell-lead">
-          These runs use the same resolver as Customer 360 AI: versioned prompts, tenant providers, and{" "}
+          AI guidance is based on synced PSA, Microsoft 365, and tenant MSP context where available. It may be incomplete
+          when connector mappings or source coverage are missing. Runs use versioned prompts, tenant providers, and{" "}
           <code className="tenant-code-inline">ai_task_runs</code> lineage.
         </p>
         <TenantAiContextNotice compact />

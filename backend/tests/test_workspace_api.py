@@ -3,7 +3,18 @@ from unittest.mock import patch
 
 from app.core.ai_settings_crypto import encrypt_settings_payload
 from app.domain.ai_constants import PROMPT_SCOPE_PLATFORM
-from app.models.entities import AIProvider, Customer, M365CustomerPosture, PromptDefinition, PromptVersion, Recommendation, Tenant, TenantAiTaskRoute
+from app.models.entities import (
+    AIProvider,
+    Contact,
+    Customer,
+    M365CustomerPosture,
+    PromptDefinition,
+    PromptVersion,
+    Recommendation,
+    Tenant,
+    TenantAiTaskRoute,
+    Ticket,
+)
 from app.services.ai_providers.base import ChatCompletionResult, ProviderTransportError
 from tests.helpers import auth_headers, create_user_with_membership
 
@@ -255,3 +266,81 @@ def test_m365_workspace_ai_opportunity_provider_failure_is_safe(mock_chat, clien
     assert post.status_code == 200, post.text
     assert post.json()["status"] == "failed"
     assert "Check AI settings" in (post.json().get("message") or "")
+
+
+def test_customer_detail_includes_synced_contacts(client, db_session):
+    tenant = Tenant(id=uuid.uuid4(), slug="cust-contacts", name="Cust Contacts", is_active=True)
+    db_session.add(tenant)
+    db_session.commit()
+    user = create_user_with_membership(db_session, "cust-contacts@example.com", "tenant_admin", tenant)
+    customer = Customer(id=uuid.uuid4(), tenant_id=tenant.id, name="Northwind", status="active", owner_name="AM")
+    db_session.add(customer)
+    db_session.flush()
+    db_session.add(
+        Contact(
+            id=uuid.uuid4(),
+            tenant_id=tenant.id,
+            customer_id=customer.id,
+            name="Mina Lopez",
+            email="mina@northwind.test",
+            external_ref="ATC-001",
+        )
+    )
+    db_session.commit()
+    res = client.get(f"/api/v1/customers/{customer.id}", headers=auth_headers(user, str(tenant.id)))
+    assert res.status_code == 200, res.text
+    body = res.json()
+    assert len(body["contacts"]) == 1
+    assert body["contacts"][0]["name"] == "Mina Lopez"
+
+
+@patch("app.services.ai_execution_service.execute_chat_completion")
+def test_account_manager_next_conversation_context_includes_contacts_and_tickets(mock_chat, client, db_session):
+    mock_chat.return_value = ChatCompletionResult(
+        text="Use stakeholder-led recovery talk track.",
+        raw={"choices": [{"message": {"content": "ok"}}]},
+    )
+    tenant = Tenant(id=uuid.uuid4(), slug="am-ai", name="AM AI", is_active=True)
+    db_session.add(tenant)
+    db_session.commit()
+    user = create_user_with_membership(db_session, "am-ai@example.com", "tenant_admin", tenant)
+    customer = Customer(id=uuid.uuid4(), tenant_id=tenant.id, name="Contoso", status="active", owner_name="AM")
+    db_session.add(customer)
+    db_session.flush()
+    db_session.add(
+        Contact(
+            id=uuid.uuid4(),
+            tenant_id=tenant.id,
+            customer_id=customer.id,
+            name="Jordan Stakeholder",
+            email="jordan@contoso.test",
+            external_ref="ATC-777",
+        )
+    )
+    db_session.add(
+        Ticket(
+            id=uuid.uuid4(),
+            tenant_id=tenant.id,
+            customer_id=customer.id,
+            status="open",
+            subject="VPN outage",
+            external_ref="ATT-777",
+        )
+    )
+    db_session.commit()
+    _seed_m365_workspace_ai_route(
+        db_session,
+        tenant,
+        user,
+        task_type="account_manager_next_conversation",
+        prompt_key="account_manager_next_conversation.system",
+    )
+    post = client.post(
+        f"/api/v1/customers/{customer.id}/ai/account-manager-next-conversation",
+        headers=auth_headers(user, str(tenant.id)),
+    )
+    assert post.status_code == 200, post.text
+    assert post.json()["status"] == "succeeded"
+    user_payload = mock_chat.call_args.kwargs["user_content"]
+    assert "Jordan Stakeholder" in user_payload
+    assert "VPN outage" in user_payload

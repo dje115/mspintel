@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 import httpx
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.entities import Contact, Customer, Opportunity, Quote, SourceEntityMapping, SourceSystemConnection, Ticket
@@ -51,9 +51,11 @@ class AutotaskConnectorAdapter(ConnectorAdapter):
         import_scope_filter_keys=("external_ids", "names", "name_prefix", "sample_limit", "recent_active_days"),
         config_fields=(
             ConnectorConfigField(key="base_url", label="Base URL", required=True, secret=False),
-            ConnectorConfigField(key="username", label="Username", required=True, secret=False),
-            ConnectorConfigField(key="integration_code", label="Integration code", required=True, secret=False),
-            ConnectorConfigField(key="secret", label="Secret", required=True, secret=True),
+            ConnectorConfigField(key="api_key", label="API key", required=False, secret=True),
+            ConnectorConfigField(key="token", label="Bearer token", required=False, secret=True),
+            ConnectorConfigField(key="username", label="Username", required=False, secret=False),
+            ConnectorConfigField(key="integration_code", label="Integration code", required=False, secret=False),
+            ConnectorConfigField(key="secret", label="Secret", required=False, secret=True),
         ),
         ui_help_text=(
             "Requires Autotask REST API credentials (integration code, API user username, secret) and the tenant "
@@ -75,12 +77,32 @@ class AutotaskConnectorAdapter(ConnectorAdapter):
         return db.scalars(select(Customer).where(Customer.tenant_id == tenant_id, Customer.external_ref == company_id)).first()
 
     def _headers(self, config: dict) -> dict[str, str]:
+        api_key = str(config.get("api_key") or "").strip()
+        token = str(config.get("token") or "").strip()
+        if api_key:
+            return {"X-API-Key": api_key, "Content-Type": "application/json"}
+        if token:
+            return {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
         return {
             "ApiIntegrationcode": str(config.get("integration_code", "")),
             "UserName": str(config.get("username", "")),
             "Secret": str(config.get("secret", "")),
             "Content-Type": "application/json",
         }
+
+    def validate_config(self, auth_mode: str, config: dict) -> list[str]:
+        base_url = str(config.get("base_url") or "").strip()
+        if not base_url:
+            return ["base_url"]
+        # Connector Lab and api-key mode
+        if config.get("api_key") or config.get("token") or "/autotask" in base_url.rstrip("/"):
+            return []
+        missing = [k for k in ("integration_code", "username", "secret") if not config.get(k)]
+        return missing
+
+    @staticmethod
+    def _is_connector_lab_mode(base_url: str, config: dict) -> bool:
+        return bool(config.get("api_key") or config.get("token") or "/autotask" in base_url.rstrip("/"))
 
     def _base_url(self, connection: SourceSystemConnection, config: dict) -> str:
         base_url = (connection.base_url or config.get("base_url") or "").strip().rstrip("/")
@@ -96,6 +118,65 @@ class AutotaskConnectorAdapter(ConnectorAdapter):
         connection: SourceSystemConnection,
         config: dict,
     ) -> ConnectorTestResult:
+        try:
+            base_url = self._base_url(connection, config)
+        except ValueError as exc:
+            return ConnectorTestResult(ok=False, message=str(exc), checked_at=datetime.now(UTC))
+
+        if self._is_connector_lab_mode(base_url, config):
+            headers = self._headers(config)
+            try:
+                with httpx.Client(timeout=20.0) as client:
+                    health = client.get(base_url.rsplit("/autotask", 1)[0] + "/health", headers=headers)
+                    if health.status_code >= 500:
+                        return ConnectorTestResult(
+                            ok=False,
+                            message=f"Base URL reachable but unhealthy (HTTP {health.status_code}).",
+                            checked_at=datetime.now(UTC),
+                        )
+                    accounts = client.get(
+                        f"{base_url}/accounts",
+                        headers=headers,
+                        params={"page": 1, "page_size": 1},
+                    )
+            except httpx.HTTPError:
+                return ConnectorTestResult(
+                    ok=False,
+                    message="Unable to reach Autotask base URL. Check host/port and network routing.",
+                    checked_at=datetime.now(UTC),
+                )
+            if accounts.status_code == 401:
+                return ConnectorTestResult(
+                    ok=False,
+                    message="Autotask credentials were rejected by endpoint auth.",
+                    checked_at=datetime.now(UTC),
+                )
+            if accounts.status_code == 404:
+                return ConnectorTestResult(
+                    ok=False,
+                    message="Autotask namespace or accounts endpoint not found at configured base URL.",
+                    checked_at=datetime.now(UTC),
+                )
+            if accounts.status_code >= 400:
+                return ConnectorTestResult(
+                    ok=False,
+                    message=f"Autotask accounts endpoint failed with status {accounts.status_code}.",
+                    checked_at=datetime.now(UTC),
+                )
+            payload = accounts.json() if accounts.content else {}
+            if not isinstance(payload, dict) or not isinstance(payload.get("items"), list):
+                return ConnectorTestResult(
+                    ok=False,
+                    message="Autotask accounts endpoint returned unexpected payload shape.",
+                    checked_at=datetime.now(UTC),
+                )
+            return ConnectorTestResult(
+                ok=True,
+                message="Autotask base URL, auth, namespace, and accounts endpoint checks passed.",
+                checked_at=datetime.now(UTC),
+                metadata={"checked_endpoint": "/autotask/accounts"},
+            )
+
         required = ("integration_code", "username", "secret")
         missing = [k for k in required if not config.get(k)]
         if missing:
@@ -104,11 +185,6 @@ class AutotaskConnectorAdapter(ConnectorAdapter):
                 message=f"Missing Autotask config keys: {', '.join(missing)}",
                 checked_at=datetime.now(UTC),
             )
-        try:
-            base_url = self._base_url(connection, config)
-        except ValueError as exc:
-            return ConnectorTestResult(ok=False, message=str(exc), checked_at=datetime.now(UTC))
-
         try:
             with httpx.Client(timeout=20.0) as client:
                 resp = client.get(f"{base_url}/v1.0/Companies/query", headers=self._headers(config), params={"MaxRecords": 1})
@@ -132,9 +208,10 @@ class AutotaskConnectorAdapter(ConnectorAdapter):
         )
 
     def _fetch_entities(self, base_url: str, headers: dict[str, str], path: str, since_cursor: str | None) -> list[dict]:
-        query: dict[str, object] = {"MaxRecords": 200}
+        is_lab = "/autotask/" in f"{base_url}/"
+        query: dict[str, object] = {"page_size": 200} if is_lab else {"MaxRecords": 200}
         if since_cursor:
-            query["Search"] = f"LastActivityDate gt {since_cursor}"
+            query["updated_since" if is_lab else "Search"] = since_cursor if is_lab else f"LastActivityDate gt {since_cursor}"
         with httpx.Client(timeout=30.0) as client:
             resp = client.get(f"{base_url}{path}", headers=headers, params=query)
             if resp.status_code >= 400:
@@ -157,13 +234,22 @@ class AutotaskConnectorAdapter(ConnectorAdapter):
         cursor: str | None,
     ) -> ConnectorSyncResult:
         base_url = self._base_url(connection, config)
+        is_connector_lab = self._is_connector_lab_mode(base_url, config)
+        accounts_path = "/accounts" if is_connector_lab else "/v1.0/Companies/query"
+        contacts_path = "/contacts" if is_connector_lab else "/v1.0/Contacts/query"
+        tickets_path = "/tickets" if is_connector_lab else "/v1.0/Tickets/query"
+        opps_path = "/opportunities" if is_connector_lab else "/v1.0/Opportunities/query"
+        quotes_path = "/quotes" if is_connector_lab else "/v1.0/Quotes/query"
         headers = self._headers(config)
         stats = ConnectorSyncStats()
         try:
-            companies = self._fetch_entities(base_url, headers, "/v1.0/Companies/query", cursor)
+            companies = self._fetch_entities(base_url, headers, accounts_path, cursor)
             scope_mode = connection.import_scope_mode or "all"
             scope_filters = connection.import_scope_filters or {}
             onboarding = ConnectorOnboardingService(db)
+            tenant_customer_count = int(
+                db.scalar(select(func.count()).where(Customer.tenant_id == tenant_id)) or 0
+            )
             processed_companies = 0
             for company in companies:
                 source_id = str(company.get("id") or company.get("idValue") or "")
@@ -182,8 +268,7 @@ class AutotaskConnectorAdapter(ConnectorAdapter):
                     limit = int(scope_filters.get("sample_limit") or 0)
                     if limit > 0 and processed_companies >= limit:
                         break
-                stmt = select(Customer).where(Customer.tenant_id == tenant_id, Customer.external_ref == source_id)
-                customer = db.scalars(stmt).first()
+                customer = self._customer_for_company(db, tenant_id, connection.id, source_id)
                 if not customer:
                     candidate = onboarding.upsert_mapping_review_candidate(
                         tenant_id=tenant_id,
@@ -198,14 +283,16 @@ class AutotaskConnectorAdapter(ConnectorAdapter):
                         if customer:
                             candidate.status = "accepted"
                             candidate.mapped_customer_id = customer.id
-                    if not customer and candidate.suggested_confidence == "medium":
-                        # Require human review before creating potential duplicate customers.
-                        continue
+                if not customer and tenant_customer_count > 0:
+                    stats.warnings.append(
+                        f"Autotask account '{name}' requires mapping review before import."
+                    )
+                    continue
                 if not customer:
                     customer = Customer(
                         tenant_id=tenant_id,
                         name=name,
-                        status="active",
+                        status="active" if bool(company.get("isActive", True)) else "watch",
                         owner_name=company.get("ownerResourceName"),
                         external_ref=source_id,
                     )
@@ -214,6 +301,8 @@ class AutotaskConnectorAdapter(ConnectorAdapter):
                 else:
                     customer.name = str(company.get("companyName") or customer.name)
                     customer.owner_name = company.get("ownerResourceName") or customer.owner_name
+                    if "isActive" in company and not bool(company.get("isActive")):
+                        customer.status = "watch"
                 stats.customers_upserted += 1
                 processed_companies += 1
                 upsert_source_entity_mapping(
@@ -226,7 +315,9 @@ class AutotaskConnectorAdapter(ConnectorAdapter):
                 )
                 stats.mappings_written += 1
 
-            contacts = self._fetch_entities(base_url, headers, "/v1.0/Contacts/query", cursor)
+            # Queries below depend on account->customer mappings written in this run.
+            db.flush()
+            contacts = self._fetch_entities(base_url, headers, contacts_path, cursor)
             for src in contacts:
                 source_id = str(src.get("id") or "")
                 company_id = str(src.get("companyID") or src.get("companyId") or "")
@@ -234,6 +325,9 @@ class AutotaskConnectorAdapter(ConnectorAdapter):
                     continue
                 customer = self._customer_for_company(db, tenant_id, connection.id, company_id)
                 if not customer:
+                    stats.warnings.append(
+                        f"Skipped contact {source_id}: account {company_id} is not mapped."
+                    )
                     continue
                 contact = db.scalars(
                     select(Contact).where(Contact.tenant_id == tenant_id, Contact.external_ref == source_id)
@@ -264,7 +358,7 @@ class AutotaskConnectorAdapter(ConnectorAdapter):
                 )
                 stats.mappings_written += 1
 
-            tickets = self._fetch_entities(base_url, headers, "/v1.0/Tickets/query", cursor)
+            tickets = self._fetch_entities(base_url, headers, tickets_path, cursor)
             for src in tickets:
                 source_id = str(src.get("id") or "")
                 company_id = str(src.get("companyID") or src.get("companyId") or "")
@@ -272,6 +366,9 @@ class AutotaskConnectorAdapter(ConnectorAdapter):
                     continue
                 customer = self._customer_for_company(db, tenant_id, connection.id, company_id)
                 if not customer:
+                    stats.warnings.append(
+                        f"Skipped ticket {source_id}: account {company_id} is not mapped."
+                    )
                     continue
                 ticket = db.scalars(
                     select(Ticket).where(Ticket.tenant_id == tenant_id, Ticket.external_ref == source_id)
@@ -302,7 +399,7 @@ class AutotaskConnectorAdapter(ConnectorAdapter):
                 )
                 stats.mappings_written += 1
 
-            opportunities = self._fetch_entities(base_url, headers, "/v1.0/Opportunities/query", cursor)
+            opportunities = self._fetch_entities(base_url, headers, opps_path, cursor)
             for src in opportunities:
                 source_id = str(src.get("id") or "")
                 company_id = str(src.get("companyID") or src.get("companyId") or "")
@@ -310,6 +407,9 @@ class AutotaskConnectorAdapter(ConnectorAdapter):
                     continue
                 customer = self._customer_for_company(db, tenant_id, connection.id, company_id)
                 if not customer:
+                    stats.warnings.append(
+                        f"Skipped opportunity {source_id}: account {company_id} is not mapped."
+                    )
                     continue
                 opp = db.scalars(
                     select(Opportunity).where(Opportunity.tenant_id == tenant_id, Opportunity.external_ref == source_id)
@@ -346,7 +446,7 @@ class AutotaskConnectorAdapter(ConnectorAdapter):
 
             # v1 quote path: optional, only if endpoint responds
             try:
-                quotes = self._fetch_entities(base_url, headers, "/v1.0/Quotes/query", cursor)
+                quotes = self._fetch_entities(base_url, headers, quotes_path, cursor)
             except Exception:
                 quotes = []
                 stats.warnings.append("Quote endpoint not available; quote ingestion skipped.")
@@ -357,6 +457,9 @@ class AutotaskConnectorAdapter(ConnectorAdapter):
                     continue
                 customer = self._customer_for_company(db, tenant_id, connection.id, company_id)
                 if not customer:
+                    stats.warnings.append(
+                        f"Skipped quote {source_id}: account {company_id} is not mapped."
+                    )
                     continue
                 quote = db.scalars(
                     select(Quote).where(Quote.tenant_id == tenant_id, Quote.external_ref == source_id)

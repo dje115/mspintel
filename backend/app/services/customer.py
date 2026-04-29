@@ -4,7 +4,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.models.entities import ConnectorMappingReview, SourceEntityMapping, SourceSystemConnection
+from app.models.entities import ConnectorMappingReview, Contact, SourceEntityMapping, SourceSystemConnection
 from app.repositories.customers import CustomerRepository
 from app.schemas.billing_integrity import FinanceCustomerPanel
 from app.schemas.customer import CustomerDetailResponse, CustomerListItem, CustomerListResponse
@@ -51,6 +51,14 @@ class CustomerService:
         recs = self.repo.recommendation_summary(tenant_id, customer_id)
         actions = self.repo.recent_actions(tenant_id, customer_id)
         rec_rows, opp_rows, quote_rows = self.workspace.customer_workspace_slices(tenant_id, customer_id)
+        contacts = list(
+            self.repo.db.scalars(
+                select(Contact)
+                .where(Contact.tenant_id == tenant_id, Contact.customer_id == customer_id)
+                .order_by(Contact.name.asc())
+                .limit(20)
+            ).all()
+        )
         risk = RiskEngineV1Service(self.repo.db).latest_score_for_customer(tenant_id, customer_id)
 
         fin_raw = BillingIntegrityService(self.repo.db).customer_finance_panel(tenant_id, customer_id)
@@ -124,6 +132,15 @@ class CustomerService:
             open_quotes_count=quotes,
             recommendation_summary=recs,
             recent_actions=actions,
+            contacts=[
+                {
+                    "id": str(row.id),
+                    "name": row.name,
+                    "email": row.email,
+                    "external_ref": row.external_ref,
+                }
+                for row in contacts
+            ],
             recommendations=rec_rows,
             opportunities=opp_rows,
             quotes=quote_rows,
