@@ -10,18 +10,23 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core.ai_settings_crypto import encrypt_settings_payload, redact_settings_for_api
+from app.core.settings import get_settings
 from app.domain.ai_constants import AI_TASK_TYPES
 from app.models.entities import AIProvider, TenantAiSettings, TenantAiTaskRoute
 from app.repositories.tenant_ai_config import TenantAiConfigRepository
 from app.schemas.ai_foundation import (
     AIProviderPatchBody,
     AIProviderSafe,
+    AIProviderTestResult,
     TenantAiSettingsPatch,
     TenantAiSettingsResponse,
     TenantAiTaskRouteRow,
     TenantAiTaskRoutesPatch,
 )
 from app.services.audit import AuditService
+from app.services.ai_providers.base import ProviderNotConfiguredError, ProviderTransportError, ProviderUnsupportedError
+from app.services.ai_providers.registry import execute_chat_completion, is_family_runnable
+from app.core.ai_settings_crypto import decrypt_settings_payload
 
 
 def provider_to_safe(p: AIProvider | None) -> AIProviderSafe | None:
@@ -308,3 +313,61 @@ class TenantAiApplicationService:
             details={"provider_id": str(provider_id)},
         )
         self.db.commit()
+
+    def test_tenant_provider(
+        self,
+        tenant_id: UUID,
+        provider_id: UUID,
+    ) -> AIProviderTestResult:
+        row = self.repo.get_ai_provider(tenant_id, provider_id)
+        if not row:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="AI provider not found")
+        if not row.is_enabled:
+            return AIProviderTestResult(
+                ok=False,
+                provider_id=row.id,
+                provider_family=row.provider_family,
+                deployment_mode=row.deployment_mode,
+                message="Provider is disabled.",
+            )
+        if not is_family_runnable(row.provider_family):
+            return AIProviderTestResult(
+                ok=False,
+                provider_id=row.id,
+                provider_family=row.provider_family,
+                deployment_mode=row.deployment_mode,
+                message=f"Provider family {row.provider_family!r} is not runnable in this release.",
+            )
+        settings = decrypt_settings_payload(row.encrypted_settings) if row.encrypted_settings else {}
+        settings = settings if isinstance(settings, dict) else {}
+        model = str(settings.get("model") or "").strip()
+        if not model and row.provider_family == "ollama":
+            model = get_settings().ollama_default_model
+        if not model:
+            model = "gpt-4o-mini"
+        try:
+            execute_chat_completion(
+                provider_family=row.provider_family or "openai",
+                settings=settings,
+                base_url=row.base_url,
+                model=model,
+                system_prompt="You are a connectivity check. Reply with OK.",
+                user_content="Respond with OK.",
+            )
+            return AIProviderTestResult(
+                ok=True,
+                provider_id=row.id,
+                provider_family=row.provider_family,
+                deployment_mode=row.deployment_mode,
+                model_used=model,
+                message="Provider test succeeded.",
+            )
+        except (ProviderUnsupportedError, ProviderNotConfiguredError, ProviderTransportError, ValueError) as exc:
+            return AIProviderTestResult(
+                ok=False,
+                provider_id=row.id,
+                provider_family=row.provider_family,
+                deployment_mode=row.deployment_mode,
+                model_used=model,
+                message=str(exc),
+            )

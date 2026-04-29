@@ -99,6 +99,18 @@ Set connection base URLs (or environment hints) to:
 
 Use this service for development/testing only. It is not a production vendor integration endpoint.
 
+### M365 mock realism notes
+
+- Vendor-like Graph-inspired endpoints: `/m365/organization`, `/m365/users`, `/m365/subscribedSkus`, `/m365/users/{id}/licenseDetails`.
+- Connector Lab convenience endpoints (`/m365/licence-summary`, `/m365/mailbox-counts`, `/m365/hygiene-findings`) remain for thin-slice reporting and are not full Graph clones.
+- Dev-only mapping metadata is exposed separately at `/m365/lab-scenarios`; normal vendor endpoints do not expose MSPIntel control fields.
+
+## Local Ollama default for demo/dev AI
+
+- Demo seed can initialize tenant AI defaults from env (no hardcoded provider): `AI_DEFAULT_PROVIDER`, `AI_DEFAULT_MODE`, `AI_DEFAULT_MODEL`, `OLLAMA_BASE_URL`, `OLLAMA_DEFAULT_MODEL`.
+- Docker Desktop default host access is `http://host.docker.internal:11434` (not `localhost` from inside containers).
+- Validate in `/app/ai-settings` using provider **Test** action; unreachable Ollama returns a safe error message without crashing routes.
+
 ### Demo sync orchestration (current thin-slice flow)
 
 Preferred flow for connector-backed demo domains:

@@ -4,6 +4,7 @@ import type {
   IntegrationCoverageResponse,
   AIProductBlockState,
   AIProviderSafe,
+  AIProviderTestResult,
   AIProviderCatalogRow,
   AITaskRunRow,
   BillingIntegrityWorkspaceResponse,
@@ -516,6 +517,11 @@ export const api = {
         const body = await res.text();
         throw new Error(formatErrorBody(res.status, body));
       }
+    }),
+  testAiProvider: (accessToken: string, tenantId: string, providerId: string) =>
+    request<AIProviderTestResult>(`/api/v1/ai/providers/${providerId}/test`, {
+      method: "POST",
+      headers: authHeaders(accessToken, tenantId)
     }),
   resolveAiTask: (accessToken: string, tenantId: string, taskType: string) =>
     request<ResolvedAITaskResponse>(`/api/v1/ai/resolve/${encodeURIComponent(taskType)}`, {

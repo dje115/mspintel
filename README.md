@@ -127,7 +127,7 @@ Mock namespaces currently available:
 - `/autotask` — accounts, contacts, tickets, opportunities, quotes
 - `/itquoter` — customers, quotes, quote lines, quote statuses
 - `/xero` — contacts, invoices, invoice lines, payment statuses
-- `/m365` — tenants, users, licence summary, mailbox counts, hygiene findings
+- `/m365` — Graph-inspired organization/users/subscribedSkus/licenseDetails + convenience summary endpoints
 - `/veeam` — customers, backup jobs, workloads, repositories, restore tests
 - `/3cx` — calls, extensions (thin optional namespace)
 
@@ -137,7 +137,13 @@ Example curl:
 - `curl -H "Authorization: Bearer connector-lab-dev-token" -H "Xero-Tenant-Id: demo-tenant-id" "http://localhost:8099/xero/invoices?mode=rate_limit"`
 - `curl -H "Authorization: Bearer connector-lab-dev-token" "http://localhost:8099/m365/users?updated_since=2026-01-01T00:00:00Z"`
 
-Connector Lab includes expanded identity and signal scenarios (name mismatches, unmatched records, stale/deleted hints, billing-vs-M365 gaps, failed backups, aged debt) to validate mapping review and data-confidence behavior. It is the preferred source of realistic connector-backed demo data where connector syncs are implemented. See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) and [docs/DATA_INGESTION_AND_WAREHOUSE.md](docs/DATA_INGESTION_AND_WAREHOUSE.md).
+Connector Lab includes expanded identity and signal scenarios (name mismatches, unmatched records, stale/deleted hints, billing-vs-M365 gaps, failed backups, aged debt) to validate mapping review and data-confidence behavior. M365 mapping-control metadata is exposed only on dev-only scenario endpoints, not vendor-shaped payloads. It is the preferred source of realistic connector-backed demo data where connector syncs are implemented. See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) and [docs/DATA_INGESTION_AND_WAREHOUSE.md](docs/DATA_INGESTION_AND_WAREHOUSE.md).
+
+### Local Ollama demo default (env-driven)
+
+- Demo/dev seed can initialize the first tenant provider from env (`AI_DEFAULT_PROVIDER`, `AI_DEFAULT_MODE`, `AI_DEFAULT_MODEL`, `OLLAMA_BASE_URL`, `OLLAMA_DEFAULT_MODEL`).
+- For Docker Desktop, use `OLLAMA_BASE_URL=http://host.docker.internal:11434` so containers reach host Ollama.
+- Verify provider connectivity from `/app/ai-settings` using the provider **Test** button.
 
 ## Key Endpoints (Access-Control Slice)
 

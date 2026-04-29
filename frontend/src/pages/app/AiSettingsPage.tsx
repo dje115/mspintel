@@ -73,6 +73,7 @@ export function AiSettingsPage() {
   const [mspAiContext, setMspAiContext] = useState<TenantAIContext | null>(null);
   const [mspAiContextLoading, setMspAiContextLoading] = useState(false);
   const [mspAiContextError, setMspAiContextError] = useState<string | null>(null);
+  const [providerTestResult, setProviderTestResult] = useState<Record<string, { ok: boolean; message: string }>>({});
 
   const providerBadgeTone = (mode: string | null): string => {
     if (!mode) return "tenant-badge tenant-badge--muted";
@@ -269,6 +270,22 @@ export function AiSettingsPage() {
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Provider delete failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onTestProvider = async (providerId: string) => {
+    if (!accessToken || !currentTenantId) return;
+    setBusy(true);
+    try {
+      const result = await api.testAiProvider(accessToken, currentTenantId, providerId);
+      setProviderTestResult((prev) => ({ ...prev, [providerId]: { ok: result.ok, message: result.message } }));
+    } catch (e) {
+      setProviderTestResult((prev) => ({
+        ...prev,
+        [providerId]: { ok: false, message: e instanceof Error ? e.message : "Provider test failed" }
+      }));
     } finally {
       setBusy(false);
     }
@@ -600,7 +617,19 @@ export function AiSettingsPage() {
                         <button type="button" className="tenant-btn-ghost" disabled={busy} onClick={() => void onDeleteProvider(p.id)}>
                           Remove
                         </button>
+                        <button type="button" className="tenant-btn-ghost" disabled={busy} onClick={() => void onTestProvider(p.id)}>
+                          Test
+                        </button>
                       </div>
+                      {providerTestResult[p.id] ? (
+                        <p
+                          className="tenant-page-sub"
+                          style={{ marginTop: "0.35rem", color: providerTestResult[p.id].ok ? "#027a48" : "#b42318" }}
+                        >
+                          {providerTestResult[p.id].ok ? "Test passed: " : "Test failed: "}
+                          {providerTestResult[p.id].message}
+                        </p>
+                      ) : null}
                       <div className="tenant-grid tenant-grid--cards-3" style={{ marginTop: "0.45rem" }}>
                         <input
                           className="tenant-input"

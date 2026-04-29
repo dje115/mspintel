@@ -52,7 +52,7 @@ All require tenant JWT and tenant context (`X-Tenant-Id` from session).
 | `/app/m365-health` | `M365HealthPage` | **Microsoft 365 Health workspace** — licensing/identity/mailbox posture, stale/disabled identity indicators, billing-impact signals, optimisation candidates, confidence notes, and connector state honesty (`Needs connector setup`, `Partially connected`, last sync status/timestamp) via `GET /api/v1/workspace/m365-health`. |
 | `/app/members` | `MembersPage` | Team + invitations. |
 | `/app/security` | `SecurityPage` | Sessions. |
-| `/app/ai-settings` | `AiSettingsPage` | Tenant AI defaults, task routing table, provider/deployment badges; warnings for behavioural impact. |
+| `/app/ai-settings` | `AiSettingsPage` | Tenant AI defaults, task routing table, provider/deployment badges, read-only MSP AI context card, and per-provider connectivity test action with safe failure messaging. |
 | `/app/prompts` | `PromptsPage` | Prompt list, version history, tenant overrides (configure roles); warnings on edits/activation. |
 | `/app/system-status` | `SystemStatusPage` | Tenant-scoped API status (admin capability). |
 | `/app/roadmap` | `RoadmapHubPage` | **Placeholder hub** — links to spec-backed future product areas (billing integrity, M365 health, relationship health, etc.). |
@@ -120,5 +120,5 @@ See [TENANT_PRODUCT_WIREFRAMES.md](TENANT_PRODUCT_WIREFRAMES.md) for IA detail; 
 
 ## Dev tooling surface (non-tenant UI)
 
-- Connector Lab (development/testing only): `http://localhost:8099/` (`/ui`, `/ui/status`, `/ui/scenarios`, `/ui/signals`)
+- Connector Lab (development/testing only): `http://localhost:8099/` (`/ui`, `/ui/status`, `/ui/scenarios`, `/ui/m365-mapping-scenarios`, `/ui/signals`)
 - Purpose: mock vendor namespaces for connector development, mapping confidence testing, and deterministic error-mode validation outside the tenant product shell.

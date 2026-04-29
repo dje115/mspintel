@@ -119,10 +119,13 @@ class Microsoft365ConnectorAdapter(ConnectorAdapter):
                 if not isinstance(payload, dict):
                     raise ValueError(f"M365 connector returned unexpected payload for /{path}.")
                 items = payload.get("items")
+                if items is None:
+                    items = payload.get("value")
                 if not isinstance(items, list):
-                    raise ValueError(f"M365 connector payload missing items list for /{path}.")
+                    raise ValueError(f"M365 connector payload missing collection list for /{path}.")
                 rows.extend([dict(r) for r in items if isinstance(r, dict)])
-                if not bool(payload.get("has_more")):
+                has_more = bool(payload.get("has_more")) or bool(payload.get("@odata.nextLink"))
+                if not has_more:
                     break
                 page += 1
         return rows
@@ -161,7 +164,7 @@ class Microsoft365ConnectorAdapter(ConnectorAdapter):
         base_url = self._connector_lab_base_url(connection, config)
         if base_url:
             try:
-                tenants = self._fetch_resource(base_url=base_url, path="tenants", config=config, page_size=20)
+                tenants = self._fetch_resource(base_url=base_url, path="organization", config=config, page_size=20)
             except ValueError as exc:
                 return ConnectorTestResult(ok=False, message=str(exc), checked_at=datetime.now(UTC))
             if not tenants:
@@ -173,7 +176,7 @@ class Microsoft365ConnectorAdapter(ConnectorAdapter):
                 )
             return ConnectorTestResult(
                 ok=True,
-                message="Connector Lab M365 namespace is reachable and returned tenant records.",
+                message="Connector Lab M365 namespace is reachable and returned organization records.",
                 checked_at=datetime.now(UTC),
                 metadata={"mode": "connector_lab", "tenant_rows": len(tenants), "base_url": base_url},
             )
@@ -253,10 +256,13 @@ class Microsoft365ConnectorAdapter(ConnectorAdapter):
         base_url = self._connector_lab_base_url(connection, config)
         if base_url:
             try:
-                tenants = self._fetch_resource(base_url=base_url, path="tenants", config=config)
+                tenants = self._fetch_resource(base_url=base_url, path="organization", config=config)
+                users = self._fetch_resource(base_url=base_url, path="users", config=config)
+                subscribed_skus = self._fetch_resource(base_url=base_url, path="subscribedSkus", config=config)
                 licence_rows = self._fetch_resource(base_url=base_url, path="licence-summary", config=config)
                 mailbox_rows = self._fetch_resource(base_url=base_url, path="mailbox-counts", config=config)
                 hygiene_rows = self._fetch_resource(base_url=base_url, path="hygiene-findings", config=config)
+                scenario_rows = self._fetch_resource(base_url=base_url, path="lab-scenarios", config=config)
             except ValueError as exc:
                 return ConnectorSyncResult(
                     ok=False,
@@ -272,6 +278,22 @@ class Microsoft365ConnectorAdapter(ConnectorAdapter):
             for row in hygiene_rows:
                 tid = str(row.get("tenant_id") or "")
                 hygiene_by_tenant.setdefault(tid, []).append(row)
+            users_by_tenant_domain: dict[str, list[dict]] = {}
+            for row in users:
+                for identity_field in ("userPrincipalName", "mail"):
+                    value = str(row.get(identity_field) or "").lower()
+                    if "@" not in value:
+                        continue
+                    domain = value.split("@", 1)[1]
+                    users_by_tenant_domain.setdefault(domain, []).append(row)
+            sku_by_tenant: dict[str, list[dict]] = {}
+            for sku in subscribed_skus:
+                # mock uses "<tenant>_<sku>" id convention to tie SKU rows to orgs.
+                raw_id = str(sku.get("id") or "")
+                tenant_ref = raw_id.split("_", 1)[0]
+                if tenant_ref:
+                    sku_by_tenant.setdefault(tenant_ref, []).append(sku)
+            scenario_by_org = {str(r.get("organization_id") or ""): r for r in scenario_rows}
 
             stmt = select(Customer).where(Customer.tenant_id == tenant_id).order_by(Customer.name)
             customers = list(db.scalars(stmt).all())
@@ -282,21 +304,32 @@ class Microsoft365ConnectorAdapter(ConnectorAdapter):
                 tenant_ref = str(tenant_row.get("id") or "").strip()
                 if not tenant_ref:
                     continue
-                hint = self._norm_customer_label(str(tenant_row.get("customer_hint") or ""))
+                source_display_name = str(tenant_row.get("displayName") or "").strip() or None
+                hint = self._norm_customer_label(source_display_name or "")
                 customer = customer_by_name.get(hint)
-                source_display_name = str(tenant_row.get("customer_hint") or tenant_row.get("tenant_name") or "").strip() or None
+                domains = [
+                    str(d.get("name") or "").strip().lower()
+                    for d in list(tenant_row.get("verifiedDomains") or [])
+                    if isinstance(d, dict) and str(d.get("name") or "").strip()
+                ]
+                primary_domain = domains[0] if domains else None
                 review = onboarding.upsert_mapping_review_candidate(
                     tenant_id=tenant_id,
                     source_connection_id=connection.id,
                     entity_type=ENTITY_CUSTOMER,
                     source_external_id=f"m365-customer:{tenant_ref}",
                     source_display_name=source_display_name,
-                    source_domain=None,
+                    source_domain=primary_domain,
                 )
                 mapped_customer = customer
                 if not mapped_customer and review.suggested_customer_id and review.suggested_confidence == "high":
                     mapped_customer = customer_by_id.get(review.suggested_customer_id)
-                if not mapped_customer and bool(tenant_row.get("auto_confirm_customer")) and source_display_name:
+                scenario = scenario_by_org.get(tenant_ref) or {}
+                if (
+                    not mapped_customer
+                    and str(scenario.get("expected_mapping_state") or "").lower() == "accepted"
+                    and source_display_name
+                ):
                     mapped_customer = Customer(
                         tenant_id=tenant_id,
                         name=source_display_name[:180],
@@ -310,7 +343,7 @@ class Microsoft365ConnectorAdapter(ConnectorAdapter):
                     customer_by_id[mapped_customer.id] = mapped_customer
                     review.suggested_customer_id = mapped_customer.id
                     review.suggested_confidence = "high"
-                    review.suggested_reasons = list(review.suggested_reasons or []) + ["connector_lab_auto_confirm"]
+                    review.suggested_reasons = list(review.suggested_reasons or []) + ["connector_lab_scenario_explicit_accept"]
                 if mapped_customer:
                     review.status = "accepted"
                     review.mapped_customer_id = mapped_customer.id
@@ -334,16 +367,18 @@ class Microsoft365ConnectorAdapter(ConnectorAdapter):
                 findings = hygiene_by_tenant.get(tenant_ref, [])
                 row_payload = {
                     "tenant_ref": tenant_ref,
-                    "tenant_name": tenant_row.get("tenant_name"),
-                    "tenant_domains": [tenant_row.get("tenant_name")] if tenant_row.get("tenant_name") else [],
+                    "tenant_name": tenant_row.get("displayName"),
+                    "tenant_domains": domains,
                     "licensed_users": licence.get("licensed_users"),
                     "active_users_30d": licence.get("active_users_30d"),
                     "inactive_users_30d": licence.get("inactive_users_30d"),
                     "mailboxes": mailbox.get("mailboxes"),
                     "shared_mailboxes": mailbox.get("shared_mailboxes"),
                     "hygiene_findings": [str(f.get("finding")) for f in findings if f.get("finding")],
+                    "source_user_count": len(users_by_tenant_domain.get(primary_domain or "", [])),
+                    "subscribed_sku_count": len(sku_by_tenant.get(tenant_ref, [])),
                     "coverage_notes": [
-                        "Materialised from Connector Lab M365 endpoints; treat as mock vendor telemetry.",
+                        "Materialised from Connector Lab M365 Graph-inspired endpoints; treat as mock vendor telemetry.",
                         "Customer mapping confidence is governed by connector mapping review state.",
                     ],
                     "confidence_level": self._confidence_from_hygiene(len(findings)),

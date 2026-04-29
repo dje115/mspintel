@@ -62,6 +62,8 @@ Together they drive filtering and badges in the UI (for example: self-hosted Oll
 
 Tenant-facing provider rows (`ai_providers`) store **encrypted** JSON settings (API keys, endpoints). API responses use **redacted** settings and never return ciphertext or raw secrets.
 
+Demo/dev seed defaults are env-driven (`AI_DEFAULT_PROVIDER`, `AI_DEFAULT_MODE`, `AI_DEFAULT_MODEL`, `OLLAMA_BASE_URL`, `OLLAMA_DEFAULT_MODEL`) so local Ollama can be the initial provider without hardcoding.
+
 ---
 
 ## Task routing
@@ -119,6 +121,7 @@ Examples include `ai.tenant_settings.updated`, `ai.task_route.updated`, `ai.prom
 - `GET|PATCH /api/v1/ai/settings`
 - `GET|PATCH /api/v1/ai/task-routes`
 - `GET /api/v1/ai/providers`, `POST /api/v1/ai/providers`
+- `POST /api/v1/ai/providers/{id}/test` (safe connectivity/model smoke check; returns message for unreachable local providers such as host Ollama)
 - `GET /api/v1/ai/resolve/{task_type}`
 - `GET /api/v1/prompts`, `GET /api/v1/prompts/{id}`, versions, activate, tenant-overrides, revert-to-default
 

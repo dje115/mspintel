@@ -56,6 +56,15 @@ class AIProviderPatchBody(BaseModel):
     settings: dict | None = Field(default=None, description="Replaces encrypted settings payload when provided")
 
 
+class AIProviderTestResult(BaseModel):
+    ok: bool
+    provider_id: UUID
+    provider_family: str | None
+    deployment_mode: str | None
+    model_used: str | None = None
+    message: str
+
+
 class TenantAiSettingsResponse(BaseModel):
     tenant_id: UUID
     default_ai_provider: AIProviderSafe | None

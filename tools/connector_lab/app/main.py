@@ -4,6 +4,7 @@ import os
 import time
 from datetime import datetime
 from typing import Any
+from urllib.parse import urlencode
 
 from fastapi import FastAPI, Header, HTTPException, Query, Request, Response, status
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -109,6 +110,27 @@ def _list_resource(
     }
 
 
+def _list_graph_resource(
+    *,
+    request: Request,
+    entity: str,
+    rows: list[dict[str, Any]],
+    page: int,
+    page_size: int,
+) -> dict[str, Any]:
+    page_rows, total = _paginate(rows, page, page_size)
+    payload: dict[str, Any] = {
+        "@odata.context": f"https://graph.microsoft.com/v1.0/$metadata#{entity}",
+        "value": page_rows,
+    }
+    if page * page_size < total:
+        q = dict(request.query_params)
+        q["page"] = str(page + 1)
+        q["page_size"] = str(page_size)
+        payload["@odata.nextLink"] = f"{request.url.path}?{urlencode(q)}"
+    return payload
+
+
 async def _api_guard(
     authorization: str | None,
     x_api_key: str | None,
@@ -127,7 +149,15 @@ def _overview_blocks() -> list[dict[str, Any]]:
         "autotask": ["/autotask/accounts", "/autotask/contacts", "/autotask/tickets", "/autotask/opportunities", "/autotask/quotes"],
         "itquoter": ["/itquoter/customers", "/itquoter/quotes", "/itquoter/quote-lines", "/itquoter/quote-statuses"],
         "xero": ["/xero/contacts", "/xero/invoices", "/xero/invoice-lines", "/xero/payment-statuses"],
-        "m365": ["/m365/tenants", "/m365/users", "/m365/licence-summary", "/m365/mailbox-counts", "/m365/hygiene-findings"],
+        "m365": [
+            "/m365/organization",
+            "/m365/users",
+            "/m365/subscribedSkus",
+            "/m365/users/{id}/licenseDetails",
+            "/m365/licence-summary",
+            "/m365/mailbox-counts",
+            "/m365/hygiene-findings",
+        ],
         "veeam": ["/veeam/customers", "/veeam/backup-jobs", "/veeam/workloads", "/veeam/repositories", "/veeam/restore-tests"],
         "3cx": ["/3cx/calls", "/3cx/extensions"],
     }
@@ -206,6 +236,7 @@ def ui_home() -> str:
         "<p class='sub'>Development/testing only. Not a production vendor integration.</p>"
         "<p class='warn'>Use this service to test connector sync, mapping confidence, and product signal behavior without live vendor access.</p>"
         "<p><a href='/ui/scenarios'>Cross-system mapping scenarios</a> | "
+        "<a href='/ui/m365-mapping-scenarios'>M365 mapping scenarios</a> | "
         "<a href='/ui/signals'>Product signal scenarios</a> | "
         "<a href='/ui/status'>Status</a></p>"
         f"<div class='grid'>{''.join(cards)}</div>"
@@ -258,6 +289,30 @@ def ui_signals() -> str:
         "<p><a href='/'>Back to overview</a></p>"
     )
     return _html_page("Connector Lab signals", body)
+
+
+@app.get("/ui/m365-mapping-scenarios", response_class=HTMLResponse)
+def ui_m365_mapping_scenarios() -> str:
+    rows = DATASET.get("m365", {}).get("lab_scenarios", [])
+    table_rows = []
+    for row in rows:
+        table_rows.append(
+            "<tr>"
+            f"<td>{row.get('organization_display_name')}</td>"
+            f"<td>{row.get('primary_domain')}</td>"
+            f"<td>{row.get('canonical_customer_name') or 'none'}</td>"
+            f"<td>{row.get('expected_mapping_state')}</td>"
+            f"<td>{row.get('scenario')}</td>"
+            "</tr>"
+        )
+    body = (
+        "<h1>M365 mapping scenarios (dev-only)</h1>"
+        "<p class='sub'>Connector Lab scenario metadata for MSPIntel mapping behavior. This table is not vendor API payload data.</p>"
+        "<table><thead><tr><th>Organization</th><th>Primary domain</th><th>Expected canonical customer</th><th>Expected state</th><th>Scenario</th></tr></thead><tbody>"
+        f"{''.join(table_rows)}</tbody></table>"
+        "<p><a href='/'>Back to overview</a></p>"
+    )
+    return _html_page("Connector Lab M365 scenarios", body)
 
 
 @app.get("/ui/vendor/{vendor}", response_class=HTMLResponse)
@@ -374,14 +429,90 @@ async def xero_payment_statuses(request: Request) -> JSONResponse:
     return await _generic_vendor_handler("xero", "payment_statuses", request)
 
 
+@app.get("/m365/organization")
+async def m365_organization(request: Request) -> JSONResponse:
+    modes = await _api_guard(
+        request.headers.get("authorization"),
+        request.headers.get("x-api-key"),
+        request.query_params.get("mode"),
+        request.headers.get("x-connector-lab-mode"),
+    )
+    rows = list(DATASET.get("m365", {}).get("organization", []))
+    rows = _updated_since_filter(rows, request.query_params.get("updated_since"))
+    if "empty" in modes:
+        rows = []
+    if "partial" in modes:
+        rows = _partial_rows(rows)
+    page = int(request.query_params.get("page", "1"))
+    page_size = int(request.query_params.get("page_size", "50"))
+    payload = _list_graph_resource(request=request, entity="organization", rows=rows, page=page, page_size=page_size)
+    return JSONResponse(payload)
+
+
 @app.get("/m365/tenants")
-async def m365_tenants(request: Request) -> JSONResponse:
-    return await _generic_vendor_handler("m365", "tenants", request)
+async def m365_tenants_legacy_alias(request: Request) -> JSONResponse:
+    # Legacy alias for earlier thin-slice tests. Kept vendor-shaped.
+    return await m365_organization(request)
 
 
 @app.get("/m365/users")
 async def m365_users(request: Request) -> JSONResponse:
-    return await _generic_vendor_handler("m365", "users", request)
+    modes = await _api_guard(
+        request.headers.get("authorization"),
+        request.headers.get("x-api-key"),
+        request.query_params.get("mode"),
+        request.headers.get("x-connector-lab-mode"),
+    )
+    rows = list(DATASET.get("m365", {}).get("users", []))
+    rows = _updated_since_filter(rows, request.query_params.get("updated_since"))
+    if "empty" in modes:
+        rows = []
+    if "partial" in modes:
+        rows = _partial_rows(rows)
+    page = int(request.query_params.get("page", "1"))
+    page_size = int(request.query_params.get("page_size", "50"))
+    payload = _list_graph_resource(request=request, entity="users", rows=rows, page=page, page_size=page_size)
+    return JSONResponse(payload)
+
+
+@app.get("/m365/subscribedSkus")
+async def m365_subscribed_skus(request: Request) -> JSONResponse:
+    modes = await _api_guard(
+        request.headers.get("authorization"),
+        request.headers.get("x-api-key"),
+        request.query_params.get("mode"),
+        request.headers.get("x-connector-lab-mode"),
+    )
+    rows = list(DATASET.get("m365", {}).get("subscribed_skus", []))
+    rows = _updated_since_filter(rows, request.query_params.get("updated_since"))
+    if "empty" in modes:
+        rows = []
+    if "partial" in modes:
+        rows = _partial_rows(rows)
+    page = int(request.query_params.get("page", "1"))
+    page_size = int(request.query_params.get("page_size", "50"))
+    payload = _list_graph_resource(request=request, entity="subscribedSkus", rows=rows, page=page, page_size=page_size)
+    return JSONResponse(payload)
+
+
+@app.get("/m365/users/{user_id}/licenseDetails")
+async def m365_user_license_details(user_id: str, request: Request) -> JSONResponse:
+    modes = await _api_guard(
+        request.headers.get("authorization"),
+        request.headers.get("x-api-key"),
+        request.query_params.get("mode"),
+        request.headers.get("x-connector-lab-mode"),
+    )
+    rows = list(DATASET.get("m365", {}).get("license_details", []))
+    match = next((r for r in rows if str(r.get("user_id")) == user_id), None)
+    value = list((match or {}).get("value") or [])
+    if "empty" in modes:
+        value = []
+    payload = {
+        "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#users('id')/licenseDetails",
+        "value": value,
+    }
+    return JSONResponse(payload)
 
 
 @app.get("/m365/licence-summary")
@@ -397,6 +528,12 @@ async def m365_mailbox_counts(request: Request) -> JSONResponse:
 @app.get("/m365/hygiene-findings")
 async def m365_hygiene_findings(request: Request) -> JSONResponse:
     return await _generic_vendor_handler("m365", "hygiene_findings", request)
+
+
+@app.get("/m365/lab-scenarios")
+async def m365_lab_scenarios(request: Request) -> JSONResponse:
+    # Development-only metadata endpoint for mapping behavior testing.
+    return await _generic_vendor_handler("m365", "lab_scenarios", request)
 
 
 @app.get("/veeam/customers")

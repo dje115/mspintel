@@ -55,17 +55,33 @@ def test_expanded_dataset_counts_and_pagination():
     assert data["total"] >= 20
     assert data["has_more"] is True
     assert len(data["items"]) == 10
-    tenants = client.get("/m365/tenants", headers=_auth_headers())
-    assert tenants.status_code == 200
-    assert tenants.json()["total"] >= 20
+    orgs = client.get("/m365/organization?page=1&page_size=10", headers=_auth_headers())
+    assert orgs.status_code == 200
+    payload = orgs.json()
+    assert len(payload["value"]) == 10
+    assert "@odata.nextLink" in payload
 
 
-def test_no_generic_connectorlab_scenario_names_in_m365_tenants():
+def test_m365_vendor_payload_excludes_internal_control_fields():
     client = TestClient(app)
-    body = client.get("/m365/tenants", headers=_auth_headers()).json()
-    tenant_hints = [str(row.get("customer_hint") or "") for row in body["items"]]
-    assert tenant_hints
-    assert not any("ConnectorLab Scenario Customer" in hint for hint in tenant_hints)
+    body = client.get("/m365/organization", headers=_auth_headers()).json()
+    rows = body["value"]
+    assert rows
+    serialized = str(rows[0])
+    assert "auto_confirm_customer" not in serialized
+    assert "customer_hint" not in serialized
+    assert "mapping_status" not in serialized
+
+
+def test_m365_lab_scenarios_separated_from_vendor_payload():
+    client = TestClient(app)
+    scen = client.get("/m365/lab-scenarios", headers=_auth_headers())
+    assert scen.status_code == 200
+    items = scen.json()["items"]
+    assert items
+    assert "expected_mapping_state" in items[0]
+    org = client.get("/m365/organization", headers=_auth_headers()).json()["value"][0]
+    assert "expected_mapping_state" not in org
 
 
 def test_ui_pages_render():

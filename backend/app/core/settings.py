@@ -134,6 +134,12 @@ class Settings(BaseSettings):
 
     ai_provider_default: str = "openai"
     ai_provider_api_key: str = ""
+    ai_default_provider: str = Field(default="ollama", validation_alias="AI_DEFAULT_PROVIDER")
+    ai_default_mode: str = Field(default="local", validation_alias="AI_DEFAULT_MODE")
+    ai_default_model: str = Field(default="llama3.2:3b", validation_alias="AI_DEFAULT_MODEL")
+    ai_provider_timeout_seconds: int = Field(default=90, validation_alias="AI_PROVIDER_TIMEOUT_SECONDS")
+    ollama_base_url: str = Field(default="http://host.docker.internal:11434", validation_alias="OLLAMA_BASE_URL")
+    ollama_default_model: str = Field(default="llama3.2:3b", validation_alias="OLLAMA_DEFAULT_MODEL")
     integration_encryption_key: str = "change-me"
 
     billing_provider: str = "stripe"

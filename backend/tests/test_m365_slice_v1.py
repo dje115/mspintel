@@ -87,8 +87,8 @@ def test_m365_connection_test_uses_connector_lab_namespace(client, db_session: S
 
     def _fake_fetch(self, *, base_url: str, path: str, config: dict, page_size: int = 200):
         assert base_url.endswith("/m365")
-        assert path == "tenants"
-        return [{"id": "M-T1", "tenant_name": "acme-dental.onmicrosoft.com"}]
+        assert path == "organization"
+        return [{"id": "M-T1", "displayName": "Acme Dental Ltd", "verifiedDomains": [{"name": "acme-dental.co.uk"}]}]
 
     monkeypatch.setattr(Microsoft365ConnectorAdapter, "_fetch_resource", _fake_fetch)
 
@@ -197,8 +197,8 @@ def test_m365_sync_unmatched_connector_lab_records_warns(client, db_session: Ses
     db_session.commit()
 
     def _fake_fetch(self, *, base_url: str, path: str, config: dict, page_size: int = 200):
-        if path == "tenants":
-            return [{"id": "M-T999", "tenant_name": "unknown.onmicrosoft.com", "customer_hint": "No Match Customer"}]
+        if path == "organization":
+            return [{"id": "M-T999", "displayName": "No Match Customer", "verifiedDomains": [{"name": "unknown.co.uk"}]}]
         return []
 
     monkeypatch.setattr(Microsoft365ConnectorAdapter, "_fetch_resource", _fake_fetch)
@@ -241,11 +241,17 @@ def test_m365_sync_creates_confirmed_and_reviewable_mapping_states(client, db_se
     db_session.commit()
 
     def _fake_fetch(self, *, base_url: str, path: str, config: dict, page_size: int = 200):
-        if path == "tenants":
+        if path == "organization":
             return [
-                {"id": "M-T001", "tenant_name": "acme.onmicrosoft.com", "customer_hint": "Acme Dental Ltd"},
-                {"id": "M-T002", "tenant_name": "riverside.onmicrosoft.com", "customer_hint": "Riverside Care"},
-                {"id": "M-T003", "tenant_name": "unknown.onmicrosoft.com", "customer_hint": "Unknown Logistics"},
+                {"id": "M-T001", "displayName": "Acme Dental Ltd", "verifiedDomains": [{"name": "acme.co.uk"}]},
+                {"id": "M-T002", "displayName": "Riverside Care", "verifiedDomains": [{"name": "riverside.co.uk"}]},
+                {"id": "M-T003", "displayName": "Unknown Logistics", "verifiedDomains": [{"name": "unknown.co.uk"}]},
+            ]
+        if path == "lab-scenarios":
+            return [
+                {"organization_id": "M-T001", "expected_mapping_state": "accepted"},
+                {"organization_id": "M-T002", "expected_mapping_state": "pending"},
+                {"organization_id": "M-T003", "expected_mapping_state": "unlinked"},
             ]
         if path == "licence-summary":
             return [

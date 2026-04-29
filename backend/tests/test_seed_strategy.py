@@ -12,6 +12,7 @@ from app.models.entities import (
     Opportunity,
     Quote,
     Recommendation,
+    AIProvider,
     SourceSystemConnection,
     Tenant,
     Ticket,
@@ -54,6 +55,9 @@ def test_seed_all_is_structural_only_and_resets_business_rows(db_session: Sessio
     assert len(conns) >= 5
     assert any(c.system_type == "microsoft_365" for c in conns)
     assert any(c.base_url and "connector-lab" in c.base_url for c in conns)
+    provider = db_session.scalars(select(AIProvider).where(AIProvider.tenant_id == tenant_id)).first()
+    assert provider is not None
+    assert provider.provider_family in {"ollama", "openai", "openai_compatible"}
 
 
 def test_m365_posture_appears_only_after_connector_sync(client, db_session: Session, monkeypatch):
@@ -65,8 +69,8 @@ def test_m365_posture_appears_only_after_connector_sync(client, db_session: Sess
     assert db_session.scalars(select(M365CustomerPosture).where(M365CustomerPosture.tenant_id == tid)).first() is None
 
     def _fake_fetch(self, *, base_url: str, path: str, config: dict, page_size: int = 200):
-        if path == "tenants":
-            return [{"id": "M-T900", "tenant_name": "seed-sync.onmicrosoft.com", "customer_hint": "Seed Sync Customer Ltd"}]
+        if path == "organization":
+            return [{"id": "M-T900", "displayName": "Seed Sync Customer Ltd", "verifiedDomains": [{"name": "seed-sync.co.uk"}]}]
         if path == "licence-summary":
             return [{"tenant_id": "M-T900", "licensed_users": 21, "active_users_30d": 19, "inactive_users_30d": 2}]
         if path == "mailbox-counts":

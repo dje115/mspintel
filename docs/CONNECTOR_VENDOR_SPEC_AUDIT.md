@@ -1,6 +1,6 @@
 # Connector Vendor Spec Audit (thin slice)
 
-Last updated: 2026-04-28  
+Last updated: 2026-04-29  
 Scope: connector realism audit for Autotask, ITQuoter, Xero, Microsoft Graph, Veeam, and 3CX; align manifests, Connector Lab, and product docs.
 
 ## Guardrails
@@ -28,7 +28,12 @@ Scope: connector realism audit for Autotask, ITQuoter, Xero, Microsoft Graph, Ve
   - https://developer.xero.com/documentation/best-practices/api-call-efficiencies/if-modified-since/
 - Microsoft Graph:
   - https://learn.microsoft.com/en-us/graph/api/organization-get?view=graph-rest-1.0
+  - https://learn.microsoft.com/en-us/graph/api/resources/organization?view=graph-rest-1.0
+  - https://learn.microsoft.com/en-us/graph/api/user-list?view=graph-rest-1.0
+  - https://learn.microsoft.com/en-us/graph/paging
   - https://learn.microsoft.com/en-us/graph/api/resources/subscribedsku?view=graph-rest-1.0
+  - https://learn.microsoft.com/en-us/graph/api/subscribedsku-list?view=graph-rest-1.0
+  - https://learn.microsoft.com/en-us/graph/api/resources/licensedetails?view=graph-rest-1.0
   - https://learn.microsoft.com/en-us/graph/api/user-list-licensedetails?view=graph-rest-1.0
   - https://learn.microsoft.com/en-us/graph/api/reportroot-getoffice365activeuserdetail?view=graph-rest-1.0
   - https://learn.microsoft.com/en-us/graph/delta-query-users?tabs=http
@@ -86,8 +91,15 @@ Scope: connector realism audit for Autotask, ITQuoter, Xero, Microsoft Graph, Ve
 - **Privacy caveat:** usage reports may conceal names (`displayConcealedNames`) depending on tenant report settings.
 - **Delta/pagination:** `@odata.nextLink` pagination and delta tokens for incremental user sync.
 - **Throttling:** HTTP 429 with `Retry-After`; backoff policy required.
-- **Current Connector Lab emulation:** tenant summary, users, license summary, mailbox counts, hygiene findings; MSPIntel thin slice now uses these endpoints for connector test + canonical posture sync in dev.
-- **Gap vs real API:** no OData paging tokens or permissions error realism yet.
+- **Current Connector Lab emulation:** Graph-inspired `/m365/organization`, `/m365/users`, `/m365/subscribedSkus`, `/m365/users/{id}/licenseDetails`, plus convenience/reporting endpoints (`/m365/licence-summary`, `/m365/mailbox-counts`, `/m365/hygiene-findings`) and a dev-only metadata endpoint (`/m365/lab-scenarios`).
+- **Payload realism rule:** normal `/m365/*` vendor-shaped responses must not include MSPIntel control fields (`auto_confirm_customer`, `customer_hint`, or `mspintel_*`). Mapping-control metadata lives only in dev-only scenario endpoints.
+- **Gap vs real API:** emulator uses practical `page/page_size` alongside Graph-style `value` / `@odata.nextLink`; it is not a complete permissions/scope or delta-token clone.
+
+### Microsoft Graph caveats used in this slice
+
+- `GET /users` is modeled with `value` plus `@odata.nextLink`; Graph paging guidance expects callers to follow the returned URL directly.
+- `subscribedSkus` and `licenseDetails` include only fields needed by MSPIntel mapping/posture flows (`skuId`, `skuPartNumber`, `servicePlans`, `prepaidUnits`, `consumedUnits`).
+- Throttling realism remains lightweight: Connector Lab can force HTTP 429 for failure-path testing, while retry policy guidance follows Graph `Retry-After` + exponential-backoff recommendations.
 
 ### 5) Veeam (VSPC-first recommendation)
 

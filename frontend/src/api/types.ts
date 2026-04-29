@@ -575,6 +575,15 @@ export type AIProviderSafe = {
   is_enabled: boolean;
 };
 
+export type AIProviderTestResult = {
+  ok: boolean;
+  provider_id: string;
+  provider_family: string | null;
+  deployment_mode: string | null;
+  model_used: string | null;
+  message: string;
+};
+
 export type TenantAiSettingsResponse = {
   tenant_id: string;
   default_ai_provider: AIProviderSafe | null;

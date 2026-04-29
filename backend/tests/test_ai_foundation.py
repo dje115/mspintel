@@ -384,3 +384,31 @@ def test_tenant_ai_provider_patch_and_delete(client, db_session: Session):
     listed_after = client.get("/api/v1/ai/providers", headers=h)
     assert listed_after.status_code == 200
     assert all(row["id"] != provider_id for row in listed_after.json())
+
+
+def test_tenant_ai_provider_test_handles_unreachable_ollama(client, db_session: Session):
+    tenant = Tenant(id=uuid.uuid4(), slug="ai-test", name="AI Test", is_active=True)
+    db_session.add(tenant)
+    db_session.commit()
+    admin = create_user_with_membership(db_session, "ai-test@example.com", "tenant_admin", tenant)
+    h = auth_headers(admin, str(tenant.id))
+
+    created = client.post(
+        "/api/v1/ai/providers",
+        headers=h,
+        json={
+            "provider_family": "ollama",
+            "deployment_mode": "local",
+            "display_label": "Local Ollama",
+            "base_url": "http://127.0.0.1:9",
+            "settings": {"model": "llama3.2:3b"},
+        },
+    )
+    assert created.status_code == 200, created.text
+    provider_id = created.json()["id"]
+
+    tested = client.post(f"/api/v1/ai/providers/{provider_id}/test", headers=h)
+    assert tested.status_code == 200, tested.text
+    body = tested.json()
+    assert body["ok"] is False
+    assert "provider" in body["message"].lower() or "connection" in body["message"].lower() or "http" in body["message"].lower()

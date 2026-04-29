@@ -218,11 +218,14 @@ def _build_dataset() -> dict:
     xero_contacts = []
     xero_invoices = []
     xero_invoice_lines = []
-    m365_tenants = []
+    m365_organizations = []
     m365_users = []
+    m365_subscribed_skus = []
+    m365_license_details = []
     m365_licence = []
     m365_mailboxes = []
     m365_hygiene = []
+    m365_lab_scenarios = []
     veeam_customers = []
     veeam_jobs = []
     veeam_workloads = []
@@ -359,17 +362,68 @@ def _build_dataset() -> dict:
             }
         )
         tenant_name = f"{row['key']}.onmicrosoft.com"
-        m365_tenants.append(
+        primary_domain = f"{row['key'].replace('_', '')}.co.uk"
+        org_display_name = hint["m365"] or row["canonical_name"]
+        m365_organizations.append(
             {
                 "id": tenant_id,
-                "tenant_name": tenant_name,
-                "customer_hint": hint["m365"] or row["canonical_name"],
-                "auto_confirm_customer": bool("exact_match" in signals and idx <= 3),
+                "displayName": org_display_name,
+                "tenantType": "AAD",
+                "verifiedDomains": [
+                    {
+                        "name": primary_domain,
+                        "isDefault": True,
+                        "isInitial": False,
+                        "capabilities": "Email",
+                        "type": "Managed",
+                    },
+                    {
+                        "name": tenant_name,
+                        "isDefault": False,
+                        "isInitial": True,
+                        "capabilities": "Email",
+                        "type": "Managed",
+                    },
+                ],
+                "assignedPlans": [
+                    {
+                        "servicePlanId": f"plan-{idx:03d}",
+                        "service": "exchange",
+                        "capabilityStatus": "Enabled",
+                    }
+                ],
                 "updated_at": _iso(ts),
             }
         )
         licensed = 25 + idx
         active = licensed - (5 if "inactive_licensed_users" in signals else 1)
+        sku_id = f"sku-{idx:03d}"
+        part_no = "ENTERPRISEPACK" if idx % 2 else "BUSINESS_PREMIUM"
+        m365_subscribed_skus.append(
+            {
+                "id": f"{tenant_id}_{sku_id}",
+                "skuId": sku_id,
+                "skuPartNumber": part_no,
+                "appliesTo": "User",
+                "capabilityStatus": "Enabled",
+                "consumedUnits": active,
+                "prepaidUnits": {
+                    "enabled": licensed + (8 if "m365_licence_mismatch" in signals else 0),
+                    "suspended": 0,
+                    "warning": 0,
+                    "lockedOut": 0,
+                },
+                "servicePlans": [
+                    {
+                        "servicePlanId": f"svc-{idx:03d}",
+                        "servicePlanName": "EXCHANGE_S_STANDARD",
+                        "provisioningStatus": "Success",
+                        "appliesTo": "Company",
+                    }
+                ],
+                "updated_at": _iso(ts),
+            }
+        )
         m365_licence.append(
             {
                 "tenant_id": tenant_id,
@@ -390,14 +444,52 @@ def _build_dataset() -> dict:
         m365_users.append(
             {
                 "id": f"M-U{idx:04d}",
-                "tenant_id": tenant_id,
                 "displayName": f"{row['canonical_name']} User",
                 "userPrincipalName": f"user{idx}@{tenant_name}",
-                "upn": f"user{idx}@{tenant_name}",
+                "mail": f"user{idx}@{primary_domain}",
                 "accountEnabled": True,
-                "active_last_30d": "inactive_licensed_users" not in signals,
-                "licensed": True,
+                "createdDateTime": _iso(ts - timedelta(days=150 + idx)),
+                "assignedLicenses": [{"skuId": sku_id}],
+                "assignedPlans": [
+                    {
+                        "servicePlanId": f"svc-{idx:03d}",
+                        "service": "exchange",
+                        "capabilityStatus": "Enabled",
+                    }
+                ],
                 "updated_at": _iso(ts),
+            }
+        )
+        m365_license_details.append(
+            {
+                "user_id": f"M-U{idx:04d}",
+                "value": [
+                    {
+                        "id": f"LD-{idx:04d}",
+                        "skuId": sku_id,
+                        "skuPartNumber": part_no,
+                        "servicePlans": [
+                            {
+                                "servicePlanId": f"svc-{idx:03d}",
+                                "servicePlanName": "EXCHANGE_S_STANDARD",
+                                "provisioningStatus": "Success",
+                                "appliesTo": "Company",
+                            }
+                        ],
+                    }
+                ],
+                "updated_at": _iso(ts),
+            }
+        )
+        m365_lab_scenarios.append(
+            {
+                "organization_id": tenant_id,
+                "organization_display_name": org_display_name,
+                "canonical_customer_name": row["canonical_name"],
+                "primary_domain": primary_domain,
+                "scenario": row["scenario"],
+                "signals": sorted(list(signals)),
+                "expected_mapping_state": "accepted" if "exact_match" in signals and idx <= 2 else ("pending" if "low_confidence_mapping" in signals else "unlinked"),
             }
         )
         if hint["veeam"]:
@@ -483,11 +575,14 @@ def _build_dataset() -> dict:
             "payment_statuses": payment_statuses,
         },
         "m365": {
-            "tenants": m365_tenants,
+            "organization": m365_organizations,
             "users": m365_users,
+            "subscribed_skus": m365_subscribed_skus,
+            "license_details": m365_license_details,
             "licence_summary": m365_licence,
             "mailbox_counts": m365_mailboxes,
             "hygiene_findings": m365_hygiene,
+            "lab_scenarios": m365_lab_scenarios,
         },
         "veeam": {
             "customers": veeam_customers,

@@ -31,7 +31,7 @@ Classification used per area:
 | Marketing | **Placeholder** | Shell, links, placeholder copy. | No idea bank DB, no matching engine. | Idea entity + segment API. |
 | Data quality | **Placeholder** | Static shell pointing to Integrations. | No coverage scores API in tenant UI. | Sync health + coverage API. |
 | Integrations | **Partial** | Connection list/detail, test + manual sync for supported types, sync run history, mapping review actions. | ConnectWise/Veeam/Sage still mostly **stub** adapters; **Autotask** and **M365 Connector Lab path** now have realistic thin sync flows plus reviewable identity states (`accepted`/`pending`/`unlinked`). | Harden CW + finance connectors. |
-| AI settings | **Working** | Tenant AI settings PATCH, provider list, resolve. | Provider “test” may be limited per family. | Azure adapter when ready. |
+| AI settings | **Working** | Tenant AI settings PATCH, provider list, resolve, provider connectivity test action. | Provider “test” currently follows openai-compatible transport only; non-runnable families return explicit unsupported status. | Azure adapter when ready. |
 | Prompts | **Working** | List definitions/versions, activate, tenant overrides, revert. | No diff UI / shadow mode. | Prompt compare tooling. |
 | Roadmap | **Placeholder** | Static topic cards + placeholder detail. | No data binding. | OK as low priority. |
 

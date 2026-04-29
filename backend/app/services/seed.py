@@ -12,6 +12,7 @@ from app.models.entities import (
     Role,
     Subscription,
     Tenant,
+    TenantAiSettings,
     TenantMembership,
     User,
 )
@@ -114,20 +115,54 @@ def seed_all(db: Session) -> None:
     seed_demo_workspace_if_demo_tenant(db, tenant)
 
     if not db.scalars(select(AIProvider).where(AIProvider.tenant_id == tenant.id)).first():
+        provider_family = (settings.ai_default_provider or "ollama").strip().lower()
+        deployment_mode = (settings.ai_default_mode or "local").strip().lower()
+        default_model = (
+            settings.ollama_default_model
+            if provider_family == "ollama"
+            else (settings.ai_default_model or "llama3.2:3b")
+        )
+        base_url = settings.ollama_base_url if provider_family == "ollama" else None
+        catalog_by_family = {
+            "openai": "openai_hosted",
+            "azure_openai": "azure_openai_hosted",
+            "anthropic": "anthropic_hosted",
+            "google": "google_hosted",
+            "microsoft_copilot": "microsoft_copilot_microsoft",
+            "openrouter": "openrouter_hosted",
+            "ollama": "ollama_local",
+            "vllm": "vllm_self",
+            "lm_studio": "lm_studio_local",
+            "openai_compatible": "openai_compatible_self",
+        }
         db.add(
             AIProvider(
                 id=uuid.uuid4(),
                 tenant_id=tenant.id,
-                provider_name="openai",
+                provider_name=provider_family[:60],
                 status="configured",
-                catalog_code="openai_hosted",
-                provider_family="openai",
-                deployment_mode="hosted",
-                display_label="OpenAI (demo)",
+                catalog_code=catalog_by_family.get(provider_family),
+                provider_family=provider_family,
+                deployment_mode=deployment_mode,
+                display_label=f"{provider_family.replace('_', ' ').title()} (demo)",
+                base_url=base_url,
                 is_enabled=True,
             )
         )
         db.flush()
+        provider_row = db.scalars(select(AIProvider).where(AIProvider.tenant_id == tenant.id)).first()
+        if provider_row and not db.scalars(select(TenantAiSettings).where(TenantAiSettings.tenant_id == tenant.id)).first():
+            db.add(
+                TenantAiSettings(
+                    tenant_id=tenant.id,
+                    default_ai_provider_id=provider_row.id,
+                    default_model=default_model,
+                    fallback_ai_provider_id=None,
+                    fallback_model=None,
+                    extra={"seeded_via_env": True},
+                    updated_by_user_id=None,
+                )
+            )
 
     from app.services.ai_foundation_seed import (
         ensure_ai_provider_catalog,

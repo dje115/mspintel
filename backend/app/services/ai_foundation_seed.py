@@ -265,12 +265,12 @@ def ensure_legacy_prompt_aliases(db: "Session") -> None:
 
 
 def ensure_demo_tenant_ai_provider(db: "Session", tenant_id: uuid.UUID) -> None:
-    """Attach catalog metadata to the first tenant OpenAI row if present."""
+    """Attach catalog metadata to the first tenant provider row when missing."""
     row = db.scalars(select(AIProvider).where(AIProvider.tenant_id == tenant_id).limit(1)).first()
     if row and not row.provider_family:
-        row.catalog_code = "openai_hosted"
-        row.provider_family = "openai"
-        row.deployment_mode = "hosted"
-        row.display_label = "OpenAI (demo)"
+        row.provider_family = "openai_compatible"
+        row.deployment_mode = "self_hosted"
+        row.catalog_code = "openai_compatible_self"
+        row.display_label = row.display_label or "AI Provider (demo)"
         row.is_enabled = True
         db.commit()

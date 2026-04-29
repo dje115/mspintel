@@ -9,6 +9,7 @@ from app.schemas.ai_foundation import (
     AIProviderCreateBody,
     AIProviderPatchBody,
     AIProviderSafe,
+    AIProviderTestResult,
     ResolvedAITaskResponse,
     TenantAiSettingsPatch,
     TenantAiSettingsResponse,
@@ -112,6 +113,15 @@ def delete_tenant_provider(
         ctx.user.id,
         provider_id,
     )
+
+
+@router.post("/providers/{provider_id}/test", response_model=AIProviderTestResult)
+def test_tenant_provider(
+    provider_id: UUID,
+    ctx: AccessContext = Depends(require_permission("ai:configure")),
+    db: Session = Depends(get_db),
+):
+    return TenantAiApplicationService(db).test_tenant_provider(ctx.tenant.id, provider_id)
 
 
 @router.get("/resolve/{task_type}", response_model=ResolvedAITaskResponse)

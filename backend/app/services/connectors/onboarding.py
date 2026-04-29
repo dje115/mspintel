@@ -68,7 +68,8 @@ class ConnectorOnboardingService:
 
             if source_domain:
                 domain = source_domain.lower()
-                if c.domain and c.domain.lower() == domain:
+                customer_domain = getattr(c, "domain", None)
+                if customer_domain and str(customer_domain).lower() == domain:
                     score += 0.3
                     reasons.append("customer_domain_match")
                 email_match = self.db.scalar(
