@@ -30,7 +30,7 @@ Classification used per area:
 | Reviews / QBR | **Partial** | Workspace UI, customer picker, AI agenda + AM panels (`GET|POST` customer AI routes). | No calendar sync, no persisted meeting notes DB. | Notes + calendar integration. |
 | Marketing | **Placeholder** | Shell, links, placeholder copy. | No idea bank DB, no matching engine. | Idea entity + segment API. |
 | Data quality | **Placeholder** | Static shell pointing to Integrations. | No coverage scores API in tenant UI. | Sync health + coverage API. |
-| Integrations | **Partial** | Connection list/detail, test + manual sync for supported types, sync run history, mapping review actions. | ConnectWise/Veeam/Sage still mostly **stub** adapters; **Autotask** and **M365 Connector Lab path** now have realistic thin sync flows plus reviewable identity states (`accepted`/`pending`/`unlinked`). | Harden CW + finance connectors. |
+| Integrations | **Partial** | Connection list/detail, test + manual sync for supported types, sync run history, mapping review actions, and first-connector baseline import actions (create canonical customers from eligible mapping rows). | ConnectWise/Veeam/Sage still mostly **stub** adapters; **Autotask** and **M365 Connector Lab path** now have realistic thin sync flows plus reviewable identity states (`accepted`/`pending`/`unlinked`). | Harden CW + finance connectors. |
 | AI settings | **Working** | Tenant AI settings PATCH, provider list, resolve, provider connectivity test action. | Provider “test” currently follows openai-compatible transport only; non-runnable families return explicit unsupported status. | Azure adapter when ready. |
 | Prompts | **Working** | List definitions/versions, activate, tenant overrides, revert. | No diff UI / shadow mode. | Prompt compare tooling. |
 | Roadmap | **Placeholder** | Static topic cards + placeholder detail. | No data binding. | OK as low priority. |
@@ -88,7 +88,7 @@ Classification used per area:
 | ConnectWise | **Stub / planned** | Registry presence; no production ingestion path yet. |
 | ITQuoter | **Stub** | Scaffold + updated auth metadata; live API integration still pending. |
 | Veeam | **Stub / planned** | Scaffold; VSPC-first API direction documented. |
-| Microsoft 365 | **Partial (practical slice)** | Tenant product has canonical M365 posture ingestion with Connector Lab-backed connection test/sync, explicit confidence notes, and live-depth limits for real Graph. Runtime demo seed is structural-only; posture rows appear after sync once mappings are confirmed/high-confidence. |
+| Microsoft 365 | **Partial (practical slice)** | Tenant product has canonical M365 posture ingestion with Connector Lab-backed connection test/sync, explicit confidence notes, and live-depth limits for real Graph. Runtime demo seed is structural-only; posture rows appear after sync once mappings are confirmed/high-confidence or imported through first-connector baseline actions in mapping review. |
 | Accounting (Xero/Sage) | **Partial** | Canonical finance tables exist; Xero live ingestion remains limited and demo-backed. |
 | Warehouse / snapshots | **Documented only** | No `warehouse_*` tables yet. |
 

@@ -121,7 +121,10 @@ export function CustomersPage() {
                         </div>
                       </td>
                       <td style={{ maxWidth: "16rem", color: "#475569", fontSize: "0.86rem" }}>
-                        {c.next_best_action ?? "—"}
+                        {c.next_best_action ??
+                          (c.risk_score == null && c.attention_score == null && c.growth_score == null
+                            ? "No synced service/commercial data yet"
+                            : "—")}
                       </td>
                     </tr>
                   ))}

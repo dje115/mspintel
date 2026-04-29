@@ -14,6 +14,8 @@ from app.schemas.integrations import (
     IntegrationCoverageResponse,
     IntegrationSyncRunResponse,
     MappingReviewActionRequest,
+    MappingCreateCustomersRequest,
+    MappingCreateCustomersResponse,
     MappingReviewRow,
     SourceConnectionResponse,
     SourceConnectionUpsertRequest,
@@ -267,8 +269,22 @@ def list_mapping_reviews(
     connections = ConnectorRuntimeService(db).list_connections(ctx.tenant.id)
     conn_map = {c.id: c for c in connections}
     latest_runs = svc.latest_sync_runs_by_connection(ctx.tenant.id, {r.source_connection_id for r in rows})
-    customers = {c.id: c.name for c in db.scalars(select(Customer).where(Customer.tenant_id == ctx.tenant.id)).all()}
-    return [_to_mapping_review_row(r, conn_map, customers, latest_runs) for r in rows]
+    customer_rows = list(db.scalars(select(Customer).where(Customer.tenant_id == ctx.tenant.id)).all())
+    customer_names = {c.id: c.name for c in customer_rows}
+    tenant_name_keys = {"".join(ch for ch in c.name.lower() if ch.isalnum()) for c in customer_rows if c.name}
+    tenant_contact_domains: set[str] = set()
+    return [
+        _to_mapping_review_row(
+            r,
+            conn_map,
+            customer_names,
+            latest_runs,
+            svc=svc,
+            tenant_name_keys=tenant_name_keys,
+            tenant_contact_domains=tenant_contact_domains,
+        )
+        for r in rows
+    ]
 
 
 @router.post("/mappings/{review_id}/action", response_model=MappingReviewRow)
@@ -289,18 +305,49 @@ def mapping_review_action(
     )
     db.commit()
     db.refresh(row)
-    customer_names = {c.id: c.name for c in db.scalars(select(Customer).where(Customer.tenant_id == ctx.tenant.id)).all()}
+    customer_rows = list(db.scalars(select(Customer).where(Customer.tenant_id == ctx.tenant.id)).all())
+    customer_names = {c.id: c.name for c in customer_rows}
     connection = db.scalars(
         select(SourceSystemConnection).where(
             SourceSystemConnection.tenant_id == ctx.tenant.id, SourceSystemConnection.id == row.source_connection_id
         )
     ).first()
     latest_runs = svc.latest_sync_runs_by_connection(ctx.tenant.id, {row.source_connection_id})
+    tenant_name_keys = {"".join(ch for ch in c.name.lower() if ch.isalnum()) for c in customer_rows if c.name}
+    tenant_contact_domains = set()
     return _to_mapping_review_row(
         row,
         {row.source_connection_id: connection} if connection else {},
         customer_names,
         latest_runs,
+        svc=svc,
+        tenant_name_keys=tenant_name_keys,
+        tenant_contact_domains=tenant_contact_domains,
+    )
+
+
+@router.post("/mappings/create-customers", response_model=MappingCreateCustomersResponse)
+def create_customers_from_mappings(
+    body: MappingCreateCustomersRequest,
+    ctx: AccessContext = Depends(require_permission("membership:write")),
+    db: Session = Depends(get_db),
+):
+    svc = ConnectorOnboardingService(db)
+    result = svc.create_customers_from_mapping_reviews(
+        tenant_id=ctx.tenant.id,
+        actor_user_id=ctx.user.id,
+        review_ids=list(body.review_ids or []),
+        connection_id=body.connection_id,
+    )
+    db.commit()
+    return MappingCreateCustomersResponse(
+        requested_rows=result.requested_rows,
+        eligible_rows=result.eligible_rows,
+        created_customers=result.created_customers,
+        accepted_rows=result.accepted_rows,
+        skipped_rows=result.skipped_rows,
+        created_customer_ids=result.created_customer_ids,
+        updated_review_ids=result.updated_review_ids,
     )
 
 
@@ -309,9 +356,17 @@ def _to_mapping_review_row(
     connection_map: dict[UUID, SourceSystemConnection],
     customer_names: dict[UUID, str],
     latest_runs: dict[UUID, object],
+    svc: ConnectorOnboardingService,
+    tenant_name_keys: set[str],
+    tenant_contact_domains: set[str],
 ) -> MappingReviewRow:
     conn = connection_map.get(r.source_connection_id)
     last_run = latest_runs.get(r.source_connection_id)
+    eligibility = svc.customer_create_eligibility(
+        row=r,
+        tenant_name_keys=tenant_name_keys,
+        tenant_contact_domains=tenant_contact_domains,
+    )
     return MappingReviewRow(
         id=r.id,
         source_connection_id=r.source_connection_id,
@@ -335,6 +390,8 @@ def _to_mapping_review_row(
         last_sync_started_at=getattr(last_run, "started_at", None).isoformat() if getattr(last_run, "started_at", None) else None,
         reviewed_at=r.reviewed_at.isoformat() if r.reviewed_at else None,
         notes=r.notes,
+        eligible_for_customer_create=eligibility.eligible,
+        create_customer_blockers=eligibility.blockers,
     )
 def _to_connection_response(svc: ConnectorRuntimeService, r) -> SourceConnectionResponse:
     return SourceConnectionResponse(

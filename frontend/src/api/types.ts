@@ -200,6 +200,18 @@ export type MappingReviewRow = {
   last_sync_started_at: string | null;
   reviewed_at: string | null;
   notes: string | null;
+  eligible_for_customer_create: boolean;
+  create_customer_blockers: string[];
+};
+
+export type MappingCreateCustomersResponse = {
+  requested_rows: number;
+  eligible_rows: number;
+  created_customers: number;
+  accepted_rows: number;
+  skipped_rows: number;
+  created_customer_ids: string[];
+  updated_review_ids: string[];
 };
 
 export type IntegrationCoverageItem = {

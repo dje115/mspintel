@@ -112,12 +112,29 @@ class MappingReviewRow(BaseModel):
     last_sync_started_at: str | None = None
     reviewed_at: str | None = None
     notes: str | None = None
+    eligible_for_customer_create: bool = False
+    create_customer_blockers: list[str] = Field(default_factory=list)
 
 
 class MappingReviewActionRequest(BaseModel):
     action: str
     customer_id: UUID | None = None
     notes: str | None = None
+
+
+class MappingCreateCustomersRequest(BaseModel):
+    review_ids: list[UUID] = Field(default_factory=list)
+    connection_id: UUID | None = None
+
+
+class MappingCreateCustomersResponse(BaseModel):
+    requested_rows: int
+    eligible_rows: int
+    created_customers: int
+    accepted_rows: int
+    skipped_rows: int
+    created_customer_ids: list[UUID] = Field(default_factory=list)
+    updated_review_ids: list[UUID] = Field(default_factory=list)
 
 
 class IntegrationCoverageItem(BaseModel):

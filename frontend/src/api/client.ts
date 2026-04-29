@@ -12,6 +12,7 @@ import type {
   CommercialHubResponse,
   IntegrationSyncRun,
   MappingReviewRow,
+  MappingCreateCustomersResponse,
   CustomerDetailResponse,
   CustomerListResponse,
   ExecutiveDashboardResponse,
@@ -440,6 +441,16 @@ export const api = {
     body: { action: string; customer_id?: string; notes?: string }
   ) =>
     request<MappingReviewRow>(`/api/v1/integrations/mappings/${reviewId}/action`, {
+      method: "POST",
+      headers: authHeaders(accessToken, tenantId),
+      body: JSON.stringify(body)
+    }),
+  integrationCreateCustomersFromMappings: (
+    accessToken: string,
+    tenantId: string,
+    body: { review_ids?: string[]; connection_id?: string }
+  ) =>
+    request<MappingCreateCustomersResponse>("/api/v1/integrations/mappings/create-customers", {
       method: "POST",
       headers: authHeaders(accessToken, tenantId),
       body: JSON.stringify(body)

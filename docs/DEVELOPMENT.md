@@ -122,8 +122,11 @@ Preferred flow for connector-backed demo domains:
    - `POST /api/v1/integrations/connections/{id}/sync`
 4. Validate canonical surfaces:
    - `GET /api/v1/integrations/mappings` (reviewable suggested/unlinked identity rows)
+   - `POST /api/v1/integrations/mappings/create-customers` (selected/all eligible first-connector baseline import)
    - `GET /api/v1/workspace/m365-health`
    - `/app/integrations/mappings`
+   - Use "Create customers from all eligible rows" (or selected rows) in mapping review when starting from an empty customer baseline.
+   - `/app/customers` (verify imported canonical customers exist)
    - `/app/m365-health`
 
 The direction is to keep seed mostly structural and let connector syncs materialise realistic business telemetry into canonical tables.

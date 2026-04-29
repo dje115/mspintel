@@ -375,6 +375,83 @@ def test_mapping_review_list_supports_filters(client, db_session: Session):
     body = pending.json()
     assert len(body) == 1
     assert body[0]["source_external_id"] == "fil-1"
+    assert isinstance(body[0]["eligible_for_customer_create"], bool)
+    assert isinstance(body[0]["create_customer_blockers"], list)
+
+
+def test_mapping_import_creates_customers_and_is_idempotent(client, db_session: Session):
+    tenant = _make_tenant(db_session, slug="mapimport", name="Mapping Import MSP")
+    admin = create_user_with_membership(db_session, "admin-mapimport@example.com", "tenant_admin", tenant)
+    create = client.post(
+        "/api/v1/integrations/connections",
+        headers=auth_headers(admin, str(tenant.id)),
+        json={
+            "system_type": "microsoft_365",
+            "display_name": "M365",
+            "auth_mode": "sandbox",
+            "sync_cadence_minutes": 60,
+            "config": {"demo_mode": True},
+        },
+    )
+    assert create.status_code == 201, create.text
+    cid = uuid.UUID(create.json()["id"])
+    review_a = ConnectorMappingReview(
+        tenant_id=tenant.id,
+        source_connection_id=cid,
+        entity_type="customer",
+        source_external_id="m365-customer:acme",
+        source_display_name="Acme Dental Ltd",
+        source_domain="acme-dental.co.uk",
+        suggested_confidence="low",
+        status="unlinked",
+    )
+    review_b = ConnectorMappingReview(
+        tenant_id=tenant.id,
+        source_connection_id=cid,
+        entity_type="customer",
+        source_external_id="m365-customer:bright",
+        source_display_name="Bright Legal Services",
+        source_domain="bright-legal.co.uk",
+        suggested_confidence="low",
+        status="pending",
+    )
+    db_session.add_all([review_a, review_b])
+    db_session.commit()
+
+    imported = client.post(
+        "/api/v1/integrations/mappings/create-customers",
+        headers=auth_headers(admin, str(tenant.id)),
+        json={"connection_id": str(cid)},
+    )
+    assert imported.status_code == 200, imported.text
+    body = imported.json()
+    assert body["eligible_rows"] == 2
+    assert body["created_customers"] == 2
+    assert body["accepted_rows"] == 2
+    assert body["skipped_rows"] == 0
+
+    reviews_after = db_session.scalars(
+        select(ConnectorMappingReview).where(ConnectorMappingReview.tenant_id == tenant.id)
+    ).all()
+    assert all(r.status == "accepted" for r in reviews_after)
+    assert all(r.mapped_customer_id is not None for r in reviews_after)
+    customers = db_session.scalars(select(Customer).where(Customer.tenant_id == tenant.id)).all()
+    assert len(customers) == 2
+
+    rerun = client.post(
+        "/api/v1/integrations/mappings/create-customers",
+        headers=auth_headers(admin, str(tenant.id)),
+        json={"connection_id": str(cid)},
+    )
+    assert rerun.status_code == 200, rerun.text
+    rerun_body = rerun.json()
+    assert rerun_body["created_customers"] == 0
+    assert rerun_body["accepted_rows"] == 0
+    customers_after_rerun = db_session.scalars(select(Customer).where(Customer.tenant_id == tenant.id)).all()
+    assert len(customers_after_rerun) == 2
+
+    audit_rows = db_session.scalars(select(AuditEvent).where(AuditEvent.tenant_id == tenant.id)).all()
+    assert any(a.event_type == "connector_mapping_customers_imported" for a in audit_rows)
 
 
 def test_integration_coverage_endpoint_shapes_counts(client, db_session: Session):

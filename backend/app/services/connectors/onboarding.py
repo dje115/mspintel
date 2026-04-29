@@ -25,6 +25,7 @@ LIFECYCLE_STATES = {"configured", "tested", "active", "disabled", "paused", "err
 SYNC_BEHAVIORS = {"manual_sync_only", "scheduled_sync_enabled"}
 MAPPING_ACTIONS = {"accept", "reject", "remap", "unlink"}
 MAPPING_STATUSES = {"pending", "accepted", "rejected", "remapped", "unlinked"}
+CUSTOMER_LIKE_ENTITY_TYPES = {ENTITY_CUSTOMER, "account", "tenant", "organization"}
 
 
 def _norm_name(value: str | None) -> str:
@@ -39,6 +40,23 @@ class MatchSuggestion:
     confidence: str
     score: float
     reasons: list[str]
+
+
+@dataclass
+class CustomerCreateEligibility:
+    eligible: bool
+    blockers: list[str]
+
+
+@dataclass
+class CreateCustomersResult:
+    requested_rows: int
+    eligible_rows: int
+    created_customers: int
+    accepted_rows: int
+    skipped_rows: int
+    created_customer_ids: list[UUID]
+    updated_review_ids: list[UUID]
 
 
 class ConnectorOnboardingService:
@@ -259,4 +277,174 @@ class ConnectorOnboardingService:
             if row.source_connection_id not in latest:
                 latest[row.source_connection_id] = row
         return latest
+
+    def customer_create_eligibility(
+        self,
+        *,
+        row: ConnectorMappingReview,
+        tenant_name_keys: set[str],
+        tenant_contact_domains: set[str],
+    ) -> CustomerCreateEligibility:
+        blockers: list[str] = []
+        if row.entity_type not in CUSTOMER_LIKE_ENTITY_TYPES:
+            blockers.append("unsupported_entity_type")
+        if not (row.source_display_name or "").strip():
+            blockers.append("missing_source_display_name")
+        if row.status not in {"pending", "unlinked"}:
+            blockers.append("status_not_importable")
+        if row.mapped_customer_id is not None:
+            blockers.append("already_mapped")
+        normalized_name = _norm_name(row.source_display_name)
+        if normalized_name and normalized_name in tenant_name_keys:
+            blockers.append("duplicate_normalized_name")
+        source_domain = (row.source_domain or "").strip().lower()
+        if source_domain and source_domain in tenant_contact_domains:
+            blockers.append("duplicate_domain_signal")
+        return CustomerCreateEligibility(eligible=not blockers, blockers=blockers)
+
+    def create_customers_from_mapping_reviews(
+        self,
+        *,
+        tenant_id: UUID,
+        actor_user_id: UUID | None,
+        review_ids: list[UUID] | None = None,
+        connection_id: UUID | None = None,
+    ) -> CreateCustomersResult:
+        stmt = select(ConnectorMappingReview).where(ConnectorMappingReview.tenant_id == tenant_id)
+        if review_ids:
+            stmt = stmt.where(ConnectorMappingReview.id.in_(review_ids))
+        if connection_id:
+            stmt = stmt.where(ConnectorMappingReview.source_connection_id == connection_id)
+        rows = list(self.db.scalars(stmt.order_by(ConnectorMappingReview.created_at.asc())).all())
+        requested_rows = len(rows)
+        if requested_rows == 0:
+            return CreateCustomersResult(
+                requested_rows=0,
+                eligible_rows=0,
+                created_customers=0,
+                accepted_rows=0,
+                skipped_rows=0,
+                created_customer_ids=[],
+                updated_review_ids=[],
+            )
+
+        tenant_customers = list(self.db.scalars(select(Customer).where(Customer.tenant_id == tenant_id)).all())
+        tenant_name_keys = {_norm_name(c.name) for c in tenant_customers if c.name}
+        tenant_contact_domains: set[str] = set()
+        contact_emails = self.db.scalars(select(Contact.email).where(Contact.tenant_id == tenant_id)).all()
+        for email in contact_emails:
+            if email and "@" in email:
+                tenant_contact_domains.add(email.rsplit("@", 1)[1].strip().lower())
+
+        now = datetime.now(UTC)
+        eligible_rows = 0
+        created_customers = 0
+        accepted_rows = 0
+        skipped_rows = 0
+        created_customer_ids: list[UUID] = []
+        updated_review_ids: list[UUID] = []
+        conn_by_id = {
+            c.id: c
+            for c in self.db.scalars(
+                select(SourceSystemConnection).where(SourceSystemConnection.tenant_id == tenant_id)
+            ).all()
+        }
+
+        for row in rows:
+            eligibility = self.customer_create_eligibility(
+                row=row,
+                tenant_name_keys=tenant_name_keys,
+                tenant_contact_domains=tenant_contact_domains,
+            )
+            if not eligibility.eligible:
+                skipped_rows += 1
+                continue
+            eligible_rows += 1
+
+            existing_mapping = self.db.scalars(
+                select(SourceEntityMapping).where(
+                    SourceEntityMapping.tenant_id == tenant_id,
+                    SourceEntityMapping.source_connection_id == row.source_connection_id,
+                    SourceEntityMapping.entity_type == row.entity_type,
+                    SourceEntityMapping.source_id == row.source_external_id,
+                )
+            ).first()
+            target_customer_id: UUID | None = None
+            if existing_mapping:
+                target_customer_id = existing_mapping.canonical_entity_id
+            else:
+                clean_name = (row.source_display_name or "").strip()[:180]
+                connection = conn_by_id.get(row.source_connection_id)
+                external_prefix = connection.system_type if connection else "connector"
+                created = Customer(
+                    tenant_id=tenant_id,
+                    name=clean_name,
+                    status="active",
+                    owner_name=None,
+                    external_ref=f"{external_prefix}:{row.source_external_id}"[:180],
+                )
+                self.db.add(created)
+                self.db.flush()
+                created_customers += 1
+                created_customer_ids.append(created.id)
+                target_customer_id = created.id
+                tenant_name_keys.add(_norm_name(clean_name))
+                if row.source_domain:
+                    tenant_contact_domains.add(row.source_domain.strip().lower())
+
+                self.audit(
+                    tenant_id=tenant_id,
+                    actor_user_id=actor_user_id,
+                    event_type="connector_mapping_customer_created",
+                    details=f"review_id={row.id}; customer_id={created.id}; source_external_id={row.source_external_id}",
+                )
+
+            if not existing_mapping:
+                self.db.add(
+                    SourceEntityMapping(
+                        tenant_id=tenant_id,
+                        source_connection_id=row.source_connection_id,
+                        entity_type=row.entity_type,
+                        source_id=row.source_external_id,
+                        canonical_entity_id=target_customer_id,
+                        source_updated_at=now,
+                        mapping_metadata={"manual_override": True, "action": "create_customer_from_mapping_review"},
+                    )
+                )
+            else:
+                existing_mapping.canonical_entity_id = target_customer_id
+                existing_mapping.source_updated_at = now
+                existing_mapping.mapping_metadata = {
+                    "manual_override": True,
+                    "action": "create_customer_from_mapping_review",
+                }
+
+            row.mapped_customer_id = target_customer_id
+            row.status = "accepted"
+            row.reviewed_at = now
+            row.reviewed_by_user_id = actor_user_id
+            row.notes = "customer_created_from_mapping_review"
+            accepted_rows += 1
+            updated_review_ids.append(row.id)
+
+        if updated_review_ids:
+            self.audit(
+                tenant_id=tenant_id,
+                actor_user_id=actor_user_id,
+                event_type="connector_mapping_customers_imported",
+                details=(
+                    f"requested={requested_rows}; eligible={eligible_rows}; created={created_customers}; "
+                    f"accepted={accepted_rows}; skipped={skipped_rows}"
+                ),
+            )
+        self.db.flush()
+        return CreateCustomersResult(
+            requested_rows=requested_rows,
+            eligible_rows=eligible_rows,
+            created_customers=created_customers,
+            accepted_rows=accepted_rows,
+            skipped_rows=skipped_rows,
+            created_customer_ids=created_customer_ids,
+            updated_review_ids=updated_review_ids,
+        )
 
