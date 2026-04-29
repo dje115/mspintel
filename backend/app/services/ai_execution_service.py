@@ -223,7 +223,15 @@ class AIExecutionService:
                 run_metadata={"prompt_key": resolved.prompt_key},
             )
             self.db.commit()
-            return _outcome_from_run(run, resolved, message="No active prompt is configured for this task.")
+            return _outcome_from_run(
+                run,
+                resolved,
+                message=(
+                    "No active prompt is configured for this task. "
+                    "Sync platform defaults: `docker compose exec backend python -m app.scripts.sync_platform_prompt_defaults` "
+                    "or activate a prompt version in tenant/platform prompts."
+                ),
+            )
 
         system_prompt = render_prompt_template(resolved.prompt_text, variables)
         user_message = json.dumps(variables, ensure_ascii=False, indent=2)

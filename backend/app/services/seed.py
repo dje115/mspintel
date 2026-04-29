@@ -168,11 +168,11 @@ def seed_all(db: Session) -> None:
         ensure_ai_provider_catalog,
         ensure_demo_tenant_ai_provider,
         ensure_legacy_prompt_aliases,
-        ensure_platform_default_prompts,
+        sync_platform_prompt_catalog,
     )
 
     ensure_ai_provider_catalog(db)
-    ensure_platform_default_prompts(db)
+    sync_platform_prompt_catalog(db)
     ensure_legacy_prompt_aliases(db)
     if tenant:
         ensure_demo_tenant_ai_provider(db, tenant.id)

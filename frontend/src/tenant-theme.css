@@ -1686,18 +1686,208 @@ button.tenant-btn-inline {
   border-color: rgba(13, 148, 136, 0.25);
 }
 
+.tenant-review-commerce {
+  margin: 0 0 1.25rem;
+}
+
+.tenant-review-commerce--compact {
+  margin-bottom: 1rem;
+}
+
+.tenant-review-commerce--embedded {
+  margin-bottom: 0;
+}
+
+.tenant-review-commerce-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.75rem;
+}
+
+.tenant-review-commerce-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 0.85rem 0.95rem;
+  background: linear-gradient(180deg, #fff 0%, #f8fafc 100%);
+}
+
+.tenant-review-commerce-card--angle {
+  border-color: rgba(13, 148, 136, 0.28);
+  background: linear-gradient(180deg, #f0fdfa 0%, #fff 100%);
+}
+
+.tenant-review-commerce-title {
+  margin: 0 0 0.5rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #0f766e;
+}
+
+.tenant-review-commerce-list {
+  margin: 0;
+  padding-left: 1rem;
+  font-size: 0.88rem;
+  color: #334155;
+}
+
+.tenant-review-commerce-list li {
+  margin-bottom: 0.45rem;
+}
+
+.tenant-review-commerce-empty {
+  margin: 0;
+  font-size: 0.86rem;
+}
+
+.tenant-review-commerce-angle {
+  margin: 0.35rem 0 0;
+  font-size: 0.86rem;
+  color: #475569;
+  line-height: 1.45;
+}
+
+.tenant-review-am-block {
+  margin-bottom: 1.5rem;
+}
+
+.tenant-review-am-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.tenant-review-am-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 0.85rem 0.95rem;
+  background: #fff;
+  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.04);
+  break-inside: avoid;
+}
+
+.tenant-review-am-card-title {
+  margin: 0 0 0.45rem;
+  font-size: 0.92rem;
+  color: #0f172a;
+}
+
+.tenant-review-am-card-list {
+  margin: 0;
+  padding-left: 1.05rem;
+  font-size: 0.86rem;
+  line-height: 1.45;
+  color: #334155;
+}
+
+.tenant-review-am-card-body {
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.5;
+  color: #475569;
+}
+
+.tenant-review-ph-note {
+  margin: 0.35rem 0 0.65rem;
+  padding: 0.5rem 0.65rem;
+  border-radius: 10px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  font-size: 0.82rem;
+  color: #92400e;
+}
+
+.tenant-review-needs-review {
+  margin: 0.65rem 0;
+  padding: 0.55rem 0.7rem;
+  border-radius: 10px;
+  background: #fef3c7;
+  border: 1px solid #fcd34d;
+  font-size: 0.86rem;
+  color: #78350f;
+}
+
+.tenant-review-report-banner {
+  margin-top: 0.75rem;
+}
+
+.tenant-review-report-commerce-wrap h2 {
+  margin-top: 0;
+}
+
+.tenant-review-history-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
+}
+
+.tenant-review-history-warn {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #b45309;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 999px;
+  padding: 0.12rem 0.45rem;
+}
+
+.tenant-review-history-needs {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #9a3412;
+  background: #ffedd5;
+  border: 1px solid #fdba74;
+  border-radius: 999px;
+  padding: 0.12rem 0.45rem;
+}
+
 @media print {
+  .tenant-shell .tenant-sidebar,
+  .tenant-shell .tenant-topbar,
+  .tenant-shell .tenant-sidebar-foot,
   .tenant-review-no-print,
   .tenant-app-sidebar,
   .tenant-app-header,
   .tenant-review-toolbar,
-  .tenant-review-tabs {
+  .tenant-review-tabs,
+  .tenant-topbar-actions .tenant-select,
+  .tenant-btn-ghost {
     display: none !important;
+  }
+
+  .tenant-shell .tenant-main {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+  }
+
+  .tenant-shell .tenant-canvas {
+    padding: 0.35rem !important;
+    max-width: 100% !important;
   }
 
   .tenant-review-page--print-mode,
   .tenant-review-page--print-mode .tenant-panel {
     background: #fff !important;
+    box-shadow: none !important;
+  }
+
+  .tenant-review-report-doc {
+    border: none !important;
+    box-shadow: none !important;
+    max-width: 100% !important;
+  }
+
+  .tenant-review-am-card,
+  .tenant-review-commerce-card {
+    break-inside: avoid;
     box-shadow: none !important;
   }
 

@@ -58,6 +58,60 @@ def detect_output_warnings(text: str, *, customer_safe: bool) -> list[str]:
     return warnings
 
 
+def _flatten_string_values(obj: Any, out: list[str], depth: int = 0) -> None:
+    if depth > 6 or obj is None:
+        return
+    if isinstance(obj, str):
+        if obj.strip():
+            out.append(obj)
+        return
+    if isinstance(obj, dict):
+        for v in obj.values():
+            _flatten_string_values(v, out, depth + 1)
+        return
+    if isinstance(obj, list):
+        for v in obj:
+            _flatten_string_values(v, out, depth + 1)
+
+
+def gather_review_text_for_scan(text: str, raw: str, parsed: dict[str, Any] | None) -> str:
+    parts = [text or "", raw or ""]
+    if parsed:
+        acc: list[str] = []
+        _flatten_string_values(parsed, acc)
+        parts.extend(acc)
+    return "\n".join(parts)
+
+
+def collect_review_output_warnings(
+    text: str,
+    raw: str,
+    parsed: dict[str, Any] | None,
+    *,
+    customer_safe: bool,
+) -> tuple[list[str], dict[str, Any]]:
+    """
+    Merge pattern checks on raw assistant output and on structured string fields.
+    Returns (warnings, quality_flags) where quality_flags may include needs_customer_review.
+    """
+    bundle = gather_review_text_for_scan(text, raw, parsed)
+    warnings = list(detect_output_warnings(bundle, customer_safe=customer_safe))
+    flags: dict[str, Any] = {}
+    if customer_safe:
+        bad = False
+        for pat in _PLACEHOLDER_PATTERNS:
+            if re.search(pat, bundle, flags=re.IGNORECASE):
+                bad = True
+                break
+        if bad or "```" in bundle:
+            flags["needs_customer_review"] = True
+            if not any("Needs review" in w for w in warnings):
+                warnings.append(
+                    "Needs review: customer-facing output may contain placeholders or code fences — do not send as-is."
+                )
+    return warnings, flags
+
+
 def merge_short_context(
     parsed: dict[str, Any] | None,
     *,
@@ -66,6 +120,7 @@ def merge_short_context(
     task_type: str,
     confidence_notes: list[str],
     missing_data: list[str],
+    quality_flags: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Prefer model-provided short_context; otherwise build a compact fallback."""
     sc: dict[str, Any] | None = None
@@ -123,4 +178,6 @@ def merge_short_context(
             base[k] = v[:12]
     if isinstance(base.get("summary"), str) and len(base["summary"]) > 500:
         base["summary"] = base["summary"][:497] + "..."
+    if quality_flags:
+        base["quality_flags"] = quality_flags
     return base

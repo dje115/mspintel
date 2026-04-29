@@ -292,7 +292,9 @@ def ensure_ai_provider_catalog(db: "Session") -> None:
     db.commit()
 
 
-def ensure_platform_default_prompts(db: "Session") -> None:
+def ensure_platform_default_prompts(db: "Session") -> dict[str, int]:
+    """Insert missing **platform** prompt definitions + active v1. Idempotent; never touches tenant overrides."""
+    stats = {"definitions_created": 0, "versions_created": 0}
     for prompt_key, task_type, title in DEFAULT_PLATFORM_PROMPT_KEYS:
         exists = db.scalars(
             select(PromptDefinition).where(
@@ -331,7 +333,72 @@ def ensure_platform_default_prompts(db: "Session") -> None:
             version_metadata=None,
         )
         db.add(v)
+        stats["definitions_created"] += 1
+        stats["versions_created"] += 1
     db.commit()
+    return stats
+
+
+def repair_platform_prompts_missing_active_version(db: "Session") -> int:
+    """
+    For each known platform prompt_key: if a platform definition exists but has **no** active PromptVersion,
+    append a new active version from PLATFORM_PROMPT_TEXT_OVERRIDES. Tenant-scoped definitions are never read or written.
+    """
+    repaired = 0
+    for prompt_key, task_type, _title in DEFAULT_PLATFORM_PROMPT_KEYS:
+        d = db.scalars(
+            select(PromptDefinition).where(
+                PromptDefinition.scope == PROMPT_SCOPE_PLATFORM,
+                PromptDefinition.tenant_id.is_(None),
+                PromptDefinition.prompt_key == prompt_key,
+            )
+        ).first()
+        if not d:
+            continue
+        active = db.scalars(
+            select(PromptVersion).where(
+                PromptVersion.prompt_definition_id == d.id,
+                PromptVersion.is_active.is_(True),
+            ).limit(1)
+        ).first()
+        if active:
+            continue
+        max_n = db.scalar(
+            select(func.coalesce(func.max(PromptVersion.version_number), 0)).where(
+                PromptVersion.prompt_definition_id == d.id
+            )
+        )
+        vn = int(max_n or 0) + 1
+        body = PLATFORM_PROMPT_TEXT_OVERRIDES.get(
+            task_type,
+            f"You are an MSP intelligence assistant. Task context: {task_type}. Follow tenant policies and produce concise, actionable output.",
+        )
+        db.add(
+            PromptVersion(
+                id=uuid.uuid4(),
+                prompt_definition_id=d.id,
+                version_number=vn,
+                prompt_text=body,
+                change_note="Repaired missing active platform version (sync_platform_prompt_catalog)",
+                created_by_user_id=None,
+                is_active=True,
+                version_metadata=None,
+            )
+        )
+        repaired += 1
+    if repaired:
+        db.commit()
+    return repaired
+
+
+def sync_platform_prompt_catalog(db: "Session") -> dict[str, int]:
+    """
+    Safe for existing databases: upsert missing platform prompt definitions/versions and repair platform defs
+    without an active version. Does **not** modify tenant prompt overrides or deactivate tenant versions.
+    """
+    stats = ensure_platform_default_prompts(db)
+    stats["active_versions_repaired"] = repair_platform_prompts_missing_active_version(db)
+    return stats
 
 
 def ensure_legacy_prompt_aliases(db: "Session") -> None:

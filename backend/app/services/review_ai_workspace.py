@@ -15,10 +15,11 @@ from app.repositories.customers import CustomerRepository
 from app.schemas.review_ai import ReviewAiGenerationResponse
 from app.services.ai_execution_service import AIExecutionService
 from app.services.review_ai_output import (
-    detect_output_warnings,
+    collect_review_output_warnings,
     merge_short_context,
     parse_json_loose,
 )
+from app.services.review_prompt_guard import assert_review_ai_task_prompt_available
 from app.services.review_qbr_context import (
     build_review_qbr_variables,
     build_source_coverage_summary,
@@ -77,6 +78,8 @@ class ReviewAiWorkspaceService:
 
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unknown artifact_type")
 
+        assert_review_ai_task_prompt_available(self.db, tenant_id, task_type)
+
         variables = build_review_qbr_variables(
             self.db,
             tenant_id,
@@ -102,7 +105,7 @@ class ReviewAiWorkspaceService:
         customer_safe = artifact_type in ("customer_email_draft", "customer_report")
         text = outcome.text or ""
         parsed, raw = parse_json_loose(text)
-        warnings = detect_output_warnings(text, customer_safe=customer_safe)
+        warnings, quality_flags = collect_review_output_warnings(text, raw, parsed, customer_safe=customer_safe)
         if parsed is None and outcome.status == AI_RUN_SUCCEEDED:
             warnings.append("AI output was not structured JSON — showing raw text; short summary may be partial.")
 
@@ -121,6 +124,7 @@ class ReviewAiWorkspaceService:
             task_type=task_type,
             confidence_notes=conf_notes,
             missing_data=missing_notes,
+            quality_flags=quality_flags or None,
         )
 
         art_status = "succeeded" if outcome.status == AI_RUN_SUCCEEDED else "failed"

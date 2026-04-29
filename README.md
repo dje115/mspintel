@@ -1,6 +1,6 @@
 # mspintel
 
-mspintel is a secure, AI-assisted MSP intelligence platform for MSPs. Release **`v2.9.0`** adds a **Review & QBR workspace** (`/app/reviews`): tabbed meeting-pack UI, connector-shaped context, prompt-driven **AI agenda / AM prep / customer email / customer report**, **persisted `customer_review_ai_artifacts`** with **`short_context_json`** for continuity, and **`ai_task_runs`** lineage — still on **`v2.8.0`** Microsoft stack foundations (M365 health, Customer 360, billing integrity).
+mspintel is a secure, AI-assisted MSP intelligence platform for MSPs. Release **`v2.9.0`** added the **Review & QBR workspace** (`/app/reviews`): tabbed meeting-pack UI, connector-shaped context, prompt-driven **AI agenda / AM prep / customer email / customer report**, **persisted `customer_review_ai_artifacts`** with **`short_context_json`** for continuity, and **`ai_task_runs`** lineage. **`v2.9.1`** hardens that workspace with **non-destructive platform prompt catalog sync**, clearer **missing-prompt errors**, **commercial snapshot cards**, **account-manager card layout**, **placeholder / fenced-output warnings** (persisted and surfaced), and **print CSS aligned to the tenant shell**. The product remains on **`v2.8.0`** Microsoft stack foundations (M365 health, Customer 360, billing integrity).
 
 ## Implementation guidance (Cursor / contributors)
 
@@ -22,7 +22,7 @@ Standing rules for Docker, versioning, env vars, validation, docs, GitHub workfl
 
 ## Versioning
 
-- Current app version: **`2.9.0`** (Review/QBR workspace: persisted review AI artefacts + `/api/v1/reviews/...` routes)
+- Current app version: **`2.9.1`** (Review/QBR polish: prompt sync CLI, AM/commercial cards, warnings, print layout)
 - Central runtime version variable: `MSPINTEL_APP_VERSION` (root `.env` and Compose → backend `MSPINTEL_APP_VERSION`)
 - Frontend display: `VITE_APP_VERSION` in `.env`, overridden in Compose from `MSPINTEL_APP_VERSION` as `VITE_APP_VERSION` for the dev container
 

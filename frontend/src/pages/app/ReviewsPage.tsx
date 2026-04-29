@@ -13,6 +13,14 @@ import type {
 import { AccountManagerGuidanceShell } from "../../components/AccountManagerGuidanceShell";
 import { TenantAiContextNotice } from "../../components/TenantAiContextNotice";
 import { useSession } from "../../state/session";
+import {
+  accountManagerArtifactToCards,
+  buildCommercialReviewSlice,
+  mergeWarningLists,
+  needsCustomerReviewFromArtifact,
+  scanTextForReviewWarnings,
+  stripMarkdownFences
+} from "../../utils/reviewDisplayUtils";
 const REVIEW_TABS = [
   { id: "overview", label: "Prep overview" },
   { id: "agenda", label: "AI agenda" },
@@ -75,6 +83,137 @@ function FinanceReviewStrip({ detail }: { detail: CustomerDetailResponse }) {
 
 function lostQuotesCount(quotes: CustomerDetailResponse["quotes"]) {
   return quotes.filter((q) => (q.status ?? "").toLowerCase() === "lost").length;
+}
+
+function CommercialReviewCards({
+  detail,
+  className
+}: {
+  detail: CustomerDetailResponse;
+  className?: string;
+}) {
+  const slice = buildCommercialReviewSlice(detail);
+  return (
+    <section className={className ?? "tenant-review-commerce"} aria-label="Commercial pipeline">
+      <div className="tenant-review-commerce-grid">
+        <article className="tenant-review-commerce-card">
+          <h3 className="tenant-review-commerce-title">Open opportunities</h3>
+          {slice.openOpportunities.length === 0 ? (
+            <p className="muted tenant-review-commerce-empty">
+              {slice.hasCommercialRows ? "No open pipeline rows on file." : slice.emptyNote}
+            </p>
+          ) : (
+            <ul className="tenant-review-commerce-list">
+              {slice.openOpportunities.map((o) => (
+                <li key={o.id}>
+                  <strong>{o.title}</strong>
+                  <span className="muted"> · {o.status}</span>
+                  {o.value_cents != null ? <span className="muted"> · value on file</span> : null}
+                  {o.suggested_next_action ? (
+                    <p className="tenant-review-commerce-angle">{o.suggested_next_action}</p>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          )}
+        </article>
+        <article className="tenant-review-commerce-card">
+          <h3 className="tenant-review-commerce-title">Stalled / revisit</h3>
+          {slice.stalledOpportunities.length === 0 ? (
+            <p className="muted tenant-review-commerce-empty">
+              {slice.hasCommercialRows ? "No stalled or revisit-flagged opportunities." : "—"}
+            </p>
+          ) : (
+            <ul className="tenant-review-commerce-list">
+              {slice.stalledOpportunities.map((o) => (
+                <li key={o.id}>
+                  <strong>{o.title}</strong>
+                  <span className="muted"> · {o.status}</span>
+                  {o.revisit_reason ? <p className="tenant-review-commerce-angle">{o.revisit_reason}</p> : null}
+                </li>
+              ))}
+            </ul>
+          )}
+        </article>
+        <article className="tenant-review-commerce-card">
+          <h3 className="tenant-review-commerce-title">Lost quotes</h3>
+          {slice.lostQuotes.length === 0 ? (
+            <p className="muted tenant-review-commerce-empty">
+              {slice.hasCommercialRows ? "No lost quotes on file for this account." : "—"}
+            </p>
+          ) : (
+            <ul className="tenant-review-commerce-list">
+              {slice.lostQuotes.map((q) => (
+                <li key={q.id}>
+                  <strong>{q.title}</strong>
+                  {q.suggested_next_action ? (
+                    <p className="tenant-review-commerce-angle">{q.suggested_next_action}</p>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          )}
+        </article>
+        <article className="tenant-review-commerce-card tenant-review-commerce-card--angle">
+          <h3 className="tenant-review-commerce-title">Discussion angle</h3>
+          {slice.discussionAngle ? (
+            <p className="tenant-review-commerce-angle">{slice.discussionAngle}</p>
+          ) : (
+            <p className="muted tenant-review-commerce-empty">
+              {slice.hasCommercialRows ? "No suggested next action text on commercial rows." : slice.emptyNote}
+            </p>
+          )}
+        </article>
+      </div>
+    </section>
+  );
+}
+
+function AccountManagerStructuredBlock({
+  label,
+  artifact,
+  genWarnings
+}: {
+  label: string;
+  artifact: CustomerReviewArtifactOut | null;
+  genWarnings?: string[] | null;
+}) {
+  const { cards, placeholderWarnings } = accountManagerArtifactToCards(artifact);
+  const merged = mergeWarningLists(genWarnings, placeholderWarnings);
+  const showPh = merged.some((w) => /placeholder|fenced|\[[^\]]+\]/i.test(w));
+  return (
+    <div className="tenant-review-am-block">
+      <h3 className="tenant-review-subhead">{label}</h3>
+      {merged.length ? <WarningsList warnings={merged} /> : null}
+      {showPh ? (
+        <p className="tenant-review-ph-note" role="status">
+          Draft may contain template tokens or fenced blocks — use as rehearsal notes, not customer-ready copy.
+        </p>
+      ) : null}
+      {!artifact?.full_output_text && !artifact?.full_output_json ? (
+        <p className="muted">No saved output yet — generate to persist meeting prep for this account.</p>
+      ) : cards.length ? (
+        <div className="tenant-review-am-grid">
+          {cards.map((c) => (
+            <article key={c.id} className="tenant-review-am-card">
+              <h4 className="tenant-review-am-card-title">{c.title}</h4>
+              {c.bullets.length ? (
+                <ul className="tenant-review-am-card-list">
+                  {c.bullets.map((b, bi) => (
+                    <li key={`${c.id}-${bi}`}>{b}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="tenant-review-am-card-body">{c.body}</p>
+              )}
+            </article>
+          ))}
+        </div>
+      ) : (
+        <p className="muted">Unable to structure this output — check AI history for raw text.</p>
+      )}
+    </div>
+  );
 }
 
 function strList(v: unknown): string[] {
@@ -199,10 +338,21 @@ function AgendaCards({ artifact }: { artifact: CustomerReviewArtifactOut | null 
   );
 }
 
-function EmailPanel({ artifact }: { artifact: CustomerReviewArtifactOut | null }) {
+function EmailPanel({
+  artifact,
+  liveWarnings
+}: {
+  artifact: CustomerReviewArtifactOut | null;
+  liveWarnings?: string[] | null;
+}) {
   const o = artifact?.full_output_json;
-  const subject = o && typeof o.subject === "string" ? o.subject : "";
-  const body = o && typeof o.body === "string" ? o.body : artifact?.full_output_text ?? "";
+  const subjectRaw = o && typeof o.subject === "string" ? o.subject : "";
+  const bodyRaw = o && typeof o.body === "string" ? o.body : artifact?.full_output_text ?? "";
+  const subject = stripMarkdownFences(subjectRaw);
+  const body = stripMarkdownFences(bodyRaw);
+  const needs = needsCustomerReviewFromArtifact(artifact);
+  const scanWarns = scanTextForReviewWarnings(`${subject}\n${body}`);
+  const mergedWarns = mergeWarningLists(liveWarnings, artifact?.output_warnings, scanWarns);
   const copy = async (t: string) => {
     try {
       await navigator.clipboard.writeText(t);
@@ -215,8 +365,15 @@ function EmailPanel({ artifact }: { artifact: CustomerReviewArtifactOut | null }
       <p className="tenant-review-disclaimer">
         Draft only — review before sending. MSPIntel does not send email from this screen.
       </p>
+      {needs || mergedWarns.length ? (
+        <div className="tenant-review-needs-review" role="status">
+          <strong>Needs review</strong>
+          <span className="muted"> — output may include placeholders or unsafe patterns. Do not send as final customer copy until cleaned.</span>
+        </div>
+      ) : null}
+      <WarningsList warnings={mergedWarns} />
       <label className="tenant-review-field-label">Subject</label>
-      <div className="tenant-review-copy-row">
+      <div className="tenant-review-copy-row tenant-review-no-print">
         <input className="tenant-review-input" readOnly value={subject} aria-label="Email subject" />
         <button type="button" className="tenant-btn-inline" onClick={() => void copy(subject)}>
           Copy subject
@@ -224,7 +381,7 @@ function EmailPanel({ artifact }: { artifact: CustomerReviewArtifactOut | null }
       </div>
       <label className="tenant-review-field-label">Body</label>
       <textarea className="tenant-review-textarea" readOnly rows={14} value={body} aria-label="Email body" />
-      <div className="tenant-review-actions">
+      <div className="tenant-review-actions tenant-review-no-print">
         <button type="button" className="tenant-btn-inline" onClick={() => void copy(body)}>
           Copy body
         </button>
@@ -238,14 +395,25 @@ function EmailPanel({ artifact }: { artifact: CustomerReviewArtifactOut | null }
 
 function ReportDocument({
   detail,
-  artifact
+  artifact,
+  liveWarnings
 }: {
   detail: CustomerDetailResponse;
   artifact: CustomerReviewArtifactOut | null;
+  liveWarnings?: string[] | null;
 }) {
   const o = artifact?.full_output_json;
   const title = (o && typeof o.title === "string" ? o.title : null) ?? `${detail.name} — review brief`;
   const exec = o && typeof o.executive_summary === "string" ? o.executive_summary : "";
+  const needs = needsCustomerReviewFromArtifact(artifact);
+  const scanBlob = [
+    exec,
+    ...strList(o?.recommendations),
+    ...strList(o?.next_steps),
+    ...strList(o?.data_notes),
+    ...strList(o?.confidence_notes)
+  ].join("\n");
+  const mergedWarns = mergeWarningLists(liveWarnings, artifact?.output_warnings, scanTextForReviewWarnings(scanBlob));
   const pairs = (key: string) => {
     const arr = o && Array.isArray(o[key]) ? (o[key] as Record<string, unknown>[]) : [];
     return arr.map((row, i) => (
@@ -263,6 +431,13 @@ function ReportDocument({
         <p className="muted">
           {detail.name} · Prepared {new Date().toLocaleDateString()}
         </p>
+        {needs || mergedWarns.length ? (
+          <div className="tenant-review-needs-review tenant-review-report-banner" role="status">
+            <strong>Needs review</strong>
+            <span className="muted"> — placeholders or formatting issues may be present. Validate before sharing externally.</span>
+          </div>
+        ) : null}
+        <WarningsList warnings={mergedWarns} />
       </header>
       {exec ? (
         <section className="tenant-review-report-block">
@@ -303,6 +478,10 @@ function ReportDocument({
           </ul>
         </section>
       ) : null}
+      <section className="tenant-review-report-block tenant-review-report-commerce-wrap">
+        <h2>Commercial snapshot</h2>
+        <CommercialReviewCards detail={detail} className="tenant-review-commerce tenant-review-commerce--embedded" />
+      </section>
       <section className="tenant-review-report-block muted">
         <h2>Data &amp; confidence</h2>
         {strList(o?.data_notes).map((n) => (
@@ -638,6 +817,7 @@ export function ReviewsPage() {
           {tab === "overview" ? (
             <>
               <FinanceReviewStrip detail={detail} />
+              <CommercialReviewCards detail={detail} />
               <div className="tenant-review-kpi-row tenant-review-no-print" aria-label="Account health">
                 <div className="tenant-review-kpi tenant-review-kpi--risk">
                   <p className="tenant-review-kpi-label">Risk</p>
@@ -802,16 +982,17 @@ export function ReviewsPage() {
                 </div>
               </div>
               <div className="tenant-panel-body" style={{ padding: "1rem 1.1rem" }}>
-                <h3 className="tenant-review-subhead">Next conversation</h3>
-                <div className="tenant-review-prose">
-                  {latestNotes?.full_output_text ??
-                    (latestNotes?.full_output_json ? JSON.stringify(latestNotes.full_output_json, null, 2) : "—")}
-                </div>
-                <h3 className="tenant-review-subhead">Call script</h3>
-                <div className="tenant-review-prose">
-                  {latestScript?.full_output_text ??
-                    (latestScript?.full_output_json ? JSON.stringify(latestScript.full_output_json, null, 2) : "—")}
-                </div>
+                <CommercialReviewCards detail={detail} className="tenant-review-commerce tenant-review-commerce--compact" />
+                <AccountManagerStructuredBlock
+                  label="Next conversation"
+                  artifact={latestNotes}
+                  genWarnings={lastGen.notes?.output_warnings}
+                />
+                <AccountManagerStructuredBlock
+                  label="Call script"
+                  artifact={latestScript}
+                  genWarnings={lastGen.script?.output_warnings}
+                />
               </div>
             </section>
           ) : null}
@@ -849,8 +1030,7 @@ export function ReviewsPage() {
               </div>
               <div className="tenant-panel-body" style={{ padding: "1rem 1.1rem" }}>
                 <AiMetaRow label="Last run" outcome={lastGen.email ?? null} />
-                <WarningsList warnings={lastGen.email?.output_warnings ?? []} />
-                <EmailPanel artifact={latestEmail} />
+                <EmailPanel artifact={latestEmail} liveWarnings={lastGen.email?.output_warnings} />
               </div>
             </section>
           ) : null}
@@ -885,8 +1065,7 @@ export function ReviewsPage() {
               </div>
               <div className="tenant-panel-body" style={{ padding: "1rem 1.1rem" }}>
                 <AiMetaRow label="Last run" outcome={lastGen.report ?? null} />
-                <WarningsList warnings={lastGen.report?.output_warnings ?? []} />
-                <ReportDocument detail={detail} artifact={latestReport} />
+                <ReportDocument detail={detail} artifact={latestReport} liveWarnings={lastGen.report?.output_warnings} />
               </div>
             </section>
           ) : null}
@@ -914,8 +1093,16 @@ export function ReviewsPage() {
                 <ul className="tenant-review-history-list">
                   {history.map((h) => (
                     <li key={h.id} className="tenant-review-history-item">
-                      <div>
+                      <div className="tenant-review-history-head">
                         <strong>{h.artifact_type}</strong> · {h.status} · {h.created_at ? new Date(h.created_at).toLocaleString() : "—"}
+                        {h.output_warnings?.length ? (
+                          <span className="tenant-review-history-warn" title={h.output_warnings.join(" · ")}>
+                            {h.output_warnings.length} warning{h.output_warnings.length === 1 ? "" : "s"}
+                          </span>
+                        ) : null}
+                        {needsCustomerReviewFromArtifact(h) ? (
+                          <span className="tenant-review-history-needs">Needs review</span>
+                        ) : null}
                       </div>
                       <div className="muted">{String((h.short_context_json as Record<string, unknown> | undefined)?.summary ?? h.title ?? "")}</div>
                       <div className="muted" style={{ fontSize: "0.78rem" }}>

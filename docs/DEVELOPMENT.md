@@ -16,6 +16,7 @@
 2. `docker compose up --build -d` (the frontend dev image runs **`npm install`** on each container start so `node_modules` matches `package.json` after pulls; the app tree is bind-mounted at **`/src`** so Vite can serve the SPA route **`/app`** without colliding with the container workdir. Dependencies live on the named Compose volume **`frontend_node_modules`**; to reset only that volume, see README “Frontend image” / Rollup troubleshooting.)
 3. `docker compose exec backend alembic upgrade head` (optional: the backend entrypoint already runs `alembic upgrade head` on container start)
 4. `docker compose exec backend python -m app.db.seed`
+5. **Optional (existing DBs after pulling new prompt keys):** `docker compose exec backend python -m app.scripts.sync_platform_prompt_defaults` — upserts **missing** platform prompt definitions/versions and repairs platform rows missing an active version; **does not** wipe tenants or overwrite tenant prompt overrides. The backend container entrypoint also runs this catalog sync after migrations on start.
 
 ### Docker smoke check (tenant workspace)
 
@@ -34,6 +35,7 @@ After the stack is up and seeded:
 ## Tests and Checks
 
 - Backend tests: `cd backend && python -m pytest`
+- Frontend unit tests (display helpers): `cd frontend && npm run test`
 - Frontend build check: `cd frontend && npm run build`
 - Frontend lint: `cd frontend && npm run lint`
 
