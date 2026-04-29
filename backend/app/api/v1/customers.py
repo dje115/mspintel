@@ -131,7 +131,14 @@ def post_customer_review_agenda_ai(
     ctx: AccessContext = Depends(require_permission("customer:read")),
     db: Session = Depends(get_db),
 ):
-    variables = build_customer_review_agenda_variables(db, ctx.tenant.id, customer_id)
+    variables = build_customer_review_agenda_variables(
+        db,
+        ctx.tenant.id,
+        customer_id,
+        caller_name=ctx.user.full_name,
+        caller_email=ctx.user.email,
+        caller_role=ctx.role_code,
+    )
     return AIExecutionService(db).execute(
         tenant_id=ctx.tenant.id,
         task_type="customer_review_agenda",
@@ -158,7 +165,14 @@ def post_account_manager_next_conversation_ai(
     ctx: AccessContext = Depends(require_permission("customer:read")),
     db: Session = Depends(get_db),
 ):
-    variables = build_account_manager_next_conversation_variables(db, ctx.tenant.id, customer_id)
+    variables = build_account_manager_next_conversation_variables(
+        db,
+        ctx.tenant.id,
+        customer_id,
+        caller_name=ctx.user.full_name,
+        caller_email=ctx.user.email,
+        caller_role=ctx.role_code,
+    )
     return AIExecutionService(db).execute(
         tenant_id=ctx.tenant.id,
         task_type="account_manager_next_conversation",
@@ -185,7 +199,14 @@ def post_account_manager_call_script_ai(
     ctx: AccessContext = Depends(require_permission("customer:read")),
     db: Session = Depends(get_db),
 ):
-    variables = build_account_manager_call_script_variables(db, ctx.tenant.id, customer_id)
+    variables = build_account_manager_call_script_variables(
+        db,
+        ctx.tenant.id,
+        customer_id,
+        caller_name=ctx.user.full_name,
+        caller_email=ctx.user.email,
+        caller_role=ctx.role_code,
+    )
     return AIExecutionService(db).execute(
         tenant_id=ctx.tenant.id,
         task_type="account_manager_call_script",

@@ -8,7 +8,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.entities import Contact, Ticket
+from app.models.entities import Contact, SourceEntityMapping, Ticket
 from app.models.entities import ConnectorMappingReview, IntegrationSyncRun, SourceSystemConnection
 from app.repositories.customers import CustomerRepository
 from app.repositories.workspace import WorkspaceRepository
@@ -19,7 +19,15 @@ from app.services.tenant_profile import build_tenant_ai_context
 from app.services.workspace import WorkspaceService
 
 
-def _customer_ai_context_variables(db: Session, tenant_id: UUID, customer_id: UUID) -> dict:
+def _customer_ai_context_variables(
+    db: Session,
+    tenant_id: UUID,
+    customer_id: UUID,
+    *,
+    caller_name: str | None = None,
+    caller_email: str | None = None,
+    caller_role: str | None = None,
+) -> dict:
     repo = CustomerRepository(db)
     customer = repo.get_customer(tenant_id, customer_id)
     if not customer:
@@ -52,6 +60,97 @@ def _customer_ai_context_variables(db: Session, tenant_id: UUID, customer_id: UU
     if fin.get("error") == "not_found":
         fin = {}
     tenant_profile_context = build_tenant_ai_context(db, tenant_id).model_dump(mode="json")
+    customer_mappings = list(
+        db.scalars(
+            select(SourceEntityMapping).where(
+                SourceEntityMapping.tenant_id == tenant_id,
+                SourceEntityMapping.entity_type == "customer",
+                SourceEntityMapping.canonical_entity_id == customer_id,
+            )
+        ).all()
+    )
+    primary_contact = contacts[0] if contacts else None
+    caller_display_name = caller_name or "your account manager"
+    msp_profile = dict(tenant_profile_context.get("msp_profile_summary") or {})
+    msp_brand_name = msp_profile.get("brand_name") or msp_profile.get("legal_name") or "your MSP team"
+    missing_data_notes: list[str] = []
+    if not customer.owner_name:
+        missing_data_notes.append("Account owner is not set on this customer.")
+    if primary_contact is None:
+        missing_data_notes.append("No primary contact is available from synced customer contacts.")
+    if not customer_mappings:
+        missing_data_notes.append("No source mapping rows were found for this canonical customer.")
+    if not m365.get("linked"):
+        missing_data_notes.append("M365 posture is not linked for this customer.")
+    if not risk:
+        missing_data_notes.append("Risk Engine snapshot is unavailable for this customer.")
+    if not fin:
+        missing_data_notes.append("Finance linkage context is unavailable for this customer.")
+    script_context = {
+        "customer": {
+            "id": str(customer.id),
+            "name": customer.name,
+            "status": customer.status,
+            "owner_name": customer.owner_name,
+            "primary_contact": {
+                "name": primary_contact.name,
+                "email": primary_contact.email,
+                "external_ref": primary_contact.external_ref,
+            }
+            if primary_contact
+            else None,
+            "mapping_status": "mapped" if customer_mappings else "unmapped",
+            "mapping_confidence": m365.get("confidence_level") or (risk.confidence_level if risk else "low"),
+            "mapping_count": len(customer_mappings),
+        },
+        "msp": {
+            "brand_name": msp_brand_name,
+            "legal_name": msp_profile.get("legal_name"),
+            "regions_served": list(tenant_profile_context.get("regions_served") or []),
+            "services": list(tenant_profile_context.get("selected_services") or []),
+            "business_goals": list(tenant_profile_context.get("business_goals") or []),
+            "delivery_model": msp_profile.get("delivery_model"),
+        },
+        "caller": {
+            "name": caller_display_name,
+            "display_name_fallback": "your account manager",
+            "email": caller_email,
+            "role": caller_role,
+        },
+        "account_context": {
+            "m365": m365,
+            "service": {
+                "open_ticket_count": tickets,
+                "open_tickets": [
+                    {
+                        "subject": row.subject,
+                        "status": row.status,
+                        "external_ref": row.external_ref,
+                    }
+                    for row in open_ticket_rows[:6]
+                ],
+                "recommendation_summaries": rec_summaries,
+            },
+            "commercial": {
+                "open_opportunity_count": opps,
+                "open_quote_count": quotes,
+                "open_opportunities": [o.model_dump(mode="json") for o in opp_rows[:6]],
+                "quotes": [q.model_dump(mode="json") for q in quote_rows[:6]],
+            },
+            "risk": {
+                "risk_score": score.risk_score if score else None,
+                "attention_score": score.attention_score if score else None,
+                "risk_engine": {
+                    "risk_level": risk.risk_level if risk else None,
+                    "attention_level": risk.attention_level if risk else None,
+                    "confidence_level": risk.confidence_level if risk else None,
+                    "reason_codes": risk.reason_codes if risk else [],
+                    "coverage_notes": risk.coverage_notes if risk else [],
+                },
+            },
+        },
+        "missing_data_notes": missing_data_notes,
+    }
     return {
         "customer": {
             "id": str(customer.id),
@@ -109,6 +208,8 @@ def _customer_ai_context_variables(db: Session, tenant_id: UUID, customer_id: UU
         "open_opportunities": [o.model_dump(mode="json") for o in opp_rows],
         "quotes": [q.model_dump(mode="json") for q in quote_rows],
         "tenant_profile_context": tenant_profile_context,
+        "script_context": script_context,
+        "missing_data_notes": missing_data_notes,
     }
 
 
@@ -124,16 +225,70 @@ def build_churn_explanation_variables(db: Session, tenant_id: UUID, customer_id:
     return {"task": "churn_explanation", **_customer_ai_context_variables(db, tenant_id, customer_id)}
 
 
-def build_customer_review_agenda_variables(db: Session, tenant_id: UUID, customer_id: UUID) -> dict:
-    return {"task": "customer_review_agenda", **_customer_ai_context_variables(db, tenant_id, customer_id)}
+def build_customer_review_agenda_variables(
+    db: Session,
+    tenant_id: UUID,
+    customer_id: UUID,
+    *,
+    caller_name: str | None = None,
+    caller_email: str | None = None,
+    caller_role: str | None = None,
+) -> dict:
+    return {
+        "task": "customer_review_agenda",
+        **_customer_ai_context_variables(
+            db,
+            tenant_id,
+            customer_id,
+            caller_name=caller_name,
+            caller_email=caller_email,
+            caller_role=caller_role,
+        ),
+    }
 
 
-def build_account_manager_next_conversation_variables(db: Session, tenant_id: UUID, customer_id: UUID) -> dict:
-    return {"task": "account_manager_next_conversation", **_customer_ai_context_variables(db, tenant_id, customer_id)}
+def build_account_manager_next_conversation_variables(
+    db: Session,
+    tenant_id: UUID,
+    customer_id: UUID,
+    *,
+    caller_name: str | None = None,
+    caller_email: str | None = None,
+    caller_role: str | None = None,
+) -> dict:
+    return {
+        "task": "account_manager_next_conversation",
+        **_customer_ai_context_variables(
+            db,
+            tenant_id,
+            customer_id,
+            caller_name=caller_name,
+            caller_email=caller_email,
+            caller_role=caller_role,
+        ),
+    }
 
 
-def build_account_manager_call_script_variables(db: Session, tenant_id: UUID, customer_id: UUID) -> dict:
-    return {"task": "account_manager_call_script", **_customer_ai_context_variables(db, tenant_id, customer_id)}
+def build_account_manager_call_script_variables(
+    db: Session,
+    tenant_id: UUID,
+    customer_id: UUID,
+    *,
+    caller_name: str | None = None,
+    caller_email: str | None = None,
+    caller_role: str | None = None,
+) -> dict:
+    return {
+        "task": "account_manager_call_script",
+        **_customer_ai_context_variables(
+            db,
+            tenant_id,
+            customer_id,
+            caller_name=caller_name,
+            caller_email=caller_email,
+            caller_role=caller_role,
+        ),
+    }
 
 
 def build_billing_variance_summary_variables(db: Session, tenant_id: UUID, customer_id: UUID) -> dict:

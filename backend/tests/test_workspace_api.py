@@ -348,3 +348,51 @@ def test_account_manager_next_conversation_context_includes_contacts_and_tickets
     user_payload = mock_chat.call_args.kwargs["user_content"]
     assert "Jordan Stakeholder" in user_payload
     assert "VPN outage" in user_payload
+    assert "script_context" in user_payload
+    assert "am-ai@example.com" in user_payload
+    assert "tenant_admin" in user_payload
+
+
+@patch("app.services.ai_execution_service.execute_chat_completion")
+def test_account_manager_call_script_context_includes_caller_and_msp_fields(mock_chat, client, db_session):
+    mock_chat.return_value = ChatCompletionResult(
+        text="Use direct opener with customer and MSP names.",
+        raw={"choices": [{"message": {"content": "ok"}}]},
+    )
+    tenant = Tenant(id=uuid.uuid4(), slug="am-script", name="AM Script", is_active=True)
+    db_session.add(tenant)
+    db_session.commit()
+    user = create_user_with_membership(db_session, "am-script@example.com", "account_manager", tenant)
+    customer = Customer(id=uuid.uuid4(), tenant_id=tenant.id, name="Fabrikam", status="active", owner_name="Casey")
+    db_session.add(customer)
+    db_session.flush()
+    db_session.add(
+        Contact(
+            id=uuid.uuid4(),
+            tenant_id=tenant.id,
+            customer_id=customer.id,
+            name="Alex Decision-Maker",
+            email="alex@fabrikam.test",
+            external_ref="ATC-888",
+        )
+    )
+    db_session.commit()
+    _seed_m365_workspace_ai_route(
+        db_session,
+        tenant,
+        user,
+        task_type="account_manager_call_script",
+        prompt_key="account_manager_call_script.system",
+    )
+    post = client.post(
+        f"/api/v1/customers/{customer.id}/ai/account-manager-call-script",
+        headers=auth_headers(user, str(tenant.id)),
+    )
+    assert post.status_code == 200, post.text
+    assert post.json()["status"] == "succeeded"
+    user_payload = mock_chat.call_args.kwargs["user_content"]
+    assert "script_context" in user_payload
+    assert "Fabrikam" in user_payload
+    assert "Alex Decision-Maker" in user_payload
+    assert "am-script@example.com" in user_payload
+    assert "account_manager" in user_payload

@@ -1149,6 +1149,41 @@ button.tenant-btn-inline {
   color: #334155;
 }
 
+.tenant-ai-guidance-output-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 0.65rem;
+  margin-top: 0.55rem;
+}
+
+.tenant-ai-guidance-output-card {
+  border: 1px solid #dbeafe;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #eff6ff 0%, #ffffff 48%);
+  padding: 0.6rem 0.7rem;
+}
+
+.tenant-ai-guidance-output-title {
+  margin: 0 0 0.45rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #1d4ed8;
+}
+
+.tenant-ai-guidance-list {
+  margin: 0.35rem 0 0;
+  padding-left: 1.1rem;
+  color: #334155;
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.tenant-ai-guidance-list--ordered {
+  list-style: decimal;
+}
+
 .tenant-panel--m365-ai {
   border-color: rgba(14, 116, 144, 0.25);
   box-shadow: 0 10px 24px rgba(14, 116, 144, 0.08);

@@ -39,6 +39,87 @@ function statusMessage(s: AIProductBlockState): string | null {
   return s.message ?? s.status;
 }
 
+function normalizeGuidanceText(text: string): string {
+  return text
+    .replace(/```markdown/gi, "")
+    .replace(/```/g, "")
+    .replace(/\[Customer Name\]/gi, "the customer")
+    .replace(/\[MSP Name\]/gi, "your MSP team")
+    .replace(/\[Your Name\]/gi, "your account manager")
+    .replace(/\[Owner Name\]/gi, "your account manager")
+    .replace(/\[insert [^\]]+\]/gi, "the agreed time")
+    .replace(/\[[A-Za-z][A-Za-z\s]{2,}\]/g, "the customer contact")
+    .replace(/\*\*/g, "")
+    .replace(/^[=-]{3,}$/gm, "")
+    .trim();
+}
+
+function parseSections(text: string): { title: string; body: string }[] {
+  const cleaned = normalizeGuidanceText(text);
+  if (!cleaned) return [];
+  const lines = cleaned.split("\n");
+  const sections: { title: string; body: string }[] = [];
+  let currentTitle = "Guidance";
+  let currentBody: string[] = [];
+  const flush = () => {
+    const body = currentBody.join("\n").trim();
+    if (body) sections.push({ title: currentTitle, body });
+    currentBody = [];
+  };
+  for (const raw of lines) {
+    const line = raw.trimEnd();
+    const heading = line.match(/^#{1,6}\s+(.+)$/);
+    if (heading) {
+      flush();
+      currentTitle = heading[1].trim();
+      continue;
+    }
+    currentBody.push(line);
+  }
+  flush();
+  return sections.length > 0 ? sections : [{ title: "Guidance", body: cleaned }];
+}
+
+function renderSectionBody(body: string): JSX.Element {
+  const lines = body
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+  if (lines.length === 0) return <p className="tenant-ai-guidance-output">No details provided.</p>;
+  const bulletItems = lines
+    .filter((line) => line.startsWith("- ") || line.startsWith("* ") || line.startsWith("+ "))
+    .map((line) => line.replace(/^[-*+]\s+/, "").trim());
+  const orderedItems = lines
+    .filter((line) => /^\d+\.\s+/.test(line))
+    .map((line) => line.replace(/^\d+\.\s+/, "").trim());
+  const paragraphLines = lines.filter(
+    (line) => !line.startsWith("- ") && !line.startsWith("* ") && !line.startsWith("+ ") && !/^\d+\.\s+/.test(line)
+  );
+  return (
+    <div>
+      {paragraphLines.map((line, idx) => (
+        <p key={`p-${idx}`} className="tenant-ai-guidance-output">
+          {line}
+        </p>
+      ))}
+      {bulletItems.length > 0 ? (
+        <ul className="tenant-ai-guidance-list">
+          {bulletItems.map((line, idx) => (
+            <li key={`b-${idx}`}>{line}</li>
+          ))}
+        </ul>
+      ) : null}
+      {orderedItems.length > 0 ? (
+        <ol className="tenant-ai-guidance-list tenant-ai-guidance-list--ordered">
+          {orderedItems.map((line, idx) => (
+            <li key={`o-${idx}`}>{line}</li>
+          ))}
+        </ol>
+      ) : null}
+    </div>
+  );
+}
+
 function GuidanceBlock({
   customerId,
   task,
@@ -105,6 +186,7 @@ function GuidanceBlock({
   };
 
   const displayText = state?.status === "succeeded" ? state.text : null;
+  const sections = displayText ? parseSections(displayText) : [];
   const loadingInitial = state === null;
 
   return (
@@ -132,7 +214,14 @@ function GuidanceBlock({
       {state && statusMessage(state) && !displayText ? <p className="tenant-page-sub">{statusMessage(state)}</p> : null}
       {runError ? <p className="tenant-error">{runError}</p> : null}
       {displayText ? (
-        <div className="tenant-ai-guidance-output">{displayText}</div>
+        <div className="tenant-ai-guidance-output-grid">
+          {sections.map((section, idx) => (
+            <div key={`${section.title}-${idx}`} className="tenant-ai-guidance-output-card">
+              <h4 className="tenant-ai-guidance-output-title">{section.title}</h4>
+              {renderSectionBody(section.body)}
+            </div>
+          ))}
+        </div>
       ) : null}
     </article>
   );
