@@ -6,8 +6,10 @@ import hashlib
 import json
 from uuid import UUID
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.models.entities import Ticket
 from app.repositories.customer_review_ai_artifacts import CustomerReviewAiArtifactRepository
 from app.services.ai_product_context import _customer_ai_context_variables
 from app.services.customer import CustomerService
@@ -41,6 +43,14 @@ def build_review_qbr_variables(
         caller_role=caller_role,
     )
     detail = CustomerService(db).get_customer_detail(tenant_id, customer_id).model_dump(mode="json")
+    open_ticket_rows = list(
+        db.scalars(
+            select(Ticket)
+            .where(Ticket.tenant_id == tenant_id, Ticket.customer_id == customer_id, Ticket.status == "open")
+            .order_by(Ticket.updated_at.desc().nulls_last(), Ticket.created_at.desc())
+            .limit(10)
+        ).all()
+    )
     repo = CustomerReviewAiArtifactRepository(db)
     prev = repo.recent_summaries_for_prompt(
         tenant_id,
@@ -77,6 +87,14 @@ def build_review_qbr_variables(
         "finance": detail.get("finance"),
         "m365": detail.get("m365"),
         "risk_engine": detail.get("risk_engine"),
+        "open_tickets": [
+            {
+                "subject": row.subject,
+                "status": row.status,
+                "external_ref": row.external_ref,
+            }
+            for row in open_ticket_rows
+        ],
     }
     out = {
         **base,

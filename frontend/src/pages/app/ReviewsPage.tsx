@@ -251,6 +251,20 @@ function AiMetaRow({ label, outcome }: { label: string; outcome: ReviewAiGenerat
   );
 }
 
+function AiOutcomeBanner({ outcome }: { outcome: ReviewAiGenerationResponse | null }) {
+  if (!outcome?.status || outcome.status === "succeeded") return null;
+  const msg =
+    outcome.message ||
+    (outcome.status === "skipped"
+      ? "This AI task is disabled for your tenant — enable it under AI engines or set a default provider."
+      : `Generation status: ${outcome.status}`);
+  return (
+    <div className="tenant-review-ai-outcome" role="status">
+      <strong>AI run did not complete successfully.</strong> <span className="muted">{msg}</span>
+    </div>
+  );
+}
+
 function WarningsList({ warnings }: { warnings: string[] }) {
   if (!warnings.length) return null;
   return (
@@ -944,6 +958,7 @@ export function ReviewsPage() {
               </div>
               <div className="tenant-panel-body" style={{ padding: "1rem 1.1rem" }}>
                 <AiMetaRow label="Last run" outcome={lastGen.agenda ?? null} />
+                <AiOutcomeBanner outcome={lastGen.agenda ?? null} />
                 <WarningsList warnings={lastGen.agenda?.output_warnings ?? []} />
                 <AgendaCards artifact={latestAgenda} />
               </div>
@@ -982,6 +997,10 @@ export function ReviewsPage() {
                 </div>
               </div>
               <div className="tenant-panel-body" style={{ padding: "1rem 1.1rem" }}>
+                <AiMetaRow label="Last run (notes)" outcome={lastGen.notes ?? null} />
+                <AiOutcomeBanner outcome={lastGen.notes ?? null} />
+                <AiMetaRow label="Last run (script)" outcome={lastGen.script ?? null} />
+                <AiOutcomeBanner outcome={lastGen.script ?? null} />
                 <CommercialReviewCards detail={detail} className="tenant-review-commerce tenant-review-commerce--compact" />
                 <AccountManagerStructuredBlock
                   label="Next conversation"
@@ -1030,6 +1049,7 @@ export function ReviewsPage() {
               </div>
               <div className="tenant-panel-body" style={{ padding: "1rem 1.1rem" }}>
                 <AiMetaRow label="Last run" outcome={lastGen.email ?? null} />
+                <AiOutcomeBanner outcome={lastGen.email ?? null} />
                 <EmailPanel artifact={latestEmail} liveWarnings={lastGen.email?.output_warnings} />
               </div>
             </section>
@@ -1065,6 +1085,7 @@ export function ReviewsPage() {
               </div>
               <div className="tenant-panel-body" style={{ padding: "1rem 1.1rem" }}>
                 <AiMetaRow label="Last run" outcome={lastGen.report ?? null} />
+                <AiOutcomeBanner outcome={lastGen.report ?? null} />
                 <ReportDocument detail={detail} artifact={latestReport} liveWarnings={lastGen.report?.output_warnings} />
               </div>
             </section>

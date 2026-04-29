@@ -17,6 +17,7 @@
 3. `docker compose exec backend alembic upgrade head` (optional: the backend entrypoint already runs `alembic upgrade head` on container start)
 4. `docker compose exec backend python -m app.db.seed`
 5. **Optional (existing DBs after pulling new prompt keys):** `docker compose exec backend python -m app.scripts.sync_platform_prompt_defaults` — upserts **missing** platform prompt definitions/versions and repairs platform rows missing an active version; **does not** wipe tenants or overwrite tenant prompt overrides. The backend container entrypoint also runs this catalog sync after migrations on start.
+6. **Task routes:** the runtime resolver auto-creates default **`tenant_ai_task_routes`** stubs for known task types (same as opening **AI engines**), so Review/QBR generation is not blocked before the first visit to AI settings (`v2.9.2+`).
 
 ### Docker smoke check (tenant workspace)
 

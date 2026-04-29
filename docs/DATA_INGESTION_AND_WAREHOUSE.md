@@ -119,3 +119,8 @@ The v2.1 model intentionally keeps the current app in a **canonical operational 
 - First-connector baseline flow: when canonical customers are empty/low, mapping review supports a tenant-scoped, audited import action that creates canonical customers from eligible `pending`/`unlinked` source identities (selected rows or all eligible rows for a connector), then marks those mapping rows as accepted/confirmed.
 - Current Autotask thin-slice behavior follows this rule: if baseline customers already exist, unmatched accounts are not auto-created and must pass mapping review before contacts/tickets/opportunities/quotes can link into canonical entities.
 - Integrations catalog can consume this metadata directly for honest UX, docs, and future feature gating.
+
+## Review/QBR context vs ingestion
+
+- Customer-level Review/QBR prompts receive **`review_workspace`** built from **canonical** Customer 360 facts (scores, contacts, tickets count, open ticket **previews**, opportunities, quotes, finance panel, M365 panel, risk engine, connector coverage). **No portfolio-wide M365 totals** are injected at single-customer scope.
+- Operational data remains authoritative in tier **3** tables; AI artefacts (`customer_review_ai_artifacts`) reference **`source_data_version`** hashes for stale-input awareness.

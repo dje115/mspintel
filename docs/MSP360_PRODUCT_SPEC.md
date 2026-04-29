@@ -192,7 +192,7 @@ Columns: **section** · **purpose** · **key users** · **core data sources** ·
 | Needs attention | Watch list | AM, Service | Customer status | `risk_summary` | **Existing** | Same |
 | Service risk | Backup + delivery snapshot | Service | Tickets + backup placeholder | `backup_risk_summary`, `stalled_work_explanation` | **Partial** | Veeam connector |
 | Backup & recovery | Protection posture | Service, Technical | Backup jobs, workloads | `backup_gap_opportunity`, `backup_event_matching` | **Future** | Veeam + billing correlation |
-| Reviews / QBR prep | Review cadence | AM, Director | Customer detail API + **`customer_review_ai_artifacts`** + meetings (later) | `customer_review_agenda.system`, AM guidance keys, **`customer_review_email_draft.system`**, **`customer_review_report.system`** | **Rough** (tabbed workspace, persisted artefacts + `short_context_json`, `/api/v1/reviews/...`; explicit generate) | Calendar + CRM + autosave collaborative notes |
+| Reviews / QBR prep | Review cadence | AM, Director | Customer detail API + **`customer_review_ai_artifacts`** + meetings (later) | `customer_review_agenda.system`, AM guidance keys, **`customer_review_email_draft.system`**, **`customer_review_report.system`** | **Working** (`v2.9.2+`: runtime **auto task-route stubs**, open-ticket previews in `review_workspace`, persisted artefacts + `short_context_json`, `/api/v1/reviews/...`; explicit generate) | Calendar + CRM + autosave collaborative notes |
 | Members | Team & invites | Admin | Memberships | — | **Existing** | SSO |
 | Integrations | Connectors | Admin | Connections, sync runs | — | **Existing** | CW, ITQuoter, Veeam, M365… |
 | AI engines | Provider routing | Admin | `ai_providers`, routes | — | **Existing** | More adapters |

@@ -6,7 +6,16 @@ from unittest.mock import patch
 
 from sqlalchemy.orm import Session
 
-from app.models.entities import Customer, CustomerReviewAiArtifact, Tenant
+from app.models.entities import (
+    AIProvider,
+    Customer,
+    CustomerReviewAiArtifact,
+    PromptDefinition,
+    PromptVersion,
+    Tenant,
+    TenantAiSettings,
+)
+from app.domain.ai_constants import PROMPT_SCOPE_PLATFORM
 from app.services.ai_providers.base import ChatCompletionResult
 from app.services.review_qbr_context import build_review_qbr_variables
 from tests.helpers import auth_headers, create_user_with_membership
@@ -158,3 +167,82 @@ def test_placeholder_warning_on_agenda(mock_chat, client, db_session: Session):
     assert r.status_code == 200
     warns = r.json().get("output_warnings") or []
     assert any("placeholder" in w.lower() for w in warns)
+
+
+@patch("app.services.ai_execution_service.execute_chat_completion")
+def test_review_email_post_succeeds_without_precreated_task_route(mock_chat, client, db_session: Session):
+    """Regression: Review email must work before the tenant opens /app/ai-settings (stub route auto-created)."""
+    payload = json.dumps(
+        {
+            "subject": "QBR scheduling — Acme",
+            "body": "Hello,\n\nWe would like to schedule your quarterly review.\n\nRegards,\nMSP",
+            "short_context": {"summary": "Scheduling note", "key_points": []},
+        }
+    )
+    mock_chat.return_value = ChatCompletionResult(text=payload, raw={})
+    tenant = Tenant(id=uuid.uuid4(), slug="rv5", name="RV5", is_active=True)
+    db_session.add(tenant)
+    db_session.commit()
+    admin = create_user_with_membership(db_session, "rv5@example.com", "tenant_admin", tenant)
+    cust = Customer(id=uuid.uuid4(), tenant_id=tenant.id, name="Acme", status="active", owner_name="Pat")
+    db_session.add(cust)
+    p = AIProvider(
+        id=uuid.uuid4(),
+        tenant_id=tenant.id,
+        provider_name="openai-dev",
+        status="configured",
+        provider_family="openai",
+        deployment_mode="hosted",
+        display_label="OpenAI",
+        is_enabled=True,
+        encrypted_settings=None,
+    )
+    db_session.add(p)
+    db_session.add(
+        TenantAiSettings(
+            tenant_id=tenant.id,
+            default_ai_provider_id=p.id,
+            default_model="gpt-4o-mini",
+            fallback_ai_provider_id=None,
+            fallback_model=None,
+            extra=None,
+            updated_by_user_id=admin.id,
+        )
+    )
+    d = PromptDefinition(
+        id=uuid.uuid4(),
+        scope=PROMPT_SCOPE_PLATFORM,
+        tenant_id=None,
+        prompt_key="customer_review_email_draft.system",
+        title="Email",
+        description=None,
+        task_type="customer_review_email_draft",
+        created_by_user_id=admin.id,
+        updated_by_user_id=admin.id,
+    )
+    v = PromptVersion(
+        id=uuid.uuid4(),
+        prompt_definition_id=d.id,
+        version_number=1,
+        prompt_text="Draft email JSON only. Context: {{review_workspace}}",
+        change_note=None,
+        created_by_user_id=admin.id,
+        is_active=True,
+        version_metadata=None,
+    )
+    db_session.add_all([d, v])
+    db_session.commit()
+    from app.core.ai_settings_crypto import encrypt_settings_payload
+
+    p.encrypted_settings = encrypt_settings_payload({"api_key": "sk-test"})
+    db_session.commit()
+    h = auth_headers(admin, str(tenant.id))
+    r = client.post(f"/api/v1/reviews/{cust.id}/ai/email-draft?tone=professional", headers=h)
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["status"] == "succeeded"
+    assert body.get("structured_output", {}).get("subject") == "QBR scheduling — Acme"
+    from app.repositories.tenant_ai_config import TenantAiConfigRepository
+
+    tr = TenantAiConfigRepository(db_session).get_route_by_task(tenant.id, "customer_review_email_draft")
+    assert tr is not None

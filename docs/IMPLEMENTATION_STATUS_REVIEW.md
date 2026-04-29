@@ -3,6 +3,14 @@
 **As of:** seed refresh + codebase review (post–rich `demo-msp` dataset).  
 **Method:** static review of routes, services, models, tests, and a small number of UI/API contracts — not a production load test.
 
+## Workflow audit snapshot (2026-04-29, Docker-first)
+
+- **Tenant routes:** Core auth, dashboard, customers, integrations, mappings, M365 health, billing integrity, recommendations, opportunities (incl. lost-quote tab redirect), at-risk/attention/service-risk, Review/QBR, AI settings — exercised via API/tests; full manual browser pass remains operator-owned.
+- **Platform routes:** Login/tenants/connectors/prompts/audit — structurally present; MFA flows environment-dependent.
+- **Review/QBR fix shipped in `v2.9.2`:** missing `tenant_ai_task_routes` rows caused **`AI_RUN_SKIPPED`** (“task disabled”) before users opened **AI engines**; resolver now **inserts stub routes** idempotently. UI shows an **orange outcome banner** when a run returns non-success. QBR variables include **`review_workspace.open_tickets`** (open ticket subjects) for PSA context.
+- **Autotask:** Connector Lab–backed sync for accounts/contacts/tickets/opportunities/quotes is implemented in **`AutotaskConnectorAdapter`**; mapping review still gates new customers when a baseline already exists.
+- **Xero thin import:** Not expanded in this slice; remains **next finance connector** priority after Autotask demo validation.
+
 Classification used per area:
 
 | Tag | Meaning |

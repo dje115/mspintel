@@ -1461,6 +1461,16 @@ button.tenant-btn-inline {
   margin: 0 0 0.75rem;
 }
 
+.tenant-review-ai-outcome {
+  margin: 0 0 0.75rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 10px;
+  background: #fff7ed;
+  border: 1px solid #fdba74;
+  font-size: 0.86rem;
+  color: #9a3412;
+}
+
 .tenant-review-warn-list {
   margin: 0 0 1rem;
   padding-left: 1.1rem;

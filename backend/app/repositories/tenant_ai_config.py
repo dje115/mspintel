@@ -4,6 +4,7 @@ import uuid
 from collections.abc import Sequence
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models.entities import AIProvider, TenantAiSettings, TenantAiTaskRoute
@@ -40,6 +41,32 @@ class TenantAiConfigRepository:
             TenantAiTaskRoute.tenant_id == tenant_id, TenantAiTaskRoute.task_type == task_type
         )
         return self.db.scalars(stmt).first()
+
+    def ensure_task_route_stub(self, tenant_id: uuid.UUID, task_type: str, *, prompt_key: str | None = None) -> None:
+        """Insert a default enabled route row if missing (same defaults as tenant AI settings list_routes).
+
+        Does not overwrite an existing row. Uses a savepoint so a unique-constraint race only rolls back the insert.
+        """
+        if self.get_route_by_task(tenant_id, task_type):
+            return
+        pk = prompt_key or f"{task_type}.system"
+        row = TenantAiTaskRoute(
+            id=uuid.uuid4(),
+            tenant_id=tenant_id,
+            task_type=task_type,
+            ai_provider_id=None,
+            model=None,
+            fallback_ai_provider_id=None,
+            fallback_model=None,
+            prompt_key=pk,
+            enabled=True,
+        )
+        try:
+            with self.db.begin_nested():
+                self.db.add(row)
+                self.db.flush()
+        except IntegrityError:
+            pass
 
     def list_ai_providers(self, tenant_id: uuid.UUID) -> Sequence[AIProvider]:
         stmt = select(AIProvider).where(AIProvider.tenant_id == tenant_id).order_by(AIProvider.provider_name)

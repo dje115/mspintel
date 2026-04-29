@@ -8,6 +8,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.domain.ai_constants import AI_TASK_TYPES
 from app.models.entities import AIProvider, AITaskRun, PromptVersion
 from app.repositories.prompt_registry import PromptRegistryRepository
 from app.repositories.tenant_ai_config import TenantAiConfigRepository
@@ -65,6 +66,8 @@ class AIRuntimeResolver:
         return self.db.scalars(stmt).first()
 
     def resolve(self, tenant_id: UUID, task_type: str, *, include_prompt_text: bool = True) -> ResolvedAITask:
+        if task_type in AI_TASK_TYPES:
+            self.tenant_repo.ensure_task_route_stub(tenant_id, task_type)
         route = self.tenant_repo.get_route_by_task(tenant_id, task_type)
         if not route:
             return ResolvedAITask(
