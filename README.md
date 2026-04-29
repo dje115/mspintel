@@ -1,6 +1,6 @@
 # mspintel
 
-mspintel is a secure, AI-assisted MSP intelligence platform for MSPs. Release **`v2.9.0`** added the **Review & QBR workspace** (`/app/reviews`): tabbed meeting-pack UI, connector-shaped context, prompt-driven **AI agenda / AM prep / customer email / customer report**, **persisted `customer_review_ai_artifacts`** with **`short_context_json`** for continuity, and **`ai_task_runs`** lineage. **`v2.9.1`** hardens that workspace with **non-destructive platform prompt catalog sync**, clearer **missing-prompt errors**, **commercial snapshot cards**, **account-manager card layout**, **placeholder / fenced-output warnings** (persisted and surfaced), and **print CSS aligned to the tenant shell**. **`v2.9.2`** fixes a **first-run Review/QBR AI gap**: **`tenant_ai_task_routes` stubs are created automatically** when resolving any known `AI_TASK_TYPES` task (same defaults as opening **AI engines**), so **email/report/agenda generation works without pre-visiting AI settings**, and Review/QBR variables include a short **open-tickets preview** for PSA-backed context. The product remains on **`v2.8.0`** Microsoft stack foundations (M365 health, Customer 360, billing integrity).
+mspintel is a secure, AI-assisted MSP intelligence platform for MSPs. Release **`v2.9.0`** added the **Review & QBR workspace** (`/app/reviews`): tabbed meeting-pack UI, connector-shaped context, prompt-driven **AI agenda / AM prep / customer email / customer report**, **persisted `customer_review_ai_artifacts`** with **`short_context_json`** for continuity, and **`ai_task_runs`** lineage. **`v2.9.1`** hardens that workspace with **non-destructive platform prompt catalog sync**, clearer **missing-prompt errors**, **commercial snapshot cards**, **account-manager card layout**, **placeholder / fenced-output warnings** (persisted and surfaced), and **print CSS aligned to the tenant shell**. **`v2.9.2`** fixes a **first-run Review/QBR AI gap**: **`tenant_ai_task_routes` stubs are created automatically** when resolving any known `AI_TASK_TYPES` task (same defaults as opening **AI engines**), so **email/report/agenda generation works without pre-visiting AI settings**, and Review/QBR variables include a short **open-tickets preview** for PSA-backed context. **`v2.9.3`** adds a **Playwright browser smoke** for login → **Integration mappings** → customers → **Review/QBR** tabs and AI flows (**mocked** Review AI by default so CI does not need Ollama), and fixes **Review workspace “Mappings” links** to **`/app/integrations/mappings`**. The product remains on **`v2.8.0`** Microsoft stack foundations (M365 health, Customer 360, billing integrity).
 
 ## Implementation guidance (Cursor / contributors)
 
@@ -22,7 +22,7 @@ Standing rules for Docker, versioning, env vars, validation, docs, GitHub workfl
 
 ## Versioning
 
-- Current app version: **`2.9.2`** (Review/QBR: auto AI task routes + ticket context; workflow reliability)
+- Current app version: **`2.9.3`** (Playwright Review/QBR smoke + mapping link fix; builds on 2.9.2 Review AI routing)
 - Central runtime version variable: `MSPINTEL_APP_VERSION` (root `.env` and Compose → backend `MSPINTEL_APP_VERSION`)
 - Frontend display: `VITE_APP_VERSION` in `.env`, overridden in Compose from `MSPINTEL_APP_VERSION` as `VITE_APP_VERSION` for the dev container
 
@@ -277,6 +277,7 @@ Tenant and platform accounts use **separate** login URLs (tenant JWT cannot call
 | `/app/customers/:id` | Customer 360 / account intelligence (`#workspace` → recommendations tab) |
 | `/app/members` | Team & invitations |
 | `/app/integrations` | Integration connections |
+| `/app/integrations/mappings` | Mapping review queue (import baseline, accept/reject, filters) |
 | `/app/security` | Sessions list / revoke / sign out others |
 | `/app/system-status` | System status (requires `system:read`; shows API version) |
 
@@ -285,5 +286,6 @@ Tenant and platform accounts use **separate** login URLs (tenant JWT cannot call
 - Backend tests: `cd backend && python -m pytest`
 - Frontend build: `cd frontend && npm run build`
 - Frontend lint: `cd frontend && npm run lint`
+- **Browser smoke (Playwright):** with Docker Compose up and demo seed (customers present), from the repo host: `cd frontend && npm run test:e2e:install` once, then `E2E_API_BASE_URL=http://127.0.0.1:8001 npm run test:e2e` (details: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#playwright-browser-smoke-review--qbr)).
 - Docker compose file: `docker compose config`
 - **Note:** `alembic check` requires a reachable Postgres matching `DATABASE_URL` (e.g. with the stack up). Offline head: `cd backend && python -m alembic heads`.

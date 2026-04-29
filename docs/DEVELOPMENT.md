@@ -40,6 +40,47 @@ After the stack is up and seeded:
 - Frontend build check: `cd frontend && npm run build`
 - Frontend lint: `cd frontend && npm run lint`
 
+### Playwright browser smoke (Review / QBR)
+
+Automated **user-journey** checks live in **`frontend/e2e/review-qbr-smoke.spec.ts`**. **`e2e/global-setup.ts`** logs in via **`POST /api/v1/auth/login`** against **`E2E_API_BASE_URL`** (default **`http://127.0.0.1:8001`**) and writes Playwright **`storageState`** to **`frontend/e2e/.auth/tenant.json`** (gitignored), plus **`e2e/.cache/meta.json`** with the first customer id (if any). If the tenant has **no customers** yet, global-setup **triggers one `Microsoft 365 (Connector Lab)` manual sync** (same as Integrations → Sync) and re-reads customers so Review/QBR tests can run against a populated demo — set **`E2E_SKIP_CONNECTOR_PREP=1`** to skip that (e.g. offline API-only checks).
+
+**Prerequisites**
+
+- Docker Compose stack up; backend on host port **8001** and Vite on **5173** (default Compose publish).
+- Demo seed applied (`docker compose exec backend python -m app.db.seed`) and, for full Review assertions, at least **one customer** (Connector Lab M365 sync + mapping import as in **[DEMO_SEED_DATA.md](DEMO_SEED_DATA.md)**).
+
+**Install browser once (host)**
+
+```bash
+cd frontend
+npm run test:e2e:install
+```
+
+**Run smoke (host, mocked Review AI — no Ollama)**
+
+By default, Review AI **POST** responses for agenda / email / report are **stubbed in the browser** (`page.route`) so CI and laptops without a model still prove the SPA wiring, copy controls, persistence reload, and history list. Unset the default mock with **`E2E_MOCK_AI=0`** to hit the real backend provider (then you need a working tenant AI provider).
+
+```bash
+cd frontend
+set E2E_API_BASE_URL=http://127.0.0.1:8001
+set PLAYWRIGHT_BASE_URL=http://127.0.0.1:5173
+npm run test:e2e
+```
+
+(On PowerShell, `set` → `$env:E2E_API_BASE_URL="http://127.0.0.1:8001"`.)
+
+**Pass / skip conditions**
+
+- **Always:** dashboard with seeded session; mappings page heading; customers empty-state **or** row navigation; optional **UI login** test (isolated context, demo credentials).
+- **When `meta.customerId` exists:** Review tabs visible; **503** agenda path shows the orange **outcome** region and mentions AI settings / provider.
+- **When `E2E_MOCK_AI` is not `0` and a customer exists:** agenda/email/report generation assertions, reload keeps email subject, **AI history** lists artefact types.
+
+**Optional live Ollama / real provider smoke (manual)**
+
+1. Configure tenant **AI engines** per **[AI_CONFIGURATION_AND_PROMPTS.md](AI_CONFIGURATION_AND_PROMPTS.md)** so the backend can reach Ollama (or another OpenAI-compatible endpoint) from the **backend** container (`host.docker.internal` or compose `extra_hosts` as needed).
+2. `cd frontend` → `E2E_MOCK_AI=0 E2E_API_BASE_URL=http://127.0.0.1:8001 npm run test:e2e` — expect longer runtimes; failures may reflect model latency or provider errors rather than UI regressions.
+3. Manually verify **`/app/ai-settings`** “test provider” and **`/app/reviews`** email generation if you want human confirmation beyond automated tests.
+
 ## Connector development (plugin-style, in-repo)
 
 - Contract lives in `backend/app/services/connectors/base.py` + `manifest.py`.

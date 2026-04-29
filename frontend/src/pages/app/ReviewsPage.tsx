@@ -758,7 +758,7 @@ export function ReviewsPage() {
           <Link to="/app/customers" className="tenant-btn-inline tenant-btn-inline--ghost">
             Browse accounts
           </Link>
-          <Link to="/app/mappings" className="tenant-btn-inline tenant-btn-inline--ghost">
+          <Link to="/app/integrations/mappings" className="tenant-btn-inline tenant-btn-inline--ghost">
             Mappings &amp; import
           </Link>
           {customerId ? (
@@ -882,7 +882,7 @@ export function ReviewsPage() {
                     {typeof cov?.unresolved_mapping_count === "number" && cov.unresolved_mapping_count > 0 ? (
                       <p className="tenant-review-pill-warn">
                         {String(cov.unresolved_mapping_count)} unresolved mapping(s) — visit{" "}
-                        <Link to="/app/mappings">Mappings</Link>.
+                        <Link to="/app/integrations/mappings">Mappings</Link>.
                       </p>
                     ) : null}
                     <p className="muted" style={{ fontSize: "0.82rem", marginBottom: 0 }}>
