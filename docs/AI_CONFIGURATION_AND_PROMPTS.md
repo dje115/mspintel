@@ -26,6 +26,12 @@ This document describes the **tenant-scoped AI engine configuration**, **task ro
 - `GET|POST /api/v1/customers/{id}/ai/account-manager-next-conversation`
 - `GET|POST /api/v1/customers/{id}/ai/account-manager-call-script`
 - `GET|POST /api/v1/workspace/recommendations/{id}/ai/explanation`
+- `GET /api/v1/workspace/m365-health/ai/latest`
+- `POST /api/v1/workspace/m365-health/ai/summary`
+- `GET /api/v1/workspace/m365-health/ai/opportunity/latest`
+- `POST /api/v1/workspace/m365-health/ai/opportunity`
+
+For the M365 workspace slice, generation is explicit user action from `/app/m365-health` (not page-load auto-run). Latest successful output is read from `ai_task_runs` state and includes provider/model/prompt lineage metadata.
 
 **Platform observability:** `GET /api/v1/platform/ai/task-runs?limit=…`
 

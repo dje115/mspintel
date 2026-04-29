@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.api.deps.access import AccessContext, require_permission
@@ -19,6 +19,10 @@ from app.schemas.workspace import (
 )
 from app.services.ai_execution_service import AIExecutionService
 from app.services.ai_product_context import build_recommendation_explanation_variables
+from app.services.ai_product_context import (
+    build_m365_workspace_opportunity_variables,
+    build_m365_workspace_summary_variables,
+)
 from app.services.billing_integrity_service import BillingIntegrityService
 from app.services.m365_health_service import M365HealthService
 from app.services.workspace import WorkspaceService
@@ -126,6 +130,62 @@ def m365_health_workspace(
 ):
     raw = M365HealthService(db).build_workspace(ctx.tenant.id)
     return M365WorkspaceResponse(summary=raw["summary"], coverage_notes=raw["coverage_notes"], customers=raw["customers"])
+
+
+@router.get("/m365-health/ai/latest", response_model=AIProductBlockState)
+def get_m365_health_ai_latest(
+    ctx: AccessContext = Depends(require_permission("customer:read")),
+    db: Session = Depends(get_db),
+):
+    return AIExecutionService(db).read_block_state(ctx.tenant.id, "m365_hygiene_summary")
+
+
+@router.post("/m365-health/ai/summary", response_model=AIExecutionOutcome)
+def post_m365_health_ai_summary(
+    ctx: AccessContext = Depends(require_permission("customer:read")),
+    db: Session = Depends(get_db),
+):
+    variables = build_m365_workspace_summary_variables(db, ctx.tenant.id)
+    linked_count = int((variables.get("workspace") or {}).get("summary", {}).get("linked_count") or 0)
+    if linked_count <= 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No linked Microsoft 365 posture rows are available yet. Run sync and complete mapping/import first.",
+        )
+    return AIExecutionService(db).execute(
+        tenant_id=ctx.tenant.id,
+        task_type="m365_hygiene_summary",
+        variables=variables,
+        actor_user_id=ctx.user.id,
+    )
+
+
+@router.get("/m365-health/ai/opportunity/latest", response_model=AIProductBlockState)
+def get_m365_health_ai_opportunity_latest(
+    ctx: AccessContext = Depends(require_permission("customer:read")),
+    db: Session = Depends(get_db),
+):
+    return AIExecutionService(db).read_block_state(ctx.tenant.id, "m365_upsell_opportunity")
+
+
+@router.post("/m365-health/ai/opportunity", response_model=AIExecutionOutcome)
+def post_m365_health_ai_opportunity(
+    ctx: AccessContext = Depends(require_permission("customer:read")),
+    db: Session = Depends(get_db),
+):
+    variables = build_m365_workspace_opportunity_variables(db, ctx.tenant.id)
+    linked_count = int((variables.get("workspace") or {}).get("summary", {}).get("linked_count") or 0)
+    if linked_count <= 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No linked Microsoft 365 posture rows are available yet. Run sync and complete mapping/import first.",
+        )
+    return AIExecutionService(db).execute(
+        tenant_id=ctx.tenant.id,
+        task_type="m365_upsell_opportunity",
+        variables=variables,
+        actor_user_id=ctx.user.id,
+    )
 
 
 @router.get("/risk-queue", response_model=RiskQueueResponse)

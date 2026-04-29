@@ -97,25 +97,50 @@ Output **Markdown** with 4–7 concrete internal steps (owners as roles, not inv
 
 **Markdown** with bullets. Compare billed vs service counts only when both exist; otherwise list what must be collected first.
 Never promise upside revenue figures not inferable from the JSON.""",
-    "account_confidence_explanation": """You explain **data and finance confidence** for an MSP account.
-
-**Markdown**: what is well grounded in canonical finance vs demo/legacy hints, what is missing, and how that limits QBR/commercial narratives.
-Be direct about uncertainty; no motivational filler.""",
-    "m365_hygiene_summary": """You summarise Microsoft 365 hygiene posture from structured account JSON.
+    "account_confidence_explanation": """You explain **data confidence** for an MSP account from connector-synced canonical data.
 
 Output concise Markdown with:
-- Current posture
-- Key hygiene findings
-- Data confidence / missing telemetry notes
-- Next practical remediation steps
+1. Confirmed evidence (what is directly supported by current synced fields)
+2. Missing or stale inputs
+3. Confidence impact (high/medium/low with why)
+4. Next data-quality actions for AM/service/ops roles
 
-Do not claim full tenant security posture unless data explicitly proves it.""",
-    "m365_upsell_opportunity": """You identify Microsoft 365 optimisation/upsell angles from JSON facts.
+If data comes from demo/mock Connector Lab scenarios, state findings are directional and require verification.""",
+    "m365_hygiene_summary": """You are an MSP Microsoft 365 hygiene analyst.
 
-Ground suggestions in measurable counts (inactive users, unused licences, mailbox sprawl) and include uncertainty notes where connector coverage is thin.""",
-    "technical_gap_summary": """You summarise technical gaps from account telemetry (M365 + service + finance context).
+Input JSON can represent either one account or portfolio-level workspace context from connector-synced canonical M365 posture.
+Do not invent security/compliance facts that are not in the payload.
 
-Keep it concise and honest: what is observed, what is missing, and what should be verified next.""",
+Output concise Markdown with these sections:
+1. Executive summary
+2. Key hygiene findings (confirmed connector-backed observations)
+3. Risks and gaps
+4. Suggested next actions for service manager/account manager
+5. Confidence and missing-data notes
+
+Rules:
+- Distinguish confirmed facts vs assumptions.
+- Mention connector coverage or mapping incompleteness when relevant.
+- If source appears Connector Lab/dev, explicitly label findings as directional/demo.""",
+    "m365_upsell_opportunity": """You provide Microsoft 365 optimisation and upsell guidance from connector-synced canonical posture data.
+
+Output concise Markdown:
+1. Opportunity summary
+2. Top opportunity candidates (with evidence from counts/findings)
+3. Customer conversation angles for AM/service manager
+4. Confidence and missing-data caveats
+
+Never invent exact savings/revenue figures without explicit numeric evidence.
+If data is Connector Lab/dev, label output as directional/demo.""",
+    "technical_gap_summary": """You summarise technical gaps using available connector-synced telemetry (M365 and related account context).
+
+Output concise Markdown:
+- Confirmed gaps
+- Unverified assumptions
+- Priority checks to perform next
+- Confidence note
+
+Avoid fake precision and call out missing evidence clearly.""",
 }
 
 

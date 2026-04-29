@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { api } from "../../api/client";
-import type { M365WorkspaceResponse } from "../../api/types";
+import type { AIProductBlockState, M365WorkspaceResponse } from "../../api/types";
 import { useSession } from "../../state/session";
 import { TenantAiContextNotice } from "../../components/TenantAiContextNotice";
 
@@ -10,15 +10,62 @@ export function M365HealthPage() {
   const { accessToken, currentTenantId } = useSession();
   const [data, setData] = useState<M365WorkspaceResponse | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [aiSummary, setAiSummary] = useState<AIProductBlockState | null>(null);
+  const [aiOpportunity, setAiOpportunity] = useState<AIProductBlockState | null>(null);
+  const [aiBusy, setAiBusy] = useState<"" | "summary" | "opportunity">("");
+  const [aiErr, setAiErr] = useState<string | null>(null);
 
   useEffect(() => {
     if (!accessToken || !currentTenantId) return;
     setErr(null);
-    void api
-      .m365HealthWorkspace(accessToken, currentTenantId)
-      .then(setData)
+    void Promise.all([
+      api.m365HealthWorkspace(accessToken, currentTenantId),
+      api.getM365HealthAiSummary(accessToken, currentTenantId).catch(() => ({ status: "not_generated" } as AIProductBlockState)),
+      api.getM365HealthAiOpportunity(accessToken, currentTenantId).catch(
+        () => ({ status: "not_generated" } as AIProductBlockState)
+      ),
+    ])
+      .then(([workspace, summary, opportunity]) => {
+        setData(workspace);
+        setAiSummary(summary);
+        setAiOpportunity(opportunity);
+      })
       .catch((e: unknown) => setErr(e instanceof Error ? e.message : "Failed to load Microsoft 365 health"));
   }, [accessToken, currentTenantId]);
+
+  const refreshAiState = async () => {
+    if (!accessToken || !currentTenantId) return;
+    const [summary, opportunity] = await Promise.all([
+      api.getM365HealthAiSummary(accessToken, currentTenantId),
+      api.getM365HealthAiOpportunity(accessToken, currentTenantId),
+    ]);
+    setAiSummary(summary);
+    setAiOpportunity(opportunity);
+  };
+
+  const runAi = async (kind: "summary" | "opportunity") => {
+    if (!accessToken || !currentTenantId) return;
+    setAiErr(null);
+    setAiBusy(kind);
+    try {
+      if (kind === "summary") {
+        await api.postM365HealthAiSummary(accessToken, currentTenantId);
+      } else {
+        await api.postM365HealthAiOpportunity(accessToken, currentTenantId);
+      }
+      await refreshAiState();
+    } catch (e: unknown) {
+      setAiErr(e instanceof Error ? e.message : "AI generation failed");
+    } finally {
+      setAiBusy("");
+    }
+  };
+
+  const linkedCount = data?.summary.linked_count ?? 0;
+  const noM365Data = linkedCount === 0;
+  const noProviderConfigured =
+    aiSummary?.status === "unavailable" &&
+    (aiSummary.message || "").toLowerCase().includes("configure a default ai provider");
 
   return (
     <div>
@@ -59,6 +106,77 @@ export function M365HealthPage() {
               </p>
             </section>
           ) : null}
+          <section className="tenant-panel" style={{ marginBottom: "1rem" }}>
+            <div className="tenant-panel-head">
+              <h2 className="tenant-panel-title">AI M365 insights</h2>
+              <span className="tenant-badge tenant-badge--watch">Connector-backed AI</span>
+            </div>
+            <div className="tenant-panel-body">
+              <p className="muted" style={{ marginTop: 0 }}>
+                AI summary is based on latest synced Microsoft 365 canonical posture and tenant MSP context. It can be incomplete
+                when connector coverage or mapping review is incomplete.
+              </p>
+              {aiErr ? <p className="tenant-error">{aiErr}</p> : null}
+              {noM365Data ? (
+                <p className="muted">
+                  No linked Microsoft 365 posture rows yet. Run sync and complete mapping/import before generating AI insights.
+                </p>
+              ) : null}
+              {noProviderConfigured ? (
+                <p className="muted">
+                  No runnable AI provider is configured. Check <Link to="/app/ai-settings">AI settings</Link> and test the provider.
+                </p>
+              ) : null}
+              <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", marginBottom: "0.75rem" }}>
+                <button
+                  type="button"
+                  className="tenant-btn"
+                  disabled={aiBusy !== "" || noM365Data}
+                  onClick={() => void runAi("summary")}
+                >
+                  {aiSummary?.status === "succeeded" ? "Refresh AI hygiene summary" : "Generate AI hygiene summary"}
+                </button>
+                <button
+                  type="button"
+                  className="tenant-btn-ghost"
+                  disabled={aiBusy !== "" || noM365Data}
+                  onClick={() => void runAi("opportunity")}
+                >
+                  {aiOpportunity?.status === "succeeded"
+                    ? "Refresh AI opportunity guidance"
+                    : "Generate AI opportunity guidance"}
+                </button>
+              </div>
+              <div className="tenant-grid tenant-grid--cards-2">
+                <article className="tenant-card">
+                  <h3 style={{ marginTop: 0 }}>Hygiene summary</h3>
+                  <p className="muted" style={{ marginTop: 0 }}>
+                    Status: {aiSummary?.status ?? "not_generated"}
+                    {aiSummary?.model_used ? ` · ${aiSummary.model_used}` : ""}
+                    {aiSummary?.last_completed_at
+                      ? ` · ${new Date(aiSummary.last_completed_at).toLocaleString()}`
+                      : ""}
+                  </p>
+                  <p style={{ whiteSpace: "pre-wrap" }}>
+                    {aiSummary?.text || aiSummary?.message || "Not generated yet. Use the button above."}
+                  </p>
+                </article>
+                <article className="tenant-card">
+                  <h3 style={{ marginTop: 0 }}>Opportunity guidance</h3>
+                  <p className="muted" style={{ marginTop: 0 }}>
+                    Status: {aiOpportunity?.status ?? "not_generated"}
+                    {aiOpportunity?.model_used ? ` · ${aiOpportunity.model_used}` : ""}
+                    {aiOpportunity?.last_completed_at
+                      ? ` · ${new Date(aiOpportunity.last_completed_at).toLocaleString()}`
+                      : ""}
+                  </p>
+                  <p style={{ whiteSpace: "pre-wrap" }}>
+                    {aiOpportunity?.text || aiOpportunity?.message || "Not generated yet. Use the button above."}
+                  </p>
+                </article>
+              </div>
+            </div>
+          </section>
           <section className="tenant-metric-grid">
             <article className="tenant-metric-card">
               <h3>Linked accounts</h3>

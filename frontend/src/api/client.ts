@@ -298,6 +298,24 @@ export const api = {
     request<M365WorkspaceResponse>("/api/v1/workspace/m365-health", {
       headers: authHeaders(accessToken, tenantId)
     }),
+  getM365HealthAiSummary: (accessToken: string, tenantId: string) =>
+    request<AIProductBlockState>("/api/v1/workspace/m365-health/ai/latest", {
+      headers: authHeaders(accessToken, tenantId)
+    }),
+  postM365HealthAiSummary: (accessToken: string, tenantId: string) =>
+    request<AIExecutionOutcome>("/api/v1/workspace/m365-health/ai/summary", {
+      method: "POST",
+      headers: authHeaders(accessToken, tenantId)
+    }),
+  getM365HealthAiOpportunity: (accessToken: string, tenantId: string) =>
+    request<AIProductBlockState>("/api/v1/workspace/m365-health/ai/opportunity/latest", {
+      headers: authHeaders(accessToken, tenantId)
+    }),
+  postM365HealthAiOpportunity: (accessToken: string, tenantId: string) =>
+    request<AIExecutionOutcome>("/api/v1/workspace/m365-health/ai/opportunity", {
+      method: "POST",
+      headers: authHeaders(accessToken, tenantId)
+    }),
   riskQueue: (
     accessToken: string,
     tenantId: string,

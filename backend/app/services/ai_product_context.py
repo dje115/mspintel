@@ -5,8 +5,10 @@ from __future__ import annotations
 from uuid import UUID
 
 from fastapi import HTTPException, status
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.models.entities import ConnectorMappingReview, IntegrationSyncRun, SourceSystemConnection
 from app.repositories.customers import CustomerRepository
 from app.repositories.workspace import WorkspaceRepository
 from app.services.billing_integrity_service import BillingIntegrityService
@@ -127,6 +129,90 @@ def build_m365_upsell_opportunity_variables(db: Session, tenant_id: UUID, custom
 
 def build_technical_gap_summary_variables(db: Session, tenant_id: UUID, customer_id: UUID) -> dict:
     return {"task": "technical_gap_summary", **_customer_ai_context_variables(db, tenant_id, customer_id)}
+
+
+def _latest_m365_connection_and_run(db: Session, tenant_id: UUID) -> tuple[SourceSystemConnection | None, IntegrationSyncRun | None]:
+    connection = db.scalars(
+        select(SourceSystemConnection)
+        .where(SourceSystemConnection.tenant_id == tenant_id, SourceSystemConnection.system_type == "microsoft_365")
+        .order_by(SourceSystemConnection.created_at.desc())
+    ).first()
+    if not connection:
+        return None, None
+    run = db.scalars(
+        select(IntegrationSyncRun)
+        .where(IntegrationSyncRun.tenant_id == tenant_id, IntegrationSyncRun.source_connection_id == connection.id)
+        .order_by(IntegrationSyncRun.created_at.desc())
+    ).first()
+    return connection, run
+
+
+def build_m365_workspace_summary_variables(db: Session, tenant_id: UUID) -> dict:
+    m365 = M365HealthService(db).build_workspace(tenant_id)
+    connection, last_run = _latest_m365_connection_and_run(db, tenant_id)
+    reviewable_statuses = {"pending", "unlinked"}
+    mapping_review_counts: dict[str, int] = {"pending": 0, "unlinked": 0}
+    if connection:
+        rows = db.scalars(
+            select(ConnectorMappingReview).where(
+                ConnectorMappingReview.tenant_id == tenant_id,
+                ConnectorMappingReview.source_connection_id == connection.id,
+            )
+        ).all()
+        for row in rows:
+            if row.status in reviewable_statuses:
+                mapping_review_counts[row.status] = mapping_review_counts.get(row.status, 0) + 1
+    representative_rows_raw = sorted(
+        m365.get("customers", []),
+        key=lambda row: (
+            -(int(row.get("inactive_users_30d") or 0) + int(row.get("unused_licences") or 0)),
+            str(row.get("customer_name") or ""),
+        ),
+    )[:8]
+    representative_rows: list[dict] = []
+    for row in representative_rows_raw:
+        cleaned = dict(row)
+        if cleaned.get("customer_id") is not None:
+            cleaned["customer_id"] = str(cleaned["customer_id"])
+        representative_rows.append(cleaned)
+    tenant_profile_context = build_tenant_ai_context(db, tenant_id).model_dump(mode="json")
+    return {
+        "task": "m365_hygiene_summary",
+        "workspace": {
+            "summary": m365.get("summary", {}),
+            "coverage_notes": list(m365.get("coverage_notes", [])),
+            "representative_customers": representative_rows,
+            "connector_status": {
+                "configured": connection is not None,
+                "connection_id": str(connection.id) if connection else None,
+                "health_status": connection.health_status if connection else "not_configured",
+                "lifecycle_state": connection.lifecycle_state if connection else "not_configured",
+                "last_sync_status": getattr(last_run, "status", None),
+                "last_sync_started_at": getattr(last_run, "started_at", None).isoformat()
+                if getattr(last_run, "started_at", None)
+                else None,
+                "last_sync_completed_at": getattr(last_run, "completed_at", None).isoformat()
+                if getattr(last_run, "completed_at", None)
+                else None,
+            },
+            "mapping_review": {
+                "pending_count": mapping_review_counts.get("pending", 0),
+                "unlinked_count": mapping_review_counts.get("unlinked", 0),
+            },
+            "data_confidence_notes": list(m365.get("coverage_notes", []))
+            + [
+                "AI analysis is generated from connector-synced canonical M365 posture rows.",
+                "For Connector Lab/dev data, recommendations are directional and must be validated before customer-facing decisions.",
+            ],
+        },
+        "tenant_profile_context": tenant_profile_context,
+    }
+
+
+def build_m365_workspace_opportunity_variables(db: Session, tenant_id: UUID) -> dict:
+    payload = build_m365_workspace_summary_variables(db, tenant_id)
+    payload["task"] = "m365_upsell_opportunity"
+    return payload
 
 
 def build_recommendation_explanation_variables(db: Session, tenant_id: UUID, recommendation_id: UUID) -> dict:

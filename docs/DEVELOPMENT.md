@@ -128,6 +128,8 @@ Preferred flow for connector-backed demo domains:
    - Use "Create customers from all eligible rows" (or selected rows) in mapping review when starting from an empty customer baseline.
    - `/app/customers` (verify imported canonical customers exist)
    - `/app/m365-health`
+   - Use **Generate AI hygiene summary** / **Generate AI opportunity guidance** in `/app/m365-health` after linked posture rows exist
+   - If generation fails, verify provider health in `/app/ai-settings` and test the configured default provider
 
 The direction is to keep seed mostly structural and let connector syncs materialise realistic business telemetry into canonical tables.
 Runtime demo seed should not directly create synthetic customer/ticket/finance/posture rows.

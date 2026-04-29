@@ -182,6 +182,10 @@ Connector Lab includes expanded identity and signal scenarios (name mismatches, 
   - `GET /api/v1/workspace/risk-queue?mode=at_risk|attention` — ranked Risk Engine v1 queues (scores, reasons, confidence, next-step placeholder)
   - `POST /api/v1/workspace/risk-engine/recompute` — on-demand risk recompute (tenant batch; optional `customer_id` for single account)
   - `GET /api/v1/workspace/m365-health` — Microsoft 365 hygiene/licence posture workspace (thin v1, coverage-aware)
+  - `GET /api/v1/workspace/m365-health/ai/latest` — latest portfolio M365 AI hygiene summary state
+  - `POST /api/v1/workspace/m365-health/ai/summary` — explicit M365 AI hygiene generation (connector-backed canonical context)
+  - `GET /api/v1/workspace/m365-health/ai/opportunity/latest` — latest M365 AI opportunity guidance state
+  - `POST /api/v1/workspace/m365-health/ai/opportunity` — explicit M365 AI opportunity generation
   - `GET /api/v1/integrations/catalog` — connector catalog with manifest metadata (maturity, auth modes, capabilities, sync modes, config field schema)
   - `GET /api/v1/integrations/connections` — tenant-scoped connection list
   - `POST /api/v1/integrations/connections` — create connector config (**membership:write**)

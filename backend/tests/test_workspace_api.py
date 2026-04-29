@@ -1,7 +1,59 @@
 import uuid
+from unittest.mock import patch
 
-from app.models.entities import Customer, Recommendation, Tenant
+from app.core.ai_settings_crypto import encrypt_settings_payload
+from app.domain.ai_constants import PROMPT_SCOPE_PLATFORM
+from app.models.entities import AIProvider, Customer, M365CustomerPosture, PromptDefinition, PromptVersion, Recommendation, Tenant, TenantAiTaskRoute
+from app.services.ai_providers.base import ChatCompletionResult, ProviderTransportError
 from tests.helpers import auth_headers, create_user_with_membership
+
+
+def _seed_m365_workspace_ai_route(db_session, tenant: Tenant, user, *, task_type: str, prompt_key: str):
+    provider = AIProvider(
+        id=uuid.uuid4(),
+        tenant_id=tenant.id,
+        provider_name="provider",
+        status="configured",
+        provider_family="openai",
+        deployment_mode="hosted",
+        display_label="OpenAI",
+        is_enabled=True,
+        encrypted_settings=encrypt_settings_payload({"api_key": "sk-test"}),
+    )
+    prompt_def = PromptDefinition(
+        id=uuid.uuid4(),
+        scope=PROMPT_SCOPE_PLATFORM,
+        tenant_id=None,
+        prompt_key=prompt_key,
+        title="m365 prompt",
+        description=None,
+        task_type=task_type,
+        created_by_user_id=user.id,
+        updated_by_user_id=user.id,
+    )
+    prompt_ver = PromptVersion(
+        id=uuid.uuid4(),
+        prompt_definition_id=prompt_def.id,
+        version_number=1,
+        prompt_text="Summarize workspace posture: {{workspace}}",
+        change_note="test",
+        created_by_user_id=user.id,
+        is_active=True,
+        version_metadata=None,
+    )
+    route = TenantAiTaskRoute(
+        id=uuid.uuid4(),
+        tenant_id=tenant.id,
+        task_type=task_type,
+        ai_provider_id=provider.id,
+        model="gpt-4o-mini",
+        fallback_ai_provider_id=None,
+        fallback_model=None,
+        prompt_key=prompt_key,
+        enabled=True,
+    )
+    db_session.add_all([provider, prompt_def, prompt_ver, route])
+    db_session.commit()
 
 
 def test_workspace_recommendations_tenant_scoped(client, db_session):
@@ -100,3 +152,106 @@ def test_patch_recommendation_requires_admin(client, db_session):
     )
     assert good.status_code == 200
     assert good.json()["status"] == "accepted"
+
+
+def test_m365_workspace_ai_summary_requires_linked_data(client, db_session):
+    tenant = Tenant(id=uuid.uuid4(), slug="m365-no-data", name="M365 No Data", is_active=True)
+    db_session.add(tenant)
+    db_session.commit()
+    user = create_user_with_membership(db_session, "m365-no-data@example.com", "tenant_admin", tenant)
+    _seed_m365_workspace_ai_route(
+        db_session,
+        tenant,
+        user,
+        task_type="m365_hygiene_summary",
+        prompt_key="m365_hygiene_summary.system",
+    )
+    res = client.post("/api/v1/workspace/m365-health/ai/summary", headers=auth_headers(user, str(tenant.id)))
+    assert res.status_code == 400
+    assert "No linked Microsoft 365 posture rows" in res.json()["detail"]
+
+
+@patch("app.services.ai_execution_service.execute_chat_completion")
+def test_m365_workspace_ai_summary_generates_and_reads_latest(mock_chat, client, db_session):
+    mock_chat.return_value = ChatCompletionResult(
+        text="## Executive summary\nPortfolio hygiene is mixed.",
+        raw={"choices": [{"message": {"content": "ok"}}]},
+    )
+    tenant = Tenant(id=uuid.uuid4(), slug="m365-ai", name="M365 AI", is_active=True)
+    db_session.add(tenant)
+    db_session.commit()
+    user = create_user_with_membership(db_session, "m365-ai@example.com", "tenant_admin", tenant)
+    customer = Customer(id=uuid.uuid4(), tenant_id=tenant.id, name="Acme", status="active", owner_name="Owner")
+    db_session.add(customer)
+    db_session.flush()
+    db_session.add(
+        M365CustomerPosture(
+            id=uuid.uuid4(),
+            tenant_id=tenant.id,
+            customer_id=customer.id,
+            confidence_level="medium",
+            licensed_users=20,
+            active_users_30d=15,
+            inactive_users_30d=5,
+            disabled_users=1,
+            stale_users_90d=3,
+            mailbox_count=22,
+            shared_mailbox_count=4,
+            unused_licences=5,
+            hygiene_findings=["Inactive users require cleanup."],
+            optimisation_findings=["Unused licences can be optimised."],
+        )
+    )
+    db_session.commit()
+    _seed_m365_workspace_ai_route(
+        db_session,
+        tenant,
+        user,
+        task_type="m365_hygiene_summary",
+        prompt_key="m365_hygiene_summary.system",
+    )
+    post = client.post("/api/v1/workspace/m365-health/ai/summary", headers=auth_headers(user, str(tenant.id)))
+    assert post.status_code == 200, post.text
+    assert post.json()["status"] == "succeeded"
+    assert post.json()["prompt_version_id"] is not None
+
+    latest = client.get("/api/v1/workspace/m365-health/ai/latest", headers=auth_headers(user, str(tenant.id)))
+    assert latest.status_code == 200
+    assert latest.json()["status"] == "succeeded"
+    assert "Executive summary" in (latest.json().get("text") or "")
+
+
+@patch("app.services.ai_execution_service.execute_chat_completion")
+def test_m365_workspace_ai_opportunity_provider_failure_is_safe(mock_chat, client, db_session):
+    mock_chat.side_effect = ProviderTransportError("provider misconfigured")
+    tenant = Tenant(id=uuid.uuid4(), slug="m365-ai-fail", name="M365 AI Fail", is_active=True)
+    db_session.add(tenant)
+    db_session.commit()
+    user = create_user_with_membership(db_session, "m365-ai-fail@example.com", "tenant_admin", tenant)
+    customer = Customer(id=uuid.uuid4(), tenant_id=tenant.id, name="Acme", status="active", owner_name="Owner")
+    db_session.add(customer)
+    db_session.flush()
+    db_session.add(
+        M365CustomerPosture(
+            id=uuid.uuid4(),
+            tenant_id=tenant.id,
+            customer_id=customer.id,
+            confidence_level="medium",
+            licensed_users=10,
+            active_users_30d=8,
+            inactive_users_30d=2,
+            mailbox_count=10,
+        )
+    )
+    db_session.commit()
+    _seed_m365_workspace_ai_route(
+        db_session,
+        tenant,
+        user,
+        task_type="m365_upsell_opportunity",
+        prompt_key="m365_upsell_opportunity.system",
+    )
+    post = client.post("/api/v1/workspace/m365-health/ai/opportunity", headers=auth_headers(user, str(tenant.id)))
+    assert post.status_code == 200, post.text
+    assert post.json()["status"] == "failed"
+    assert "Check AI settings" in (post.json().get("message") or "")
