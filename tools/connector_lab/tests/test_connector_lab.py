@@ -28,6 +28,13 @@ def test_vendor_endpoints_present():
     assert client.get("/3cx/calls", headers=_auth_headers()).status_code == 200
 
 
+def test_xero_requires_tenant_header():
+    client = TestClient(app)
+    denied = client.get("/xero/contacts", headers=_auth_headers())
+    assert denied.status_code == 400
+    assert "xero-tenant-id" in denied.text.lower()
+
+
 def test_pagination_and_modes():
     client = TestClient(app)
     page = client.get("/autotask/accounts?page=1&page_size=2", headers=_auth_headers())

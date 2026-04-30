@@ -164,7 +164,7 @@ Scope: connector realism audit for Autotask, ITQuoter, Xero, Microsoft Graph, Ve
 ## Recommended connector build order (next practical path)
 
 1. Autotask hardening (contracts/projects/activities depth + webhooks where safe).
-2. Xero live read path (contacts/invoices/payments with proper tenant/delta handling).
+2. Xero read-path depth (thin contacts/invoices/invoice-lines is now live in MSPIntel; next depth is payments/credit-notes and broader reconciliation).
 3. ITQuoter quote lifecycle connector (status transitions + quote-line commercial signals).
 4. Microsoft Graph depth extension (usage/licence hygiene and confidence caveats).
 5. Veeam VSPC-first backup posture slice.

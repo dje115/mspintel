@@ -138,7 +138,9 @@ Set connection base URLs (or environment hints) to:
 - `AUTOTASK_BASE_URL=http://connector-lab:8099/autotask`
 - `AUTOTASK_API_KEY=connector-lab-api-key`
 - `ITQUOTER_BASE_URL=http://connector-lab:8099/itquoter`
-- `XERO_BASE_URL=http://connector-lab:8099/xero`
+- `XERO_BASE_URL=http://connector-lab:8099`
+- `XERO_TENANT_ID=demo-tenant-id`
+- `XERO_ACCESS_TOKEN=connector-lab-dev-token` (or `CONNECTOR_LAB_API_KEY`)
 - `M365_BASE_URL=http://connector-lab:8099/m365`
 - `VEEAM_BASE_URL=http://connector-lab:8099/veeam`
 
@@ -162,16 +164,18 @@ Preferred flow for connector-backed demo domains:
 
 1. Seed structural/config baseline: `docker compose exec backend python -m app.db.seed`
 2. Log in as tenant admin (`tenant-admin@demo-msp.example.com`)
-3. From Integrations, test/sync connector connections (starting with M365), or call:
+3. From Integrations, test/sync connector connections (start with M365 baseline, then Xero), or call:
    - `POST /api/v1/integrations/connections/{id}/test`
    - `POST /api/v1/integrations/connections/{id}/sync`
 4. Validate canonical surfaces:
    - `GET /api/v1/integrations/mappings` (reviewable suggested/unlinked identity rows)
    - `POST /api/v1/integrations/mappings/create-customers` (selected/all eligible first-connector baseline import)
    - `GET /api/v1/workspace/m365-health`
+   - `GET /api/v1/workspace/billing-integrity`
    - `/app/integrations/mappings`
    - Use "Create customers from all eligible rows" (or selected rows) in mapping review when starting from an empty customer baseline.
    - `/app/customers` (verify imported canonical customers exist)
+   - Run a Xero sync, then verify `/app/integrations/mappings` includes Xero contact rows and `/app/billing-integrity` shows finance cards
    - Run an Autotask sync, then verify `/app/customers/{id}` has connector-synced contacts plus service/commercial counts
    - `/app/m365-health`
    - Use **Generate AI hygiene summary** / **Generate AI opportunity guidance** in `/app/m365-health` after linked posture rows exist

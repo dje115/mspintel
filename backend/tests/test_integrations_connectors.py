@@ -593,3 +593,106 @@ def test_integration_coverage_endpoint_shapes_counts(client, db_session: Session
     assert body["connected_systems"] == 1
     assert body["unresolved_mappings"] == 1
     assert body["items"][0]["linked_customers"] == 1
+
+
+def test_xero_connection_test_success(monkeypatch, client, db_session: Session):
+    tenant = _make_tenant(db_session, slug="xero-test", name="Xero Test MSP")
+    admin = create_user_with_membership(db_session, "admin-xero-test@example.com", "tenant_admin", tenant)
+    create = client.post(
+        "/api/v1/integrations/connections",
+        headers=auth_headers(admin, str(tenant.id)),
+        json={
+            "system_type": "xero",
+            "display_name": "Xero Connector Lab",
+            "base_url": "http://connector-lab:8099",
+            "auth_mode": "api_key",
+            "sync_cadence_minutes": 180,
+            "config": {"api_key": "connector-lab-api-key", "xero_tenant_id": "demo-tenant-id"},
+        },
+    )
+    assert create.status_code == 201, create.text
+    cid = create.json()["id"]
+
+    class _FakeResponse:
+        def __init__(self, status_code: int, payload: dict | None = None, text: str = ""):
+            self.status_code = status_code
+            self._payload = payload or {}
+            self.text = text
+
+        def json(self):
+            return self._payload
+
+    class _FakeClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def get(self, url: str, headers=None, params=None):
+            if url.endswith("/health"):
+                return _FakeResponse(200, {"status": "ok"})
+            if url.endswith("/xero/contacts"):
+                return _FakeResponse(200, {"items": [{"id": "X-C01"}], "has_more": False})
+            if url.endswith("/xero/invoices"):
+                return _FakeResponse(200, {"items": [{"id": "X-I01"}], "has_more": False})
+            return _FakeResponse(404, {}, "not found")
+
+    monkeypatch.setattr(httpx, "Client", _FakeClient)
+    tested = client.post(f"/api/v1/integrations/connections/{cid}/test", headers=auth_headers(admin, str(tenant.id)))
+    assert tested.status_code == 200
+    assert tested.json()["test_status"] == "succeeded"
+
+
+def test_xero_connection_test_missing_tenant_header_failure(monkeypatch, client, db_session: Session):
+    tenant = _make_tenant(db_session, slug="xero-no-tenant", name="Xero Missing Header MSP")
+    admin = create_user_with_membership(db_session, "admin-xero-no-tenant@example.com", "tenant_admin", tenant)
+    create = client.post(
+        "/api/v1/integrations/connections",
+        headers=auth_headers(admin, str(tenant.id)),
+        json={
+            "system_type": "xero",
+            "display_name": "Xero Connector Lab",
+            "base_url": "http://connector-lab:8099",
+            "auth_mode": "api_key",
+            "sync_cadence_minutes": 180,
+            "config": {"api_key": "connector-lab-api-key"},
+        },
+    )
+    assert create.status_code == 201, create.text
+    cid = create.json()["id"]
+
+    class _FakeResponse:
+        def __init__(self, status_code: int, payload: dict | None = None, text: str = ""):
+            self.status_code = status_code
+            self._payload = payload or {}
+            self.text = text
+
+        def json(self):
+            return self._payload
+
+    class _FakeClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def get(self, url: str, headers=None, params=None):
+            if url.endswith("/health"):
+                return _FakeResponse(200, {"status": "ok"})
+            if url.endswith("/xero/contacts"):
+                return _FakeResponse(400, {"detail": "Missing required Xero-Tenant-Id header"}, "Missing required Xero-Tenant-Id header")
+            return _FakeResponse(404, {}, "not found")
+
+    monkeypatch.setattr(httpx, "Client", _FakeClient)
+    tested = client.post(f"/api/v1/integrations/connections/{cid}/test", headers=auth_headers(admin, str(tenant.id)))
+    assert tested.status_code == 200
+    assert tested.json()["test_status"] == "failed"
+    assert "xero-tenant-id" in (tested.json()["test_message"] or "").lower()

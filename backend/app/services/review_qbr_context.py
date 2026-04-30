@@ -85,6 +85,15 @@ def build_review_qbr_variables(
         "opportunities": (detail.get("opportunities") or [])[:8],
         "quotes": (detail.get("quotes") or [])[:8],
         "finance": detail.get("finance"),
+        "finance_internal_notes": {
+            "tone_guidance": (
+                "Treat unpaid/overdue invoices as internal account-housekeeping context. "
+                "Avoid accusatory customer-facing language unless finance has confirmed an agreed escalation path."
+            ),
+            "service_reconciliation_note": (
+                "Revenue assurance conclusions require service/contract telemetry in addition to accounting rows."
+            ),
+        },
         "m365": detail.get("m365"),
         "risk_engine": detail.get("risk_engine"),
         "open_tickets": [

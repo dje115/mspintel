@@ -407,6 +407,31 @@ class FinanceInvoice(Base, TimestampMixin):
     extra: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
 
+class FinanceInvoiceLine(Base, TimestampMixin):
+    __tablename__ = "finance_invoice_lines"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "invoice_id", "external_line_id", name="uq_finance_invoice_line_per_invoice"),
+        Index("ix_finance_invoice_lines_invoice", "invoice_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), index=True)
+    invoice_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("finance_invoices.id", ondelete="CASCADE"), index=True
+    )
+    source_connection_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("source_system_connections.id", ondelete="SET NULL"), nullable=True
+    )
+    external_line_id: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    quantity: Mapped[Decimal | None] = mapped_column(Numeric(14, 4), nullable=True)
+    unit_amount_cents: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    line_total_cents: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    tax_amount_cents: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    account_code: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    extra: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+
+
 class FinanceBillingSnapshot(Base, TimestampMixin):
     __tablename__ = "finance_billing_snapshots"
     __table_args__ = (Index("ix_finance_snapshots_account_effective", "billing_account_id", "effective_date"),)

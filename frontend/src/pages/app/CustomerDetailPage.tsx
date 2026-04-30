@@ -325,6 +325,16 @@ export function CustomerDetailPage() {
                       : ""}
                   </p>
                 </div>
+                <div>
+                  <div className="tenant-kpi-label">Invoices / amount due</div>
+                  <div className="tenant-kpi-value tenant-kpi-value--inline">
+                    {data.finance.unpaid_invoice_count} unpaid · {data.finance.overdue_invoice_count} overdue
+                  </div>
+                  <p className="muted" style={{ fontSize: "0.82rem", marginTop: "0.35rem" }}>
+                    Total due {formatUsdFromCents(data.finance.total_amount_due_cents)} · Last invoice{" "}
+                    {data.finance.last_invoice_date ?? "—"}
+                  </p>
+                </div>
               </div>
               {data.finance.integrity_highlights.length > 0 ? (
                 <div className="tenant-panel-body" style={{ paddingTop: 0 }}>
@@ -335,6 +345,31 @@ export function CustomerDetailPage() {
                         {h}
                       </li>
                     ))}
+                  </ul>
+                </div>
+              ) : null}
+              {data.finance.recent_invoice_lines.length > 0 ? (
+                <div className="tenant-panel-body" style={{ paddingTop: 0 }}>
+                  <p className="tenant-kpi-label">Recent invoice lines</p>
+                  <ul className="tenant-list-plain">
+                    {data.finance.recent_invoice_lines.map((line, idx) => {
+                      const row = line as {
+                        description?: string;
+                        quantity?: number;
+                        line_total_cents?: number;
+                        account_code?: string;
+                      };
+                      return (
+                        <li key={`${row.description}-${idx}`} className="tenant-rec-card">
+                          <strong>{row.description ?? "Invoice line"}</strong>
+                          <span className="muted">
+                            {" "}
+                            · qty {row.quantity ?? "—"} · {formatUsdFromCents(row.line_total_cents ?? 0)}
+                            {row.account_code ? ` · acct ${row.account_code}` : ""}
+                          </span>
+                        </li>
+                      );
+                    })}
                   </ul>
                 </div>
               ) : null}

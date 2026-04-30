@@ -61,7 +61,7 @@ Current demo-data direction: keep app seed structural/config-only, and materiali
 
 - **Canonical operational layer**  
   `customers`, `contacts`, `tickets`, `opportunities`, `quotes` continue as tenant-facing current-state records (now with optional `external_ref`; opportunities/quotes also carry title/value fields).
-  Finance and Microsoft canonical tables (`finance_*`, `m365_customer_postures`) support billing integrity, M365 health, Customer 360, and QBR context. The Microsoft posture table now carries practical v1.5 fields: stale/disabled/privileged-user counts, tenant domains, usage summaries, and Entra/Azure summary JSON.
+  Finance and Microsoft canonical tables (`finance_*`, `m365_customer_postures`) support billing integrity, M365 health, Customer 360, and QBR context. Current finance thin slice includes `finance_billing_accounts`, `finance_invoices`, `finance_invoice_lines`, and daily `finance_billing_snapshots` from connector sync. The Microsoft posture table now carries practical v1.5 fields: stale/disabled/privileged-user counts, tenant domains, usage summaries, and Entra/Azure summary JSON.
 
 - **Derived knowledge layer (planned)**  
   Tenant-scoped **knowledge objects** (typed summaries linked to `customer_id` or tenant aggregates) **downstream of** canonical upserts. Populated by **maintainer** prompt runs, not by mutating tier 3 to “look like” AI output. **Ingestion’s role:** emit events or flags so refreshes run **after** data lands; **lint** jobs can compare objects to canonical facts for drift.

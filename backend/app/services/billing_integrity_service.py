@@ -3,13 +3,23 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
+from datetime import date
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session
 
-from app.models.entities import Customer, FinanceBillingAccount, FinanceBillingSnapshot, M365CustomerPosture
+from app.models.entities import (
+    Customer,
+    FinanceBillingAccount,
+    FinanceBillingSnapshot,
+    FinanceInvoice,
+    FinanceInvoiceLine,
+    IntegrationSyncRun,
+    M365CustomerPosture,
+    SourceSystemConnection,
+)
 
 
 @dataclass
@@ -23,6 +33,9 @@ class AccountIntegrityRow:
     service_licensed_users: int | None
     payment_friction: str | None
     aged_outstanding_cents: int | None
+    unpaid_invoice_count: int
+    overdue_invoice_count: int
+    total_amount_due_cents: int
     confidence_level: str | None
     signals: list[str]
 
@@ -43,6 +56,40 @@ class BillingIntegrityService:
         )
         return self.db.scalars(stmt).first()
 
+    def _invoice_totals_for_account(self, tenant_id: UUID, billing_account_id: UUID) -> dict[str, int | str | None]:
+        today = date.today()
+        row = self.db.execute(
+            select(
+                func.count(FinanceInvoice.id),
+                func.sum(
+                    case(
+                        (func.coalesce(FinanceInvoice.outstanding_cents, 0) > 0, 1),
+                        else_=0,
+                    )
+                ),
+                func.sum(
+                    case(
+                        (
+                            (func.coalesce(FinanceInvoice.outstanding_cents, 0) > 0)
+                            & (FinanceInvoice.due_date.isnot(None))
+                            & (FinanceInvoice.due_date < today),
+                            1,
+                        ),
+                        else_=0,
+                    )
+                ),
+                func.sum(func.coalesce(FinanceInvoice.outstanding_cents, 0)),
+                func.max(FinanceInvoice.issue_date),
+            ).where(FinanceInvoice.tenant_id == tenant_id, FinanceInvoice.billing_account_id == billing_account_id)
+        ).first()
+        return {
+            "total": int(row[0] or 0),
+            "unpaid": int(row[1] or 0),
+            "overdue": int(row[2] or 0),
+            "amount_due_cents": int(row[3] or 0),
+            "last_invoice_date": row[4].isoformat() if row[4] else None,
+        }
+
     def build_workspace(self, tenant_id: UUID) -> dict[str, Any]:
         cust_stmt = select(Customer).where(Customer.tenant_id == tenant_id)
         customers = list(self.db.scalars(cust_stmt).all())
@@ -51,10 +98,12 @@ class BillingIntegrityService:
         acct_by_customer = {a.customer_id: a for a in accounts if a.customer_id}
 
         latest_snaps: dict[UUID, FinanceBillingSnapshot] = {}
+        invoice_rollups: dict[UUID, dict[str, int | str | None]] = {}
         for a in accounts:
             snap = self._latest_snapshot(tenant_id, a.id)
             if snap:
                 latest_snaps[a.id] = snap
+            invoice_rollups[a.id] = self._invoice_totals_for_account(tenant_id, a.id)
 
         rows: list[AccountIntegrityRow] = []
         underbilling: list[UUID] = []
@@ -64,6 +113,11 @@ class BillingIntegrityService:
         for c in customers:
             acct = acct_by_customer.get(c.id)
             snap = latest_snaps.get(acct.id) if acct else None
+            inv = invoice_rollups.get(acct.id, {"unpaid": 0, "overdue": 0, "amount_due_cents": 0}) if acct else {
+                "unpaid": 0,
+                "overdue": 0,
+                "amount_due_cents": 0,
+            }
             signals: list[str] = []
             bm, sm = None, None
             bu, su = None, None
@@ -90,6 +144,12 @@ class BillingIntegrityService:
                         payment_friction.append(c.id)
                 if aged and aged > 0:
                     signals.append("Aged outstanding balance recorded on latest snapshot.")
+            if int(inv["overdue"] or 0) > 0:
+                signals.append(f"{int(inv['overdue'])} overdue invoice(s) need billing/admin review.")
+                payment_friction.append(c.id)
+            if int(inv["amount_due_cents"] or 0) > 0 and not signals:
+                signals.append("Outstanding invoices detected; align finance and account cadence.")
+
             m365 = self.db.scalars(
                 select(M365CustomerPosture).where(
                     M365CustomerPosture.tenant_id == tenant_id,
@@ -111,9 +171,10 @@ class BillingIntegrityService:
                     signals.append("Disabled M365 identities present — validate billing and hygiene assumptions.")
                 if m365.confidence_level == "low":
                     signals.append("M365 confidence is low; treat licence and usage deltas as directional only.")
-            elif c.demo_profile and (c.demo_profile.get("billing") or {}).get("billed_m365_seats") is not None:
-                signals.append("Billing hints exist only in legacy demo_profile JSON — link accounting for canonical finance.")
             else:
+                signals.append("No M365 service context linked yet — service/contract variance checks remain partial.")
+
+            if not acct:
                 signals.append("No finance linkage or billing snapshot — commercial signals are incomplete.")
 
             rows.append(
@@ -127,6 +188,9 @@ class BillingIntegrityService:
                     service_licensed_users=su,
                     payment_friction=pay,
                     aged_outstanding_cents=aged,
+                    unpaid_invoice_count=int(inv["unpaid"] or 0),
+                    overdue_invoice_count=int(inv["overdue"] or 0),
+                    total_amount_due_cents=int(inv["amount_due_cents"] or 0),
                     confidence_level=conf,
                     signals=signals,
                 )
@@ -135,6 +199,43 @@ class BillingIntegrityService:
         linked = sum(1 for r in rows if r.finance_linked)
         missing = len(rows) - linked
         orphan_accounts = [a for a in accounts if a.customer_id is None]
+        unlinked_finance_contact_count = len(orphan_accounts)
+        total_invoice_count = sum(int(invoice_rollups.get(a.id, {}).get("total") or 0) for a in accounts)
+        unpaid_invoice_count = sum(int(invoice_rollups.get(a.id, {}).get("unpaid") or 0) for a in accounts)
+        overdue_invoice_count = sum(int(invoice_rollups.get(a.id, {}).get("overdue") or 0) for a in accounts)
+        total_amount_due_cents = sum(int(invoice_rollups.get(a.id, {}).get("amount_due_cents") or 0) for a in accounts)
+
+        top_due: list[dict[str, Any]] = []
+        for row in rows:
+            if row.total_amount_due_cents <= 0:
+                continue
+            top_due.append(
+                {
+                    "customer_id": row.customer_id,
+                    "customer_name": row.customer_name,
+                    "amount_due_cents": row.total_amount_due_cents,
+                    "overdue_invoice_count": row.overdue_invoice_count,
+                }
+            )
+        top_due.sort(key=lambda x: int(x["amount_due_cents"]), reverse=True)
+
+        xero_conn = self.db.scalars(
+            select(SourceSystemConnection)
+            .where(SourceSystemConnection.tenant_id == tenant_id, SourceSystemConnection.system_type == "xero")
+            .order_by(SourceSystemConnection.updated_at.desc())
+            .limit(1)
+        ).first()
+        xero_last_sync = None
+        if xero_conn:
+            xero_last_sync = self.db.scalars(
+                select(IntegrationSyncRun)
+                .where(
+                    IntegrationSyncRun.tenant_id == tenant_id,
+                    IntegrationSyncRun.source_connection_id == xero_conn.id,
+                )
+                .order_by(IntegrationSyncRun.created_at.desc())
+                .limit(1)
+            ).first()
 
         return {
             "summary": {
@@ -142,13 +243,25 @@ class BillingIntegrityService:
                 "finance_linked_count": linked,
                 "missing_finance_link_count": missing,
                 "orphan_billing_account_count": len(orphan_accounts),
+                "unlinked_finance_contact_count": unlinked_finance_contact_count,
+                "total_invoice_count": total_invoice_count,
+                "unpaid_invoice_count": unpaid_invoice_count,
+                "overdue_invoice_count": overdue_invoice_count,
+                "total_amount_due_cents": total_amount_due_cents,
+                "top_customer_due": top_due[:6],
+                "xero_configured": bool(xero_conn),
+                "xero_last_sync_status": xero_last_sync.status if xero_last_sync else None,
+                "xero_last_sync_completed_at": (
+                    xero_last_sync.completed_at.isoformat() if xero_last_sync and xero_last_sync.completed_at else None
+                ),
                 "underbilling_candidate_count": len(set(underbilling)),
                 "overbilling_risk_count": len(set(overbilling_risk)),
                 "payment_friction_count": len(set(payment_friction)),
             },
             "coverage_notes": [
-                "Figures are only as complete as synced accounting + service telemetry allow.",
-                "Finance Phase 0 uses canonical tables seeded from demo profiles or Xero demo_mode sync — not a full ledger.",
+                "Finance data connected reflects accounting-side invoices/contacts and mapping coverage.",
+                "Payment friction signals are directional and should be reviewed with account context before action.",
+                "Revenue assurance checks require service/contract telemetry to confirm true under/overbilling.",
             ],
             "accounts": [asdict(r) for r in rows],
         }
@@ -167,8 +280,7 @@ class BillingIntegrityService:
         highlights: list[str] = []
         if not acct:
             notes.append("No canonical finance billing account linked — confidence for commercial math is low.")
-            if cust.demo_profile and (cust.demo_profile.get("billing") or {}):
-                notes.append("Legacy demo_profile billing hints exist but are not treated as ledger truth.")
+            notes.append("Run Xero sync and resolve mapping review rows for this customer.")
             return {
                 "finance_linked": False,
                 "billing_account_id": None,
@@ -181,31 +293,57 @@ class BillingIntegrityService:
                 "service_licensed_users": None,
                 "payment_status_summary": None,
                 "aged_outstanding_cents": None,
+                "total_invoice_count": 0,
+                "unpaid_invoice_count": 0,
+                "overdue_invoice_count": 0,
+                "total_amount_due_cents": 0,
+                "last_invoice_date": None,
+                "recent_invoice_lines": [],
                 "confidence_level": "low",
                 "integrity_highlights": highlights,
                 "confidence_notes": notes,
                 "next_commercial_action_placeholder": (
-                    "Link accounting (Xero demo_mode or future live connector) before revenue assurance conclusions."
+                    "Link accounting and mapping rows before drawing revenue assurance conclusions."
                 ),
                 "provenance": {"canonical": False},
             }
 
         snap = self._latest_snapshot(tenant_id, acct.id)
-        if snap:
-            if snap.billed_mailboxes is not None and snap.service_active_mailboxes is not None:
-                if snap.service_active_mailboxes > snap.billed_mailboxes + 1:
-                    highlights.append("Mailbox footprint exceeds billed seats on latest snapshot.")
-                if snap.billed_mailboxes > snap.service_active_mailboxes + 5:
-                    highlights.append("Billed mailboxes exceed measured active mailboxes — validate SKUs.")
-            if snap.aged_outstanding_cents and snap.aged_outstanding_cents > 0:
-                highlights.append("Outstanding balance on latest finance snapshot — align with collections.")
-            if snap.payment_status_summary and snap.payment_status_summary not in ("none", "unknown"):
-                highlights.append(f"Invoice friction flag: {snap.payment_status_summary}.")
-        else:
-            notes.append("Billing account exists but no snapshot row yet — run finance sync or reseed.")
+        totals = self._invoice_totals_for_account(tenant_id, acct.id)
+        if int(totals["overdue"] or 0) > 0:
+            highlights.append(f"{totals['overdue']} overdue invoice(s) need account housekeeping follow-up.")
+        if int(totals["amount_due_cents"] or 0) > 0:
+            highlights.append("Open receivables present — align billing/admin check-in with account plan.")
+        if snap and (snap.aged_outstanding_cents or 0) > 0:
+            highlights.append("Aged outstanding balance on latest finance snapshot.")
+        if snap and snap.payment_status_summary and snap.payment_status_summary not in ("none", "unknown"):
+            highlights.append(f"Invoice friction flag: {snap.payment_status_summary}.")
+        if not snap:
+            notes.append("Billing account exists but no daily snapshot row yet — run finance sync.")
 
-        if (acct.extra or {}).get("provenance") == "demo_seed":
-            notes.append("Data materialised from synthetic demo seed, not a live accounting export.")
+        line_rows = self.db.scalars(
+            select(FinanceInvoiceLine)
+            .join(FinanceInvoice, FinanceInvoice.id == FinanceInvoiceLine.invoice_id)
+            .where(
+                FinanceInvoiceLine.tenant_id == tenant_id,
+                FinanceInvoice.billing_account_id == acct.id,
+            )
+            .order_by(FinanceInvoice.issue_date.desc().nulls_last(), FinanceInvoiceLine.updated_at.desc())
+            .limit(5)
+        ).all()
+
+        recent_lines = [
+            {
+                "description": line.description,
+                "quantity": float(line.quantity) if line.quantity is not None else None,
+                "unit_amount_cents": line.unit_amount_cents,
+                "line_total_cents": line.line_total_cents,
+                "tax_amount_cents": line.tax_amount_cents,
+                "account_code": line.account_code,
+            }
+            for line in line_rows
+        ]
+
         m365 = self.db.scalars(
             select(M365CustomerPosture).where(
                 M365CustomerPosture.tenant_id == tenant_id,
@@ -217,6 +355,8 @@ class BillingIntegrityService:
                 highlights.append("M365 active user count is above billed users on latest finance snapshot.")
             if (m365.unused_licences or 0) > 0:
                 highlights.append(f"M365 unused licence count: {m365.unused_licences} (optimisation candidate).")
+        else:
+            notes.append("No M365 linked posture yet — service/contract comparison remains partial.")
 
         return {
             "finance_linked": True,
@@ -230,11 +370,17 @@ class BillingIntegrityService:
             "service_licensed_users": snap.service_licensed_users if snap else None,
             "payment_status_summary": snap.payment_status_summary if snap else None,
             "aged_outstanding_cents": snap.aged_outstanding_cents if snap else None,
+            "total_invoice_count": int(totals["total"] or 0),
+            "unpaid_invoice_count": int(totals["unpaid"] or 0),
+            "overdue_invoice_count": int(totals["overdue"] or 0),
+            "total_amount_due_cents": int(totals["amount_due_cents"] or 0),
+            "last_invoice_date": totals["last_invoice_date"],
+            "recent_invoice_lines": recent_lines,
             "confidence_level": snap.confidence_level if snap else "medium",
             "integrity_highlights": highlights,
             "confidence_notes": notes,
             "next_commercial_action_placeholder": (
-                "Validate billed quantities vs entitlements; schedule finance + service alignment review."
+                "Treat finance points as account housekeeping unless service/contract reconciliation confirms variance."
             ),
             "provenance": {"canonical": True, "extra": acct.extra},
         }

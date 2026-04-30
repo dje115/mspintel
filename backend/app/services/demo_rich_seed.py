@@ -81,7 +81,7 @@ def _seed_demo_connector_connections(db: Session, tenant_id: UUID) -> None:
         {
             "system_type": "xero",
             "display_name": "Xero (Connector Lab)",
-            "base_url": "http://connector-lab:8099/xero",
+            "base_url": "http://connector-lab:8099",
             "auth_mode": "oauth",
             "config": {
                 "token": "connector-lab-dev-token",

@@ -359,6 +359,12 @@ export type FinanceCustomerPanel = {
   service_licensed_users: number | null;
   payment_status_summary: string | null;
   aged_outstanding_cents: number | null;
+  total_invoice_count: number;
+  unpaid_invoice_count: number;
+  overdue_invoice_count: number;
+  total_amount_due_cents: number;
+  last_invoice_date: string | null;
+  recent_invoice_lines: Record<string, unknown>[];
   confidence_level: string | null;
   integrity_highlights: string[];
   confidence_notes: string[];
@@ -371,6 +377,15 @@ export type BillingIntegritySummary = {
   finance_linked_count: number;
   missing_finance_link_count: number;
   orphan_billing_account_count: number;
+  unlinked_finance_contact_count: number;
+  total_invoice_count: number;
+  unpaid_invoice_count: number;
+  overdue_invoice_count: number;
+  total_amount_due_cents: number;
+  top_customer_due: Record<string, unknown>[];
+  xero_configured: boolean;
+  xero_last_sync_status: string | null;
+  xero_last_sync_completed_at: string | null;
   underbilling_candidate_count: number;
   overbilling_risk_count: number;
   payment_friction_count: number;
@@ -386,6 +401,9 @@ export type BillingIntegrityAccountRow = {
   service_licensed_users: number | null;
   payment_friction: string | null;
   aged_outstanding_cents: number | null;
+  unpaid_invoice_count: number;
+  overdue_invoice_count: number;
+  total_amount_due_cents: number;
   confidence_level: string | null;
   signals: string[];
 };

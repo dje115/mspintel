@@ -11,6 +11,15 @@ class BillingIntegritySummary(BaseModel):
     finance_linked_count: int
     missing_finance_link_count: int
     orphan_billing_account_count: int
+    unlinked_finance_contact_count: int = 0
+    total_invoice_count: int = 0
+    unpaid_invoice_count: int = 0
+    overdue_invoice_count: int = 0
+    total_amount_due_cents: int = 0
+    top_customer_due: list[dict[str, Any]] = Field(default_factory=list)
+    xero_configured: bool = False
+    xero_last_sync_status: str | None = None
+    xero_last_sync_completed_at: str | None = None
     underbilling_candidate_count: int
     overbilling_risk_count: int
     payment_friction_count: int
@@ -26,6 +35,9 @@ class BillingIntegrityAccountRow(BaseModel):
     service_licensed_users: int | None = None
     payment_friction: str | None = None
     aged_outstanding_cents: int | None = None
+    unpaid_invoice_count: int = 0
+    overdue_invoice_count: int = 0
+    total_amount_due_cents: int = 0
     confidence_level: str | None = None
     signals: list[str] = Field(default_factory=list)
 
@@ -48,6 +60,12 @@ class FinanceCustomerPanel(BaseModel):
     service_licensed_users: int | None = None
     payment_status_summary: str | None = None
     aged_outstanding_cents: int | None = None
+    total_invoice_count: int = 0
+    unpaid_invoice_count: int = 0
+    overdue_invoice_count: int = 0
+    total_amount_due_cents: int = 0
+    last_invoice_date: str | None = None
+    recent_invoice_lines: list[dict[str, Any]] = Field(default_factory=list)
     confidence_level: str | None = None
     integrity_highlights: list[str] = Field(default_factory=list)
     confidence_notes: list[str] = Field(default_factory=list)

@@ -49,6 +49,9 @@ class ConnectorSyncStats:
             + self.tickets_upserted
             + self.opportunities_upserted
             + self.quotes_upserted
+            + self.finance_billing_accounts_upserted
+            + self.finance_invoices_upserted
+            + self.finance_snapshots_upserted
             + self.m365_postures_upserted
         )
 

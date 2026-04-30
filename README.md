@@ -22,7 +22,7 @@ Standing rules for Docker, versioning, env vars, validation, docs, GitHub workfl
 
 ## Versioning
 
-- Current app version: **`2.9.3`** (Playwright Review/QBR smoke + mapping link fix; builds on 2.9.2 Review AI routing)
+- Current app version: **`2.10.0`** (Xero thin finance import: contacts/invoices/invoice-lines + mapping-aware billing integrity/customer finance context)
 - Central runtime version variable: `MSPINTEL_APP_VERSION` (root `.env` and Compose → backend `MSPINTEL_APP_VERSION`)
 - Frontend display: `VITE_APP_VERSION` in `.env`, overridden in Compose from `MSPINTEL_APP_VERSION` as `VITE_APP_VERSION` for the dev container
 

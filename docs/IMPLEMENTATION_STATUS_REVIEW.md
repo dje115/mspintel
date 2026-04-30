@@ -9,7 +9,7 @@
 - **Platform routes:** Login/tenants/connectors/prompts/audit — structurally present; MFA flows environment-dependent.
 - **Review/QBR fix shipped in `v2.9.2`:** missing `tenant_ai_task_routes` rows caused **`AI_RUN_SKIPPED`** (“task disabled”) before users opened **AI engines**; resolver now **inserts stub routes** idempotently. UI shows an **orange outcome banner** when a run returns non-success. QBR variables include **`review_workspace.open_tickets`** (open ticket subjects) for PSA context.
 - **Autotask:** Connector Lab–backed sync for accounts/contacts/tickets/opportunities/quotes is implemented in **`AutotaskConnectorAdapter`**; mapping review still gates new customers when a baseline already exists.
-- **Xero thin import:** Not expanded in this slice; remains **next finance connector** priority after Autotask demo validation.
+- **Xero thin import (`v2.10.0`):** Connector-backed contacts + invoices + invoice lines now sync into canonical finance tables with mapping-review-aware customer linkage and honest partial-coverage notes.
 
 Classification used per area:
 
@@ -30,7 +30,7 @@ Classification used per area:
 |------|--------|-------------|--------------|------|
 | Dashboard | **Partial** | KPIs from real counts (customers, high risk, open recs, lost quotes); links into workspaces. | “High risk” uses `account_scores` threshold in repo, not full ML; executive narrative mostly absent. | Richer widgets from `demo_profile` once surfaced in APIs. |
 | Customers list | **Working** | Paginated list, status filter, scores, next action from first recommendation. | Search is simple `ILIKE`; no saved views. | Column for industry when exposed. |
-| Customer 360 | **Partial** | Scores, counts, recs/opps/quotes tables, synced contact list, AI panels, AM guidance shell, **demo_profile** JSON panel when seeded. | No M365/backup/billing **live** tiles — narrative lives in `demo_profile` for demo only. | Domain panels when connectors ship. |
+| Customer 360 | **Partial** | Scores, counts, recs/opps/quotes tables, synced contact list, AI panels, AM guidance shell, finance card (invoice summary/unpaid/overdue/amount-due + recent line items), **demo_profile** JSON panel when seeded. | Backup and wider contract/service reconciliation still partial. | Domain panels when connectors deepen. |
 | Recommendations | **Working** | List, filters, patch status, AI explain with lineage. | Priority heuristic from scope only. | Owner assignment workflow. |
 | Opportunities / quotes | **Working** | Commercial hub API + SPA tables from canonical rows. | No ITQuoter-native deep fields; `revisit_reason` partly static strings. | Lost-reason capture from PSA. |
 | At-risk / Needs attention | **Working** | Queues by `Customer.status` + score columns. | Status is seed-driven; not computed pipeline. | Risk model + automated status transitions. |
@@ -97,7 +97,7 @@ Classification used per area:
 | ITQuoter | **Stub** | Scaffold + updated auth metadata; live API integration still pending. |
 | Veeam | **Stub / planned** | Scaffold; VSPC-first API direction documented. |
 | Microsoft 365 | **Partial (practical slice)** | Tenant product has canonical M365 posture ingestion with Connector Lab-backed connection test/sync, explicit confidence notes, and live-depth limits for real Graph. Runtime demo seed is structural-only; posture rows appear after sync once mappings are confirmed/high-confidence or imported through first-connector baseline actions in mapping review. `/app/m365-health` now includes explicit AI summary/opportunity generation backed by canonical posture + tenant AI context and `ai_task_runs` lineage (not auto-run on load). |
-| Accounting (Xero/Sage) | **Partial** | Canonical finance tables exist; Xero live ingestion remains limited and demo-backed. |
+| Accounting (Xero/Sage) | **Partial** | Xero thin import implemented (contacts/invoices/invoice-lines, mapping-aware linking, billing-integrity/customer/review context usage). Sage remains planned. |
 | Warehouse / snapshots | **Documented only** | No `warehouse_*` tables yet. |
 
 ---
@@ -106,7 +106,7 @@ Classification used per area:
 
 | Intelligence area | Status | Reality |
 |--------------------|--------|---------|
-| Billing integrity | **Placeholder** | Finance connector depth is still limited; with structural-only seed, billing views depend on connector-synced canonical finance data and may be empty in demo until implemented syncs run. |
+| Billing integrity | **Partial** | Workspace now surfaces connector-sourced finance cards (invoice totals, unpaid/overdue, amount due, linkage coverage, top customers due) with explicit caveats when service/contract reconciliation is missing. |
 | Relationship health | **Partial** | Inferrable from tickets + contacts counts; no CDR/telephony. |
 | Stalled work | **Partial** | Opportunities can be `stalled` status in seed; no dedicated stalled-work queue engine. |
 | AM guidance | **Partial** | AI routes + UI shell; depends on LLM + prompt. |
