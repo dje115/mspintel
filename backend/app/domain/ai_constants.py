@@ -25,6 +25,7 @@ AI_TASK_TYPES: tuple[str, ...] = (
     "m365_hygiene_summary",
     "m365_upsell_opportunity",
     "technical_gap_summary",
+    "backup_coverage_insights",
 )
 
 # provider_family: which vendor/protocol family
@@ -102,4 +103,5 @@ DEFAULT_PLATFORM_PROMPT_KEYS: tuple[tuple[str, str, str], ...] = (
     ("m365_hygiene_summary.system", "m365_hygiene_summary", "Microsoft 365 hygiene summary"),
     ("m365_upsell_opportunity.system", "m365_upsell_opportunity", "Microsoft 365 optimisation / upsell"),
     ("technical_gap_summary.system", "technical_gap_summary", "Technical gap summary"),
+    ("backup_coverage_insights.system", "backup_coverage_insights", "Backup coverage risks & opportunities"),
 )

@@ -577,6 +577,40 @@ class Recommendation(Base, TimestampMixin):
     summary: Mapped[str] = mapped_column(String(280))
 
 
+class BackupProtectionFact(Base, TimestampMixin):
+    """Normalised backup telemetry ingested from vendor connectors (Veeam first; others reuse fact_kind)."""
+
+    __tablename__ = "backup_protection_facts"
+    __table_args__ = (
+        UniqueConstraint(
+            "tenant_id",
+            "source_connection_id",
+            "fact_kind",
+            "source_external_id",
+            name="uq_backup_fact_per_connection",
+        ),
+        Index("ix_backup_facts_tenant_customer", "tenant_id", "customer_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), index=True)
+    source_connection_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("source_system_connections.id", ondelete="CASCADE"), index=True
+    )
+    vendor_system_type: Mapped[str] = mapped_column(String(40), nullable=False)
+    fact_kind: Mapped[str] = mapped_column(String(40), nullable=False)
+    source_external_id: Mapped[str] = mapped_column(String(200), nullable=False)
+    source_customer_external_id: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
+    customer_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("customers.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    display_name: Mapped[str | None] = mapped_column(String(240), nullable=True)
+    health_status: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    observed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    metrics_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    signals_json: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
+
+
 class Action(Base, TimestampMixin):
     __tablename__ = "actions"
 

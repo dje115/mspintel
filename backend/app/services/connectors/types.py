@@ -24,6 +24,7 @@ class ConnectorSyncStats:
     finance_invoices_upserted: int = 0
     finance_snapshots_upserted: int = 0
     m365_postures_upserted: int = 0
+    backup_facts_upserted: int = 0
     warnings: list[str] = field(default_factory=list)
 
     def as_dict(self) -> dict:
@@ -38,6 +39,7 @@ class ConnectorSyncStats:
             "finance_invoices_upserted": self.finance_invoices_upserted,
             "finance_snapshots_upserted": self.finance_snapshots_upserted,
             "m365_postures_upserted": self.m365_postures_upserted,
+            "backup_facts_upserted": self.backup_facts_upserted,
             "warnings": self.warnings,
         }
 
@@ -53,6 +55,7 @@ class ConnectorSyncStats:
             + self.finance_invoices_upserted
             + self.finance_snapshots_upserted
             + self.m365_postures_upserted
+            + self.backup_facts_upserted
         )
 
 

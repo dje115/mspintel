@@ -1,3 +1,11 @@
+"""Tenant integrations: connections, manual sync, mapping review, scoped imports.
+
+Every handler is tenant-scoped. Mapping review confirms or rejects source→customer links;
+baseline customer creation from mappings is an explicit human-controlled action, not an
+automatic side effect of routine connector sync.
+"""
+
+from collections import defaultdict
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, status
@@ -6,7 +14,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps.access import AccessContext, require_permission
 from app.api.deps.db import get_db
-from app.models.entities import ConnectorMappingReview, Customer, SourceSystemConnection
+from app.models.entities import ConnectorMappingReview, Contact, Customer, SourceEntityMapping, SourceSystemConnection
 from app.schemas.integrations import (
     ConnectionImportScopeUpdateRequest,
     ConnectionLifecycleUpdateRequest,
@@ -32,6 +40,71 @@ STATUS_LABELS = {
     "rejected": "Rejected",
     "unlinked": "Unlinked",
 }
+
+MAPPING_REASON_LABELS = {
+    "no_tenant_customers": "No customer records yet to match against",
+    "no_match": "No close customer match found",
+    "exact_normalized_name": "Name closely matches an existing customer",
+    "near_name_match": "Name is similar to an existing customer",
+    "customer_domain_match": "Primary domain matches a customer record",
+    "contact_email_domain_match": "Contact email domain matches this customer",
+    "high_confidence_rule": "Strong automated match",
+    "review_needed": "Suggested match — please confirm",
+    "low_signal": "Weak match signal",
+    "connector_lab_scenario_explicit_accept": "Practice scenario marked as linked",
+}
+
+BLOCKER_LABELS = {
+    "unsupported_entity_type": "This record type cannot create a customer",
+    "missing_source_display_name": "No readable business name from the source",
+    "status_not_importable": "Status does not allow import (already confirmed or rejected)",
+    "already_mapped": "Already linked to a customer",
+    "duplicate_normalized_name": "A very similar customer name already exists",
+    "duplicate_domain_signal": "Another customer already uses this email domain",
+}
+
+CONFLICT_HINT_LABELS = {
+    "multiple_sources_same_suggested_account": "Multiple source identities target the same suggested account — confirm the right link.",
+    "suggestion_differs_from_linked_customer": "The suggestion differs from the customer currently linked to this source.",
+    "source_mapping_differs_from_review": "The active link in data does not match this review row — use Remap to fix.",
+}
+
+
+def _tenant_contact_domains(db: Session, tenant_id: UUID) -> set[str]:
+    emails = db.scalars(select(Contact.email).where(Contact.tenant_id == tenant_id)).all()
+    domains: set[str] = set()
+    for email in emails:
+        if email and "@" in str(email):
+            domains.add(str(email).rsplit("@", 1)[1].strip().lower())
+    return domains
+
+
+def _mapping_conflict_hints(db: Session, tenant_id: UUID, rows: list[ConnectorMappingReview]) -> dict[UUID, list[str]]:
+    hints: dict[UUID, list[str]] = defaultdict(list)
+    by_suggested: dict[UUID, list[ConnectorMappingReview]] = defaultdict(list)
+    for r in rows:
+        if r.status == "pending" and r.suggested_customer_id:
+            by_suggested[r.suggested_customer_id].append(r)
+    for _cid, group in by_suggested.items():
+        if len(group) <= 1:
+            continue
+        for r in group:
+            hints[r.id].append("multiple_sources_same_suggested_account")
+    for r in rows:
+        if r.status == "pending" and r.mapped_customer_id and r.suggested_customer_id:
+            if r.mapped_customer_id != r.suggested_customer_id:
+                hints[r.id].append("suggestion_differs_from_linked_customer")
+        m = db.scalars(
+            select(SourceEntityMapping).where(
+                SourceEntityMapping.tenant_id == tenant_id,
+                SourceEntityMapping.source_connection_id == r.source_connection_id,
+                SourceEntityMapping.entity_type == r.entity_type,
+                SourceEntityMapping.source_id == r.source_external_id,
+            )
+        ).first()
+        if m and r.mapped_customer_id and m.canonical_entity_id != r.mapped_customer_id:
+            hints[r.id].append("source_mapping_differs_from_review")
+    return dict(hints)
 
 
 @router.get("/connections", response_model=list[SourceConnectionResponse])
@@ -272,7 +345,8 @@ def list_mapping_reviews(
     customer_rows = list(db.scalars(select(Customer).where(Customer.tenant_id == ctx.tenant.id)).all())
     customer_names = {c.id: c.name for c in customer_rows}
     tenant_name_keys = {"".join(ch for ch in c.name.lower() if ch.isalnum()) for c in customer_rows if c.name}
-    tenant_contact_domains: set[str] = set()
+    tenant_contact_domains = _tenant_contact_domains(db, ctx.tenant.id)
+    conflict_map = _mapping_conflict_hints(db, ctx.tenant.id, rows)
     return [
         _to_mapping_review_row(
             r,
@@ -282,6 +356,7 @@ def list_mapping_reviews(
             svc=svc,
             tenant_name_keys=tenant_name_keys,
             tenant_contact_domains=tenant_contact_domains,
+            conflict_hints=conflict_map.get(r.id, []),
         )
         for r in rows
     ]
@@ -314,7 +389,8 @@ def mapping_review_action(
     ).first()
     latest_runs = svc.latest_sync_runs_by_connection(ctx.tenant.id, {row.source_connection_id})
     tenant_name_keys = {"".join(ch for ch in c.name.lower() if ch.isalnum()) for c in customer_rows if c.name}
-    tenant_contact_domains = set()
+    tenant_contact_domains = _tenant_contact_domains(db, ctx.tenant.id)
+    conflict_map = _mapping_conflict_hints(db, ctx.tenant.id, [row])
     return _to_mapping_review_row(
         row,
         {row.source_connection_id: connection} if connection else {},
@@ -323,6 +399,7 @@ def mapping_review_action(
         svc=svc,
         tenant_name_keys=tenant_name_keys,
         tenant_contact_domains=tenant_contact_domains,
+        conflict_hints=conflict_map.get(row.id, []),
     )
 
 
@@ -359,6 +436,7 @@ def _to_mapping_review_row(
     svc: ConnectorOnboardingService,
     tenant_name_keys: set[str],
     tenant_contact_domains: set[str],
+    conflict_hints: list[str] | None = None,
 ) -> MappingReviewRow:
     conn = connection_map.get(r.source_connection_id)
     last_run = latest_runs.get(r.source_connection_id)
@@ -367,6 +445,7 @@ def _to_mapping_review_row(
         tenant_name_keys=tenant_name_keys,
         tenant_contact_domains=tenant_contact_domains,
     )
+    ch = list(conflict_hints or [])
     return MappingReviewRow(
         id=r.id,
         source_connection_id=r.source_connection_id,
@@ -381,6 +460,9 @@ def _to_mapping_review_row(
         suggested_confidence=r.suggested_confidence,
         suggested_score=float(r.suggested_score) if r.suggested_score is not None else None,
         suggested_reasons=list(r.suggested_reasons or []),
+        suggested_reason_labels=[
+            MAPPING_REASON_LABELS.get(x, x.replace("_", " ").strip() or x) for x in (r.suggested_reasons or [])
+        ],
         status=r.status,
         status_label=STATUS_LABELS.get(r.status, r.status.title()),
         mapped_customer_id=r.mapped_customer_id,
@@ -392,6 +474,11 @@ def _to_mapping_review_row(
         notes=r.notes,
         eligible_for_customer_create=eligibility.eligible,
         create_customer_blockers=eligibility.blockers,
+        create_customer_blocker_labels=[
+            BLOCKER_LABELS.get(b, b.replace("_", " ").strip() or b) for b in eligibility.blockers
+        ],
+        conflict_hints=ch,
+        conflict_hint_labels=[CONFLICT_HINT_LABELS.get(h, h.replace("_", " ").strip() or h) for h in ch],
     )
 def _to_connection_response(svc: ConnectorRuntimeService, r) -> SourceConnectionResponse:
     return SourceConnectionResponse(

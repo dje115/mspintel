@@ -387,7 +387,7 @@ export function CustomerDetailPage() {
               ) : null}
               <div className="tenant-panel-body" style={{ paddingTop: 0 }}>
                 <p className="muted" style={{ fontSize: "0.85rem", margin: 0 }}>
-                  <strong>Next commercial move:</strong> {data.finance.next_commercial_action_placeholder}
+                  <strong>Suggested commercial focus:</strong> {data.finance.next_commercial_action_placeholder}
                 </p>
                 <p style={{ marginTop: "0.75rem" }}>
                   <Link className="tenant-btn-inline tenant-btn-inline--ghost" to="/app/billing-integrity">
@@ -474,7 +474,7 @@ export function CustomerDetailPage() {
               ) : null}
               <div className="tenant-panel-body" style={{ paddingTop: 0 }}>
                 <p className="muted" style={{ fontSize: "0.85rem", margin: 0 }}>
-                  <strong>Next technical/commercial step:</strong> {data.m365.next_action_placeholder}
+                  <strong>Suggested next step:</strong> {data.m365.next_action_placeholder}
                 </p>
                 <p style={{ marginTop: "0.75rem" }}>
                   <Link className="tenant-btn-inline tenant-btn-inline--ghost" to="/app/m365-health">
@@ -519,27 +519,13 @@ export function CustomerDetailPage() {
           {data.demo_profile && (data.demo_profile as { synthetic?: boolean }).synthetic ? (
             <section className="tenant-panel" style={{ marginTop: "1rem" }}>
               <div className="tenant-panel-head">
-                <h2 className="tenant-panel-title">Demo dataset context (synthetic)</h2>
+                <h2 className="tenant-panel-title">Sample scenario context</h2>
               </div>
               <div className="tenant-panel-body">
                 <p className="muted" style={{ marginTop: 0 }}>
-                  Fictional UK-style scenario bundled with the <code>demo-msp</code> seed for product and AI testing — not
-                  live connector output.
+                  This account includes fictional scenario metadata used for product testing. It is not live synced vendor
+                  telemetry — connector-backed panels above reflect real sync when available.
                 </p>
-                <pre
-                  className="muted"
-                  style={{
-                    fontSize: "0.75rem",
-                    maxHeight: "14rem",
-                    overflow: "auto",
-                    marginTop: "0.75rem",
-                    padding: "0.75rem",
-                    background: "#0f172a08",
-                    borderRadius: 6
-                  }}
-                >
-                  {JSON.stringify(data.demo_profile, null, 2)}
-                </pre>
               </div>
             </section>
           ) : null}

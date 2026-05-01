@@ -48,7 +48,7 @@ function FinanceReviewStrip({ detail }: { detail: CustomerDetailResponse }) {
         {fin.finance_linked ? (
           <>
             <p className="muted" style={{ marginTop: 0, fontSize: "0.88rem" }}>
-              Canonical snapshot {fin.snapshot_effective_date ?? "—"} · confidence{" "}
+              Billing snapshot {fin.snapshot_effective_date ?? "—"} · confidence{" "}
               <strong>{fin.confidence_level ?? "—"}</strong>
             </p>
             <p className="muted" style={{ fontSize: "0.88rem" }}>
@@ -210,7 +210,7 @@ function AccountManagerStructuredBlock({
           ))}
         </div>
       ) : (
-        <p className="muted">Unable to structure this output — check AI history for raw text.</p>
+        <p className="muted">Unable to structure this output — open the AI history tab to review the saved draft.</p>
       )}
     </div>
   );

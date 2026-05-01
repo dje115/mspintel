@@ -89,6 +89,10 @@ class ReviewAiWorkspaceService:
             caller_role=caller_role,
             email_tone=email_tone,
         )
+        # Full internal workspace for DB lineage (coverage, connector snapshot). `AIExecutionService` applies
+        # `prepare_llm_variables` so the model does not see this heavy snapshot for customer/hearing tasks.
+        workspace_for_audit = variables.get("review_workspace") or {}
+
         customer_name = str((variables.get("customer") or {}).get("name") or "Customer")
         missing_notes = list(variables.get("missing_data_notes") or [])
         outcome = self.executor.execute(
@@ -98,11 +102,17 @@ class ReviewAiWorkspaceService:
             actor_user_id=actor_user_id,
             customer_id=customer_id,
         )
-        detail = variables.get("review_workspace") or {}
+        detail = workspace_for_audit
         cov_summary = build_source_coverage_summary({"connector_coverage": detail.get("connector_coverage")})
         source_version = context_hash_for_customer(self.db, tenant_id, customer_id)
 
-        customer_safe = artifact_type in ("customer_email_draft", "customer_report")
+        customer_safe = artifact_type in (
+            "customer_email_draft",
+            "customer_report",
+            "review_agenda",
+            "call_script",
+            "account_manager_notes",
+        )
         text = outcome.text or ""
         parsed, raw = parse_json_loose(text)
         warnings, quality_flags = collect_review_output_warnings(text, raw, parsed, customer_safe=customer_safe)

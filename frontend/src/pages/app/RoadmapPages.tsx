@@ -80,14 +80,14 @@ export function RoadmapHubPage() {
             <h3 style={{ marginTop: 0 }}>{t.title}</h3>
             <p className="tenant-page-sub">{t.summary}</p>
             <Link to={`/app/roadmap/${t.slug}`} className="tenant-btn-inline">
-              View placeholder
+              Read topic
             </Link>
           </article>
         ))}
       </section>
 
       <p className="muted" style={{ marginTop: "1.5rem" }}>
-        Source of truth: <code>docs/MSP360_PRODUCT_SPEC.md</code> in the repository.
+        Direction is maintained in the master product specification (see repository docs / product spec).
       </p>
     </div>
   );
@@ -123,10 +123,11 @@ export function RoadmapTopicPage() {
 
       <section className="tenant-card" style={{ maxWidth: 720 }}>
         <p>
-          This screen reserves navigation and routing for <strong>{meta.title}</strong>. Behaviour, APIs, and AI task types will be
-          implemented in a later phase per <code>docs/MSP360_PRODUCT_SPEC.md</code>.
+          This topic describes planned work for <strong>{meta.title}</strong>. Shipping features will appear in the main
+          product areas (Customers, Integrations, Review prep, and so on) as connectors and APIs land — this page stays
+          a lightweight index only.
         </p>
-        <p className="muted">No backend mutations occur from this placeholder.</p>
+        <p className="muted">Nothing on this page changes tenant data.</p>
       </section>
     </div>
   );

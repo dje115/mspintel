@@ -22,7 +22,7 @@ CUSTOMER_MASTER = [
             "m365": "Acme Dental Ltd",
             "veeam": "Acme Dental Ltd",
         },
-        "signals": ["exact_match"],
+        "signals": ["exact_match", "unprotected_workload"],
     },
     {
         "key": "bright_legal",
@@ -48,7 +48,7 @@ CUSTOMER_MASTER = [
             "m365": "Greenfield Primary School",
             "veeam": "Greenfield Primary School",
         },
-        "signals": ["missing_suffix", "duplicate_candidate"],
+        "signals": ["missing_suffix", "duplicate_candidate", "low_backup_change_rate"],
     },
     {
         "key": "northview_logistics",
@@ -494,6 +494,11 @@ def _build_dataset() -> dict:
         )
         if hint["veeam"]:
             veeam_customers.append({"id": veeam_id, "instanceUid": f"{veeam_id}-uid", "name": hint["veeam"], "updated_at": _iso(ts)})
+            proc_mb = 4200.0
+            chg_mb = 210.0
+            if "low_backup_change_rate" in signals:
+                chg_mb = 9.0
+            change_pct = round((chg_mb / proc_mb) * 100, 2) if proc_mb else None
             veeam_jobs.append(
                 {
                     "id": f"V-J{idx:03d}",
@@ -501,6 +506,9 @@ def _build_dataset() -> dict:
                     "status": "failed" if "failed_backup_jobs" in signals else ("warning" if "stale_backup_jobs" in signals else "success"),
                     "last_run_at": _iso(ts - timedelta(hours=60 if "stale_backup_jobs" in signals else 3)),
                     "updated_at": _iso(ts),
+                    "processed_mb": proc_mb,
+                    "transfer_change_mb": chg_mb,
+                    "change_pct": change_pct,
                 }
             )
             veeam_workloads.append(
@@ -512,6 +520,16 @@ def _build_dataset() -> dict:
                     "updated_at": _iso(ts),
                 }
             )
+            if "unprotected_workload" in signals:
+                veeam_workloads.append(
+                    {
+                        "id": f"V-WU{idx:03d}",
+                        "customer_id": veeam_id,
+                        "workload": "New application server",
+                        "protected": False,
+                        "updated_at": _iso(ts),
+                    }
+                )
             veeam_repos.append(
                 {
                     "id": f"V-R{idx:03d}",

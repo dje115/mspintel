@@ -8,6 +8,11 @@
 - New platform prompt keys: **`customer_review_email_draft.system`**, **`customer_review_report.system`**. **`customer_review_agenda.system`** default text is JSON-first for structured agenda cards.
 - **`GET /api/v1/customers/{id}/ai/customer-review-agenda`** remains for reading the latest **`ai_task_runs`** block state without artefact persistence.
 
+## 2026-04-30 Tenant-facing output guardrails (`v2.10.1`)
+
+- Platform default text for QBR/AM email/report/agenda keys is **linted in tests** to avoid “meta” phrases (e.g. *here is the JSON output*) that would read badly to MSP users.
+- Tenant UI continues to use **structured JSON** from artefacts for cards; email/report panels **strip fences**, scan for **placeholders** and **implementation-leak** wording, and show **Needs review** when appropriate. Prompt internals (`prompt_key`, model) stay secondary / non-prominent.
+
 ## 2026-04 Autotask + Customer 360 AI slice
 
 - `account_manager_next_conversation.system` now receives richer connector-backed customer context, including synced contacts and open ticket snippets in addition to existing risk/commercial/M365/tenant-profile context.
@@ -47,6 +52,9 @@ This document describes the **tenant-scoped AI engine configuration**, **task ro
 - `POST /api/v1/workspace/m365-health/ai/summary`
 - `GET /api/v1/workspace/m365-health/ai/opportunity/latest`
 - `POST /api/v1/workspace/m365-health/ai/opportunity`
+- `GET /api/v1/workspace/backup-health`
+- `GET /api/v1/workspace/backup-health/ai/latest`
+- `POST /api/v1/workspace/backup-health/ai/insights` — task type **`backup_coverage_insights`**; requires at least one ingested **`backup_protection_facts`** row (run a backup connector sync first).
 
 For the M365 workspace slice, generation is explicit user action from `/app/m365-health` (not page-load auto-run). Latest successful output is read from `ai_task_runs` state and includes provider/model/prompt lineage metadata.
 

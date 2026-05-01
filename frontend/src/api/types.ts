@@ -191,6 +191,7 @@ export type MappingReviewRow = {
   suggested_confidence: string;
   suggested_score: number | null;
   suggested_reasons: string[];
+  suggested_reason_labels?: string[];
   status: string;
   status_label: string | null;
   mapped_customer_id: string | null;
@@ -202,6 +203,9 @@ export type MappingReviewRow = {
   notes: string | null;
   eligible_for_customer_create: boolean;
   create_customer_blockers: string[];
+  create_customer_blocker_labels?: string[];
+  conflict_hints?: string[];
+  conflict_hint_labels?: string[];
 };
 
 export type MappingCreateCustomersResponse = {
@@ -305,6 +309,12 @@ export type RecommendationListResponse = {
   total: number;
 };
 
+export type RecommendationSyncResponse = {
+  created: number;
+  updated: number;
+  completed: number;
+};
+
 export type OpportunityRow = {
   id: string;
   customer_id: string;
@@ -345,6 +355,32 @@ export type ServiceRiskSection = {
 export type ServiceRiskResponse = {
   backup: ServiceRiskSection;
   service_delivery: ServiceRiskSection;
+};
+
+export type BackupHealthWorkspaceResponse = {
+  summary: Record<string, unknown>;
+  coverage_notes: string[];
+  connections: Array<{
+    connection_id: string;
+    display_name: string;
+    vendor_system_type: string;
+    health_status: string;
+    lifecycle_state: string;
+    last_sync_status: string | null;
+    last_sync_completed_at: string | null;
+    fact_counts: Record<string, number>;
+  }>;
+  customer_rollups: Array<{
+    customer_id: string | null;
+    customer_name: string | null;
+    mapped: boolean;
+    job_count: number;
+    workload_count: number;
+    unprotected_workloads: number;
+    failed_or_warning_jobs: number;
+    signals_sample: string[];
+  }>;
+  fact_samples: Record<string, unknown>[];
 };
 
 export type FinanceCustomerPanel = {

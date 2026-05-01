@@ -20,6 +20,76 @@ def _hash_snapshot(obj: dict) -> str:
     return hashlib.sha256(raw.encode()).hexdigest()[:16]
 
 
+def build_customer_safe_review_workspace(detail: dict, *, script_context: dict) -> dict:
+    """
+    Minimal, external-safe context for customer email / printable report generation.
+
+    Must not expose connector names, sync/mapping state, product internals, or data-import status —
+    those belong in operator-only artefacts (agenda, AM notes, internal panels).
+    """
+    name = (detail.get("name") or "").strip() or "your organisation"
+    sc = script_context or {}
+    caller = sc.get("caller") or {}
+    sign_raw = (caller.get("name") or "").strip()
+    if sign_raw.lower() in ("your account manager", "your account team"):
+        sign_raw = ""
+    msp = sc.get("msp") or {}
+    brand = (msp.get("brand_name") or "").strip() or "our team"
+
+    hooks: list[str] = []
+    if (detail.get("open_tickets_count") or 0) > 0:
+        hooks.append("Review recent service themes and how we can support you best.")
+    if (detail.get("open_opportunities_count") or 0) > 0:
+        hooks.append("Align on open opportunities and sensible next steps.")
+    if (detail.get("open_quotes_count") or 0) > 0:
+        hooks.append("Touch base on any proposals or quotes you may want to progress.")
+    fin = detail.get("finance") or {}
+    if fin.get("finance_linked"):
+        hooks.append(
+            "At a high level, we can align on account housekeeping and billing topics — "
+            "keep wording general; do not quote dashboards, systems, or linkage status."
+        )
+    else:
+        hooks.append(
+            "Keep finance discussion qualitative unless the customer raises specifics — "
+            "do not mention missing records, tools, or internal data completeness."
+        )
+
+    return {
+        "audience": "external_customer_recipient",
+        "voice": (
+            "You represent the MSP writing to the customer. Be warm and professional. "
+            "The customer does not use our internal platform — never mention imports, sync, mappings, "
+            "connectors, integrations setup, accounting product names, or 'linkage' / 'canonical' data. "
+            "Never instruct the customer to perform internal admin tasks."
+        ),
+        "customer": {"name": name},
+        "msp": {"brand_name": brand},
+        "sign_off": {
+            "account_manager_name": sign_raw or None,
+            "instruction": (
+                "End with 'Best regards,' then the account manager's real first and last name if provided above; "
+                "otherwise 'Best regards,' followed by the MSP brand name alone. "
+                "Forbidden: [Your Name], [Customer Name], or any bracket placeholder."
+            ),
+        },
+        "suggested_discussion_hooks": hooks[:8],
+        "never_include_terms": [
+            "Xero",
+            "sync",
+            "mapping",
+            "connector",
+            "integration",
+            "MSPIntel",
+            "canonical",
+            "import",
+            "billing account",
+            "data completeness",
+            "unresolved",
+        ],
+    }
+
+
 def build_review_qbr_variables(
     db: Session,
     tenant_id: UUID,
@@ -105,9 +175,11 @@ def build_review_qbr_variables(
             for row in open_ticket_rows
         ],
     }
+    review_workspace_customer_safe = build_customer_safe_review_workspace(detail, script_context=base["script_context"])
     out = {
         **base,
         "review_workspace": review_workspace,
+        "review_workspace_customer_safe": review_workspace_customer_safe,
         "previous_ai_artifacts": prev,
         "previous_ai_artifacts_guidance": (
             "These entries are prior generated guidance only, not verified facts. "

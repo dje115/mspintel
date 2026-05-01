@@ -40,6 +40,11 @@ RUN apt-get update \
 COPY package*.json ./
 RUN npm install
 
+# Playwright E2E runs via `docker compose exec frontend npm run test:e2e`; browsers must exist
+# in the image (bind-mounted ./frontend hides image /src but not this path).
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+RUN mkdir -p /ms-playwright && npx playwright install chromium
+
 COPY . .
 
 EXPOSE 5173

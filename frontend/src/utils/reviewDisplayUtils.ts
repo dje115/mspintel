@@ -31,6 +31,25 @@ export function scanTextForReviewWarnings(text: string | null | undefined): stri
     FENCE_RE.lastIndex = 0;
     out.push("Fenced code block detected — not suitable as final customer copy.");
   }
+  const leakSnippets = [
+    "this is a json",
+    "here is the json",
+    "here is json",
+    "output is json",
+    "raw payload",
+    "```json",
+    "```markdown",
+    "canonical row",
+    "source_entity",
+    "prompt variables",
+    "{{customer",
+    "{{ msp"
+  ];
+  for (const s of leakSnippets) {
+    if (lower.includes(s)) {
+      out.push(`Draft may include implementation wording (${s}) — clean before customer-facing use.`);
+    }
+  }
   return out;
 }
 

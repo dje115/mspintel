@@ -1,10 +1,10 @@
 from uuid import UUID
 
 from fastapi import HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.models.entities import Customer
+from app.models.entities import BackupProtectionFact, Customer
 from app.repositories.workspace import (
     WorkspaceRepository,
     _next_action_for_rec,
@@ -22,6 +22,8 @@ from app.schemas.workspace import (
     ServiceRiskResponse,
     ServiceRiskSection,
 )
+from app.services.connectors.constants import BACKUP_CONNECTOR_SYSTEM_TYPES
+from app.services.connectors.runtime import ConnectorRuntimeService
 from app.services.risk_engine_v1 import RISK_ENGINE_VERSION, RiskEngineV1Service
 
 
@@ -135,16 +137,78 @@ class WorkspaceService:
         open_tickets = self.repo.open_ticket_count(tenant_id)
         at_risk = self.repo.at_risk_customer_count(tenant_id)
         lost = self.repo.lost_quote_count(tenant_id)
+        connections = ConnectorRuntimeService(self.repo.db).list_connections(tenant_id)
+        backup_conns = [c for c in connections if c.system_type in BACKUP_CONNECTOR_SYSTEM_TYPES]
+        n_backup = len(backup_conns)
+        tracked_jobs = int(
+            self.repo.db.scalar(
+                select(func.count()).select_from(BackupProtectionFact).where(
+                    BackupProtectionFact.tenant_id == tenant_id,
+                    BackupProtectionFact.fact_kind == "backup_job",
+                )
+            )
+            or 0
+        )
+        facts_total = int(
+            self.repo.db.scalar(
+                select(func.count()).select_from(BackupProtectionFact).where(
+                    BackupProtectionFact.tenant_id == tenant_id,
+                )
+            )
+            or 0
+        )
+        unprotected_wl = int(
+            self.repo.db.scalar(
+                select(func.count()).select_from(BackupProtectionFact).where(
+                    BackupProtectionFact.tenant_id == tenant_id,
+                    BackupProtectionFact.fact_kind == "workload",
+                    BackupProtectionFact.health_status == "unprotected",
+                )
+            )
+            or 0
+        )
+        if n_backup == 0:
+            backup_summary = (
+                "No backup integration is registered yet. Add your backup vendor connection under Integrations — "
+                "when sync is available, job runs and coverage gaps will surface here."
+            )
+            backup_placeholder = True
+        else:
+            active = [c for c in backup_conns if c.is_enabled and not c.is_paused and c.lifecycle_state != "not_configured"]
+            if facts_total == 0:
+                backup_summary = (
+                    f"{len(active)} of {n_backup} backup connection(s) are enabled. "
+                    "Run sync to ingest jobs, workloads, repositories, and restore-test facts for this workspace."
+                )
+                backup_placeholder = True
+            else:
+                backup_summary = (
+                    f"{len(active)} of {n_backup} backup connection(s) active — "
+                    f"{tracked_jobs} job row(s) and {facts_total} total protection fact(s) from the last ingest."
+                )
+                backup_placeholder = False
         backup = ServiceRiskSection(
             title="Backup coverage & jobs",
-            summary="When backup integrations are connected, failed jobs, stale agents, and coverage gaps will rank here.",
-            metrics={"placeholder": 1, "lost_quotes_context": lost},
-            placeholder=True,
+            summary=backup_summary,
+            metrics={
+                "backup_integrations_configured": n_backup,
+                "tracked_backup_jobs": tracked_jobs,
+                "tracked_protection_facts": facts_total,
+                "unprotected_workloads": unprotected_wl,
+            },
+            placeholder=backup_placeholder,
         )
         delivery = ServiceRiskSection(
             title="Service delivery load",
-            summary="Open ticket pressure and at-risk accounts indicate where delivery may be stretched.",
-            metrics={"open_tickets": open_tickets, "at_risk_accounts": at_risk},
+            summary=(
+                "Open ticket pressure, at-risk accounts, and lost quotes flagged for revisit — all from synced "
+                "service and commercial data."
+            ),
+            metrics={
+                "open_tickets": open_tickets,
+                "at_risk_accounts": at_risk,
+                "lost_quotes_for_revisit": lost,
+            },
             placeholder=False,
         )
         return ServiceRiskResponse(backup=backup, service_delivery=delivery)

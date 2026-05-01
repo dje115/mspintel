@@ -135,7 +135,8 @@ class ConnectorOnboardingService:
                 ConnectorMappingReview.source_external_id == source_external_id,
             )
         ).first()
-        if not row:
+        is_new = row is None
+        if is_new:
             row = ConnectorMappingReview(
                 tenant_id=tenant_id,
                 source_connection_id=source_connection_id,
@@ -149,7 +150,15 @@ class ConnectorOnboardingService:
         row.suggested_confidence = suggestion.confidence
         row.suggested_score = Decimal(str(round(suggestion.score, 2)))
         row.suggested_reasons = suggestion.reasons
-        row.status = "pending"
+        # Do not rotate operator decisions on every sync — re-opening accepted/remapped/rejected
+        # rows caused apparent cross-connector conflicts and lost trust in mapping review.
+        if is_new:
+            row.status = "pending" if suggestion.customer_id else "unlinked"
+        elif row.status in ("accepted", "remapped", "rejected"):
+            pass
+        else:
+            # pending or unlinked: refresh match state from latest customer baseline
+            row.status = "pending" if suggestion.customer_id else "unlinked"
         return row
 
     def list_mapping_reviews(

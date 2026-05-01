@@ -160,7 +160,7 @@ export function M365HealthPage() {
                 <span className="tenant-badge tenant-badge--watch">Partially connected</span>
               </div>
               <p className="muted" style={{ marginTop: "0.5rem" }}>
-                Only {data.summary.linked_count} of {data.summary.customer_count} customers have canonical M365 posture rows.
+                Only {data.summary.linked_count} of {data.summary.customer_count} customers have Microsoft 365 posture rows synced yet.
               </p>
             </section>
           ) : null}
@@ -188,7 +188,7 @@ export function M365HealthPage() {
             <article className="tenant-metric-card">
               <h3>Linked accounts</h3>
               <p className="tenant-metric-big">{data.summary.linked_count}</p>
-              <p className="tenant-metric-note">Customers with canonical M365 posture rows.</p>
+              <p className="tenant-metric-note">Customers with synced Microsoft 365 posture data.</p>
             </article>
             <article className="tenant-metric-card">
               <h3>Licensed / active</h3>

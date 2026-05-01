@@ -12,7 +12,9 @@ from app.models.entities import Contact, SourceEntityMapping, Ticket
 from app.models.entities import ConnectorMappingReview, IntegrationSyncRun, SourceSystemConnection
 from app.repositories.customers import CustomerRepository
 from app.repositories.workspace import WorkspaceRepository
+from app.services.backup_health_service import BackupHealthService
 from app.services.billing_integrity_service import BillingIntegrityService
+from app.services.connectors.constants import BACKUP_CONNECTOR_SYSTEM_TYPES
 from app.services.m365_health_service import M365HealthService
 from app.services.risk_engine_v1 import RiskEngineV1Service
 from app.services.tenant_profile import build_tenant_ai_context
@@ -234,17 +236,18 @@ def build_customer_review_agenda_variables(
     caller_email: str | None = None,
     caller_role: str | None = None,
 ) -> dict:
-    return {
-        "task": "customer_review_agenda",
-        **_customer_ai_context_variables(
-            db,
-            tenant_id,
-            customer_id,
-            caller_name=caller_name,
-            caller_email=caller_email,
-            caller_role=caller_role,
-        ),
-    }
+    from app.services.review_qbr_context import build_review_qbr_variables
+
+    out = build_review_qbr_variables(
+        db,
+        tenant_id,
+        customer_id,
+        caller_name=caller_name,
+        caller_email=caller_email,
+        caller_role=caller_role,
+    )
+    out["task"] = "customer_review_agenda"
+    return out
 
 
 def build_account_manager_next_conversation_variables(
@@ -256,17 +259,18 @@ def build_account_manager_next_conversation_variables(
     caller_email: str | None = None,
     caller_role: str | None = None,
 ) -> dict:
-    return {
-        "task": "account_manager_next_conversation",
-        **_customer_ai_context_variables(
-            db,
-            tenant_id,
-            customer_id,
-            caller_name=caller_name,
-            caller_email=caller_email,
-            caller_role=caller_role,
-        ),
-    }
+    from app.services.review_qbr_context import build_review_qbr_variables
+
+    out = build_review_qbr_variables(
+        db,
+        tenant_id,
+        customer_id,
+        caller_name=caller_name,
+        caller_email=caller_email,
+        caller_role=caller_role,
+    )
+    out["task"] = "account_manager_next_conversation"
+    return out
 
 
 def build_account_manager_call_script_variables(
@@ -278,17 +282,18 @@ def build_account_manager_call_script_variables(
     caller_email: str | None = None,
     caller_role: str | None = None,
 ) -> dict:
-    return {
-        "task": "account_manager_call_script",
-        **_customer_ai_context_variables(
-            db,
-            tenant_id,
-            customer_id,
-            caller_name=caller_name,
-            caller_email=caller_email,
-            caller_role=caller_role,
-        ),
-    }
+    from app.services.review_qbr_context import build_review_qbr_variables
+
+    out = build_review_qbr_variables(
+        db,
+        tenant_id,
+        customer_id,
+        caller_name=caller_name,
+        caller_email=caller_email,
+        caller_role=caller_role,
+    )
+    out["task"] = "account_manager_call_script"
+    return out
 
 
 def build_billing_variance_summary_variables(db: Session, tenant_id: UUID, customer_id: UUID) -> dict:
@@ -512,6 +517,82 @@ def build_m365_workspace_opportunity_variables(db: Session, tenant_id: UUID) -> 
     return {
         "task": "m365_upsell_opportunity",
         "portfolio_context": _m365_portfolio_scope_context(db, tenant_id),
+    }
+
+
+def _latest_backup_connection_and_run(
+    db: Session, tenant_id: UUID
+) -> tuple[SourceSystemConnection | None, IntegrationSyncRun | None]:
+    connection = db.scalars(
+        select(SourceSystemConnection)
+        .where(
+            SourceSystemConnection.tenant_id == tenant_id,
+            SourceSystemConnection.system_type.in_(BACKUP_CONNECTOR_SYSTEM_TYPES),
+        )
+        .order_by(SourceSystemConnection.created_at.desc())
+    ).first()
+    if not connection:
+        return None, None
+    run = db.scalars(
+        select(IntegrationSyncRun)
+        .where(IntegrationSyncRun.tenant_id == tenant_id, IntegrationSyncRun.source_connection_id == connection.id)
+        .order_by(IntegrationSyncRun.created_at.desc())
+    ).first()
+    return connection, run
+
+
+def _backup_portfolio_scope_context(db: Session, tenant_id: UUID) -> dict:
+    raw = BackupHealthService(db).build_workspace(tenant_id)
+    connection, last_run = _latest_backup_connection_and_run(db, tenant_id)
+    tenant_profile_context = build_tenant_ai_context(db, tenant_id).model_dump(mode="json")
+    msp_profile = dict(tenant_profile_context.get("msp_profile_summary") or {})
+    msp_name = msp_profile.get("brand_name") or msp_profile.get("legal_name") or "MSP tenant"
+    base_url = str(connection.base_url or "") if connection else ""
+    connector_mode = "connector_lab_or_dev" if ("connector-lab" in base_url or "localhost" in base_url) else "connector_or_live"
+    confidence_notes = list(raw.get("coverage_notes") or [])
+    if connector_mode == "connector_lab_or_dev":
+        confidence_notes.append(
+            "Source mode suggests Connector Lab/dev backup payloads — treat narrative as directional until production vendor depth is wired."
+        )
+    return {
+        "analysis_scope": "portfolio_backup_workspace",
+        "scope_rules": {
+            "facts_are_last_sync_snapshots": True,
+            "do_not_invent_sla_rpo_rto": True,
+            "explain_low_change_as_ambiguous": True,
+        },
+        "msp_context": {
+            "msp_display_name": msp_name,
+            "tenant_profile_summary": msp_profile,
+            "selected_services": list(tenant_profile_context.get("selected_services") or []),
+        },
+        "source_context": {
+            "vendor_family": "backup",
+            "supported_vendors_in_product": sorted(BACKUP_CONNECTOR_SYSTEM_TYPES),
+            "source_mode": connector_mode,
+            "connector_status": {
+                "configured": connection is not None,
+                "connection_id": str(connection.id) if connection else None,
+                "health_status": connection.health_status if connection else "not_configured",
+                "lifecycle_state": connection.lifecycle_state if connection else "not_configured",
+                "last_sync_status": getattr(last_run, "status", None),
+                "last_sync_completed_at": getattr(last_run, "completed_at", None).isoformat()
+                if getattr(last_run, "completed_at", None)
+                else None,
+            },
+        },
+        "portfolio_totals": dict(raw.get("summary") or {}),
+        "connections": list(raw.get("connections") or []),
+        "customer_rollups": list(raw.get("customer_rollups") or [])[:15],
+        "fact_samples": list(raw.get("fact_samples") or [])[:25],
+        "data_confidence_notes": confidence_notes,
+    }
+
+
+def build_backup_workspace_insights_variables(db: Session, tenant_id: UUID) -> dict:
+    return {
+        "task": "backup_coverage_insights",
+        "portfolio_context": _backup_portfolio_scope_context(db, tenant_id),
     }
 
 

@@ -34,6 +34,7 @@ from app.services.connectors.constants import (
 from app.services.connectors.providers.autotask import AutotaskConnectorAdapter
 from app.services.connectors.providers.microsoft_365 import Microsoft365ConnectorAdapter
 from app.services.connectors.providers.stubs import UnsupportedConnectorAdapter
+from app.services.connectors.providers.veeam import VeeamConnectorAdapter
 from app.services.connectors.providers.xero import XeroConnectorAdapter
 
 
@@ -59,15 +60,7 @@ class ConnectorRegistry:
                 auth_modes=("api_key",),
                 sync_modes=("manual", "delta"),
             ),
-            CONNECTOR_SYSTEM_VEEAM: UnsupportedConnectorAdapter(
-                system_type=CONNECTOR_SYSTEM_VEEAM,
-                display_name="Veeam",
-                supports_entities=(CAP_BACKUP_JOBS, CAP_CONTRACTS, CAP_ACTIVITIES),
-                message="Veeam adapter is planned for service/backup ingestion in a future release (VSPC API v3 token/API-key auth expected).",
-                maturity="planned",
-                auth_modes=("username_password", "token_endpoint", "api_key"),
-                sync_modes=("manual", "delta"),
-            ),
+            CONNECTOR_SYSTEM_VEEAM: VeeamConnectorAdapter(),
             CONNECTOR_SYSTEM_XERO: XeroConnectorAdapter(),
             CONNECTOR_SYSTEM_SAGE: UnsupportedConnectorAdapter(
                 system_type=CONNECTOR_SYSTEM_SAGE,

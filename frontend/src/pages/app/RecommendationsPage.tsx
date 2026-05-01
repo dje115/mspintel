@@ -26,6 +26,8 @@ export function RecommendationsPage() {
   const [aiExplainBusy, setAiExplainBusy] = useState<Record<string, boolean>>({});
   const [aiExplainText, setAiExplainText] = useState<Record<string, string>>({});
   const [aiExplainErr, setAiExplainErr] = useState<Record<string, string | undefined>>({});
+  const [syncBusy, setSyncBusy] = useState(false);
+  const [syncMessage, setSyncMessage] = useState<string | null>(null);
 
   const status = searchParams.get("status") ?? "";
   const scope = searchParams.get("scope") ?? "";
@@ -107,6 +109,30 @@ export function RecommendationsPage() {
     }
   };
 
+  const syncFromSignals = async () => {
+    if (!accessToken || !currentTenantId) return;
+    setSyncBusy(true);
+    setSyncMessage(null);
+    setActionError(null);
+    try {
+      const out = await api.syncRecommendationsFromSignals(accessToken, currentTenantId);
+      setSyncMessage(`Synced: +${out.created} new, ${out.updated} updated, ${out.completed} completed.`);
+      const refreshed = await api.workspaceRecommendations(accessToken, currentTenantId, {
+        page,
+        page_size: PAGE_SIZE,
+        status: status || undefined,
+        scope: scope || undefined,
+        owner: ownerFilter || undefined,
+        customer_id: customerId || undefined
+      });
+      setData(refreshed);
+    } catch (e: unknown) {
+      setActionError(e instanceof Error ? e.message : "Sync failed");
+    } finally {
+      setSyncBusy(false);
+    }
+  };
+
   const patchStatus = async (id: string, next: string) => {
     if (!accessToken || !currentTenantId) return;
     setActionError(null);
@@ -154,8 +180,20 @@ export function RecommendationsPage() {
       <TenantAiContextNotice compact />
 
       {actionError ? <p className="tenant-error">{actionError}</p> : null}
+      {syncMessage ? <p className="muted" style={{ fontSize: "0.88rem" }}>{syncMessage}</p> : null}
 
       <div className="tenant-toolbar tenant-toolbar--wrap">
+        {isTenantAdmin ? (
+          <button
+            type="button"
+            className="tenant-btn-inline"
+            disabled={syncBusy}
+            onClick={() => void syncFromSignals()}
+            title="Create or refresh open items from mapping, billing, tickets, quotes, and M365 signals"
+          >
+            {syncBusy ? "Syncing…" : "Refresh from data"}
+          </button>
+        ) : null}
         <select
           className="tenant-select"
           aria-label="Status"
@@ -212,8 +250,9 @@ export function RecommendationsPage() {
             <div className="tenant-empty">
               <p className="tenant-empty-title">No recommendations match</p>
               <p>
-                Adjust filters or improve data inputs. Generic/low-context tenants should complete onboarding, connect
-                PSA/finance/M365 sources, and resolve mappings to produce stronger recommendations.
+                Adjust filters or improve data inputs. Tenant admins can use <strong>Refresh from data</strong> to
+                materialise items from mapping, billing, tickets, quotes, and M365 signals. Otherwise complete
+                onboarding and connect PSA, finance, and M365 so the queue stays meaningful.
               </p>
             </div>
           ) : (

@@ -3,6 +3,13 @@
 **As of:** seed refresh + codebase review (post–rich `demo-msp` dataset).  
 **Method:** static review of routes, services, models, tests, and a small number of UI/API contracts — not a production load test.
 
+## Tenant UX / trust cleanup (`v2.10.1` → `v2.10.2` release)
+
+- **`v2.10.2` (workspace + dashboards + backup):** **Service risk** backup panel uses **live protection fact counts** after Veeam sync (`backup_protection_facts`); **Backup intelligence (AI)** uses task `backup_coverage_insights` with honest low-change / unprotected-workload framing. **Recommendations** — tenant admins can **Refresh from data** (`POST /workspace/recommendations/sync-from-signals`) for idempotent auto rows from mapping/billing/tickets/quotes/M365 signals. **Data quality** lists **per-connection** coverage rows. **Dashboard** integration & mapping health strip. **Roadmap** / **Customer 360** / **Marketing** tenant-safe copy (earlier passes). **Mapping review** conflict hints + terminal accepted rows preserved across syncs.
+- **Mapping review:** Sync no longer resets **accepted / remapped / rejected** rows back to “pending” (root cause of confusing cross-connector conflicts). API returns **human-readable** match reasons, create blockers, and **conflict hints** when multiple sources target the same suggested account. **List endpoint** now uses real **contact email domains** for duplicate-domain eligibility (previously always empty). UI: status summary cards, safer action buttons, conflict callouts, no raw internal reason codes.
+- **Copy / AI surfaces:** Review/QBR, M365 health, and Customer 360 avoid “canonical / raw JSON / demo JSON dump” in normal tenant language; review output scanner flags common **implementation-leak** phrases. Platform default QBR/AM prompt keys are guard-tested against **“here is the json output”**-class phrasing.
+- **Screen-purpose audit (static):** Dashboard — portfolio attention + honest empty states. Onboarding / AI settings / prompts / security — configuration. Customers + 360 — directory + coverage-aware detail. Reviews — meeting pack with persisted artefacts. Marketing / data-quality — partial shells (labelled). Integrations + mappings — connector lifecycle + identity review. M365 health / billing integrity — connector-backed with explicit limits. Risk queues — deterministic lists, not predictive claims.
+
 ## Workflow audit snapshot (2026-04-29, Docker-first)
 
 - **Tenant routes:** Core auth, dashboard, customers, integrations, mappings, M365 health, billing integrity, recommendations, opportunities (incl. lost-quote tab redirect), at-risk/attention/service-risk, Review/QBR, AI settings — exercised via API/tests and **`v2.9.3+`** Playwright smoke (**`frontend/e2e/review-qbr-smoke.spec.ts`**: login, mappings, customers, Review tabs, mocked agenda/email/report + error banner); live Ollama remains optional/operator-owned.
@@ -28,16 +35,16 @@ Classification used per area:
 
 | Area | Status | What exists | Gaps / notes | Next |
 |------|--------|-------------|--------------|------|
-| Dashboard | **Partial** | KPIs from real counts (customers, high risk, open recs, lost quotes); links into workspaces. | “High risk” uses `account_scores` threshold in repo, not full ML; executive narrative mostly absent. | Richer widgets from `demo_profile` once surfaced in APIs. |
+| Dashboard | **Partial** | KPIs from real counts; **integration/mapping health** strip from coverage API (`v2.10.2`). | Executive AI summary still optional; not auto-run. | Portfolio narrative AI when prompt + provider ready. |
 | Customers list | **Working** | Paginated list, status filter, scores, next action from first recommendation. | Search is simple `ILIKE`; no saved views. | Column for industry when exposed. |
 | Customer 360 | **Partial** | Scores, counts, recs/opps/quotes tables, synced contact list, AI panels, AM guidance shell, finance card (invoice summary/unpaid/overdue/amount-due + recent line items), **demo_profile** JSON panel when seeded. | Backup and wider contract/service reconciliation still partial. | Domain panels when connectors deepen. |
 | Recommendations | **Working** | List, filters, patch status, AI explain with lineage. | Priority heuristic from scope only. | Owner assignment workflow. |
 | Opportunities / quotes | **Working** | Commercial hub API + SPA tables from canonical rows. | No ITQuoter-native deep fields; `revisit_reason` partly static strings. | Lost-reason capture from PSA. |
 | At-risk / Needs attention | **Working** | Queues by `Customer.status` + score columns. | Status is seed-driven; not computed pipeline. | Risk model + automated status transitions. |
-| Service risk | **Partial** | Delivery section uses real open-ticket + at-risk counts. | Backup block is explicitly **placeholder** in `WorkspaceService.service_risk`. | Veeam connector + real job stats. |
+| Service risk | **Partial** | Delivery: tickets, at-risk, **lost quotes**; backup: **registered Veeam connections** + honest sync-depth note. | No per-job backup failures yet (adapter depth). | Veeam job ingestion + customer drill-down. |
 | Reviews / QBR | **Working** (meeting-pack UX) | Tabbed workspace (`/app/reviews`): prep overview with **commercial cards** when opps/quotes exist, **AI agenda**, **AM prep as structured cards**, **email/report** with **persisted `output_warnings`** + **`quality_flags.needs_customer_review`**, **history** chips, **`GET …/context`**, **print CSS** aligned to `tenant-shell`; **`python -m app.scripts.sync_platform_prompt_defaults`** upserts missing **platform** prompt catalog without touching tenant overrides; missing prompt → **503** with remediation text. | No calendar sync; no editable long-form meeting notes DB; `GET …/ai/customer-review-agenda` remains legacy read of latest `ai_task_runs` only. | Calendar + collaborative notes. |
-| Marketing | **Placeholder** | Shell, links, placeholder copy. | No idea bank DB, no matching engine. | Idea entity + segment API. |
-| Data quality | **Placeholder** | Static shell pointing to Integrations. | No coverage scores API in tenant UI. | Sync health + coverage API. |
+| Marketing | **Partial** | **Live** lost-quote count on segment card; honest **non-scored** matching section; workshop starters labelled. | No persisted idea bank; no AI segment generation. | Idea entity + DB prompts. |
+| Data quality | **Partial** | **Live** aggregates + **per-connection table** from `/integrations/coverage`. | No stale-sync-age column yet; no automated owner assignment. | Last sync / error rollups per connection. |
 | Integrations | **Partial** | Connection list/detail, test + manual sync for supported types, sync run history, mapping review actions, and first-connector baseline import actions (create canonical customers from eligible mapping rows). | ConnectWise/Veeam/Sage still mostly **stub** adapters; **Autotask** and **M365 Connector Lab path** now have realistic thin sync flows plus reviewable identity states (`accepted`/`pending`/`unlinked`). | Harden CW + finance connectors. |
 | AI settings | **Working** | Tenant AI settings PATCH, provider list, resolve, provider connectivity test action. | Provider “test” currently follows openai-compatible transport only; non-runnable families return explicit unsupported status. | Azure adapter when ready. |
 | Prompts | **Working** | List definitions/versions, activate, tenant overrides, revert. | No diff UI / shadow mode. | Prompt compare tooling. |
@@ -178,6 +185,65 @@ Classification used per area:
 
 ---
 
-## 12. Related doc
+## 12. Route & tab audit checklist (whole-app pass)
+
+**As of:** 2026-04-30 — static audit of `frontend/src/App.tsx` routes plus backend/API expectations.  
+**Tags:** `working` = connector-backed or real APIs + coherent UX · `partial` · `shell` · `needs import` · `needs AI` · `needs UX` · `broken` (none confirmed this pass).
+
+### Tenant (`/app/...`)
+
+| Route | Purpose | Status | Data / notes |
+|------|---------|--------|--------------|
+| `/login`, `/signup`, `/accept-invitation` | Auth | **working** | Real APIs; no mock users in UI. |
+| `/app` (index), `/app/dashboard` | Executive front door | **partial** | `executiveDashboard` + risk queues; KPIs real counts; no portfolio exec AI yet; service-risk blurb honest. |
+| `/app/onboarding` | MSP profile & catalogue | **partial** | Persists tenant profile; guides toward connectors. |
+| `/app/ai-settings` | Providers & task routes | **working** | DB-backed; route stubs auto-create for known tasks (`v2.9.2+`). |
+| `/app/customers` | Directory | **working** | Canonical `customers`; filters/search; scores when present. |
+| `/app/customers/:id` | Customer 360 | **partial** | Canonical slices + AI blocks + finance (Xero when synced); backup/telephony thin. |
+| `/app/reviews` | QBR / meeting pack | **working** | Persisted artefacts; context API; AI variable policy for customer-safe copy (`v2.10.x+`); Playwright smoke. |
+| `/app/marketing` | Campaigns / events | **shell** | Navigation + placeholder; needs connector signals + persisted ideas. |
+| `/app/data-quality` | Coverage / trust | **partial** | `integrationCoverage` API — real counts; not full gap engine. |
+| `/app/integrations` | Connector centre | **partial** | Lifecycle + sync; maturity honest in registry; CW/Veeam/ITQuoter still stub-heavy. |
+| `/app/integrations/mappings` | Identity review | **partial** | Cards, actions, conflicts; baseline import; ongoing UX hardening in tree. |
+| `/app/integrations/:id` | Connection detail | **partial** | Per-connection controls + history. |
+| `/app/m365-health` | M365 posture | **partial** | Portfolio vs customer scope; AI summary/opportunity when configured. |
+| `/app/billing-integrity` | Revenue assurance | **partial** | Xero-backed cards when synced; honest caveats. |
+| `/app/recommendations` | Rec queue | **working** | Canonical recs + AI explain. |
+| `/app/opportunities` (+ `?tab=lost`) | Commercial hub | **working** | PSA/seed opps & quotes; lost tab via redirect from `/app/lost-quotes`. |
+| `/app/at-risk`, `/app/attention` | Risk queues | **working** | Score-driven lists; deterministic, not ML claims. |
+| `/app/service-risk` | Delivery + backup | **partial** | Tickets real; backup block placeholder until Veeam depth. |
+| `/app/prompts` | Tenant prompt overrides | **working** | Versions + activate + revert. |
+| `/app/security` | Sessions | **working** | Tenant session list/actions per role. |
+| `/app/members` | Team | **working** | Memberships / invites. |
+| `/app/system-status` | Tenant system | **rough** | Thin health mirror. |
+| `/app/roadmap`, `/app/roadmap/:topic` | Product roadmap | **shell** | Intentional low-fi. |
+
+### Platform (`/platform/...`)
+
+| Route | Purpose | Status | Notes |
+|------|---------|--------|------|
+| `/platform/login` | Operator auth | **working** | MFA when configured. |
+| `/platform` | Overview | **partial** | |
+| `/platform/tenants` | Tenant admin | **partial** | |
+| `/platform/system-status` | Health | **rough** | |
+| `/platform/security` | Platform security | **partial** | |
+| `/platform/ai-providers` | Catalog | **working** | |
+| `/platform/ai-task-runs` | Lineage | **partial** | |
+| `/platform/prompts` | Global prompts | **working** | |
+| `/platform/connectors` | Connector catalog | **working** | |
+| `/platform/audit` | Audit | **partial** | |
+| `/platform/settings` | Platform settings | **partial** | |
+
+### Tests (representative)
+
+| Area | Coverage |
+|------|----------|
+| Backend | Connectors, mappings, customers, AI execution, reviews, integrations tests in `backend/tests/`. |
+| Frontend | Lint/build; Vitest if configured. |
+| E2E | `frontend/e2e/review-qbr-smoke.spec.ts` (Review/QBR); extend for connector journey when stable. |
+
+---
+
+## 13. Related doc
 
 **[DEMO_SEED_DATA.md](DEMO_SEED_DATA.md)** — what the richer seed contains and how to reseed.

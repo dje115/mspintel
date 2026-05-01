@@ -103,6 +103,7 @@ class MappingReviewRow(BaseModel):
     suggested_confidence: str
     suggested_score: float | None = None
     suggested_reasons: list[str] = Field(default_factory=list)
+    suggested_reason_labels: list[str] = Field(default_factory=list)
     status: str
     status_label: str | None = None
     mapped_customer_id: UUID | None = None
@@ -114,6 +115,9 @@ class MappingReviewRow(BaseModel):
     notes: str | None = None
     eligible_for_customer_create: bool = False
     create_customer_blockers: list[str] = Field(default_factory=list)
+    create_customer_blocker_labels: list[str] = Field(default_factory=list)
+    conflict_hints: list[str] = Field(default_factory=list)
+    conflict_hint_labels: list[str] = Field(default_factory=list)
 
 
 class MappingReviewActionRequest(BaseModel):

@@ -111,6 +111,28 @@ def test_workspace_recommendations_tenant_scoped(client, db_session):
     assert denied.status_code == 403
 
 
+def test_backup_health_workspace_ok(client, db_session):
+    tenant = Tenant(id=uuid.uuid4(), slug="bk", name="BK", is_active=True)
+    db_session.add(tenant)
+    db_session.commit()
+    user = create_user_with_membership(db_session, "bk@example.com", "account_manager", tenant)
+    r = client.get("/api/v1/workspace/backup-health", headers=auth_headers(user, str(tenant.id)))
+    assert r.status_code == 200
+    body = r.json()
+    assert "summary" in body
+    assert "coverage_notes" in body
+    assert body["summary"].get("backup_connection_count") == 0
+
+
+def test_post_backup_insights_requires_facts(client, db_session):
+    tenant = Tenant(id=uuid.uuid4(), slug="bk-ai", name="BK AI", is_active=True)
+    db_session.add(tenant)
+    db_session.commit()
+    user = create_user_with_membership(db_session, "bk-ai@example.com", "tenant_admin", tenant)
+    r = client.post("/api/v1/workspace/backup-health/ai/insights", headers=auth_headers(user, str(tenant.id)))
+    assert r.status_code == 400
+
+
 def test_workspace_commercial_and_service_risk_ok(client, db_session):
     tenant = Tenant(id=uuid.uuid4(), slug="wc", name="WC", is_active=True)
     db_session.add(tenant)
@@ -126,7 +148,9 @@ def test_workspace_commercial_and_service_risk_ok(client, db_session):
     assert r2.status_code == 200
     b = r2.json()
     assert b["backup"]["placeholder"] is True
+    assert b["backup"]["metrics"].get("backup_integrations_configured") == 0
     assert "open_tickets" in b["service_delivery"]["metrics"]
+    assert "lost_quotes_for_revisit" in b["service_delivery"]["metrics"]
 
 
 def test_patch_recommendation_requires_admin(client, db_session):
@@ -163,6 +187,50 @@ def test_patch_recommendation_requires_admin(client, db_session):
     )
     assert good.status_code == 200
     assert good.json()["status"] == "accepted"
+
+
+def test_sync_recommendations_from_signals_ticket_pressure(client, db_session):
+    tenant = Tenant(id=uuid.uuid4(), slug="rsync", name="RSync", is_active=True)
+    db_session.add(tenant)
+    db_session.flush()
+    c = Customer(id=uuid.uuid4(), tenant_id=tenant.id, name="BusyCo", status="active", owner_name="o")
+    db_session.add(c)
+    db_session.flush()
+    for _ in range(4):
+        db_session.add(
+            Ticket(
+                id=uuid.uuid4(),
+                tenant_id=tenant.id,
+                customer_id=c.id,
+                status="open",
+                subject="t",
+            )
+        )
+    db_session.commit()
+
+    director = create_user_with_membership(db_session, "rsync-dir@example.com", "director", tenant)
+    denied = client.post(
+        "/api/v1/workspace/recommendations/sync-from-signals",
+        headers=auth_headers(director, str(tenant.id)),
+    )
+    assert denied.status_code == 403
+
+    admin = create_user_with_membership(db_session, "rsync-adm@example.com", "tenant_admin", tenant)
+    ok = client.post(
+        "/api/v1/workspace/recommendations/sync-from-signals",
+        headers=auth_headers(admin, str(tenant.id)),
+    )
+    assert ok.status_code == 200
+    body = ok.json()
+    assert body["created"] >= 1
+
+    lst = client.get(
+        "/api/v1/workspace/recommendations?page=1&page_size=20&status=open",
+        headers=auth_headers(admin, str(tenant.id)),
+    )
+    assert lst.status_code == 200
+    summaries = [item["summary"] for item in lst.json()["items"]]
+    assert any(s.startswith("[Auto] open-ticket-pressure:") for s in summaries)
 
 
 def test_m365_workspace_ai_summary_requires_linked_data(client, db_session):

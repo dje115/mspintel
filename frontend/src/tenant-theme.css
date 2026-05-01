@@ -507,6 +507,12 @@
   font-size: 0.88rem;
 }
 
+.tenant-table th.tenant-table-num,
+.tenant-table td.tenant-table-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
 .tenant-table th {
   text-align: left;
   padding: 0.65rem 1rem;

@@ -29,6 +29,7 @@ from app.services.ai_providers.registry import execute_chat_completion, is_famil
 from app.services.ai_runtime_resolver import AIRuntimeResolver, ResolvedAITask
 from app.core.ai_settings_crypto import decrypt_settings_payload
 from app.services.ai_runtime_resolver import apply_prompt_and_provider_lineage
+from app.services.ai_task_variable_policy import prepare_llm_variables
 
 
 def _effective_model(provider_family: str | None, model: str | None) -> str:
@@ -233,8 +234,9 @@ class AIExecutionService:
                 ),
             )
 
-        system_prompt = render_prompt_template(resolved.prompt_text, variables)
-        user_message = json.dumps(variables, ensure_ascii=False, indent=2)
+        llm_variables = prepare_llm_variables(task_type, variables)
+        system_prompt = render_prompt_template(resolved.prompt_text, llm_variables)
+        user_message = json.dumps(llm_variables, ensure_ascii=False, indent=2)
 
         primary_row = self.db.get(AIProvider, resolved.ai_provider_id) if resolved.ai_provider_id else None
         if not primary_row or primary_row.tenant_id != tenant_id:

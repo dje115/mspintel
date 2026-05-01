@@ -279,8 +279,13 @@ class BillingIntegrityService:
         notes: list[str] = []
         highlights: list[str] = []
         if not acct:
-            notes.append("No canonical finance billing account linked — confidence for commercial math is low.")
-            notes.append("Run Xero sync and resolve mapping review rows for this customer.")
+            notes.append(
+                "Accounting data is not linked for this account yet — treat commercial figures as directional until "
+                "finance is connected."
+            )
+            notes.append(
+                "After you connect accounting under Integrations, finish mapping review so invoices roll up to this customer."
+            )
             return {
                 "finance_linked": False,
                 "billing_account_id": None,
@@ -303,7 +308,7 @@ class BillingIntegrityService:
                 "integrity_highlights": highlights,
                 "confidence_notes": notes,
                 "next_commercial_action_placeholder": (
-                    "Link accounting and mapping rows before drawing revenue assurance conclusions."
+                    "Connect accounting and confirm customer mapping before making revenue or margin commitments."
                 ),
                 "provenance": {"canonical": False},
             }

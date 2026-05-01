@@ -33,9 +33,11 @@ import type {
   PlatformTenantList,
   RecommendationListResponse,
   RecommendationRow,
+  RecommendationSyncResponse,
   RiskQueueResponse,
   ResolvedAITaskResponse,
   ServiceRiskResponse,
+  BackupHealthWorkspaceResponse,
   SourceConnection,
   SubscriptionResponse,
   TenantMspProfile,
@@ -291,6 +293,11 @@ export const api = {
       headers: authHeaders(accessToken, tenantId),
       body: JSON.stringify({ status })
     }),
+  syncRecommendationsFromSignals: (accessToken: string, tenantId: string) =>
+    request<RecommendationSyncResponse>("/api/v1/workspace/recommendations/sync-from-signals", {
+      method: "POST",
+      headers: authHeaders(accessToken, tenantId)
+    }),
   workspaceCommercial: (accessToken: string, tenantId: string) =>
     request<CommercialHubResponse>("/api/v1/workspace/commercial", {
       headers: authHeaders(accessToken, tenantId)
@@ -346,6 +353,19 @@ export const api = {
     ),
   workspaceServiceRisk: (accessToken: string, tenantId: string) =>
     request<ServiceRiskResponse>("/api/v1/workspace/service-risk", {
+      headers: authHeaders(accessToken, tenantId)
+    }),
+  backupHealthWorkspace: (accessToken: string, tenantId: string) =>
+    request<BackupHealthWorkspaceResponse>("/api/v1/workspace/backup-health", {
+      headers: authHeaders(accessToken, tenantId)
+    }),
+  getBackupHealthAiLatest: (accessToken: string, tenantId: string) =>
+    request<AIProductBlockState>("/api/v1/workspace/backup-health/ai/latest", {
+      headers: authHeaders(accessToken, tenantId)
+    }),
+  postBackupHealthAiInsights: (accessToken: string, tenantId: string) =>
+    request<AIExecutionOutcome>("/api/v1/workspace/backup-health/ai/insights", {
+      method: "POST",
       headers: authHeaders(accessToken, tenantId)
     }),
   systemStatus: (accessToken: string, tenantId: string) =>

@@ -36,6 +36,7 @@ After the stack is up and seeded:
 ## Tests and Checks
 
 - Backend tests: `cd backend && python -m pytest`
+- **Docker-first (recommended after meaningful changes):** `docker compose exec backend python -m pytest`, `docker compose exec frontend npm run lint`, `docker compose exec frontend npm run build` — matches production-like paths and `node_modules` volume.
 - Frontend unit tests (display helpers): `cd frontend && npm run test`
 - Frontend build check: `cd frontend && npm run build`
 - Frontend lint: `cd frontend && npm run lint`
@@ -47,6 +48,8 @@ Automated **user-journey** checks live in **`frontend/e2e/review-qbr-smoke.spec.
 **Prerequisites**
 
 - Docker Compose stack up; backend on host port **8001** and Vite on **5173** (default Compose publish).
+- **Inside the frontend container**, global-setup uses **`E2E_API_BASE_URL`** (set in `compose.yaml` to **`http://backend:8000`**) so Node can reach the API on the Compose network. On the **host**, keep using **`http://127.0.0.1:8001`** unless you override the env var.
+- **Playwright browsers in Docker:** the frontend image installs Chromium at build time under **`/ms-playwright`**; **`compose.yaml`** sets **`PLAYWRIGHT_BROWSERS_PATH=/ms-playwright`** so bind-mounted `./frontend` does not hide those binaries. Run **`docker compose exec frontend npm run test:e2e`** (rebuild the frontend image after Dockerfile changes).
 - Demo seed applied (`docker compose exec backend python -m app.db.seed`) and, for full Review assertions, at least **one customer** (Connector Lab M365 sync + mapping import as in **[DEMO_SEED_DATA.md](DEMO_SEED_DATA.md)**).
 
 **Install browser once (host)**

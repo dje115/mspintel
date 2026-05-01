@@ -1,14 +1,28 @@
 /**
  * Prepares Playwright storageState (tenant JWT in localStorage) and e2e/.cache/meta.json.
- * Requires backend reachable at E2E_API_BASE_URL (default http://127.0.0.1:8001).
+ * Backend URL: E2E_API_BASE_URL, else inside Docker `/.dockerenv` → http://backend:8000, else host http://127.0.0.1:8001.
  */
 import fs from "fs";
 import path from "path";
 
 import type { FullConfig } from "@playwright/test";
 
+function resolveApiBase(): string {
+  let raw: string;
+  if (process.env.E2E_API_BASE_URL?.trim()) {
+    raw = process.env.E2E_API_BASE_URL.trim();
+  } else {
+    try {
+      raw = fs.existsSync("/.dockerenv") ? "http://backend:8000" : "http://127.0.0.1:8001";
+    } catch {
+      raw = "http://127.0.0.1:8001";
+    }
+  }
+  return raw.replace(/\/$/, "");
+}
+
 async function globalSetup(config: FullConfig) {
-  const apiBase = (process.env.E2E_API_BASE_URL || "http://127.0.0.1:8001").replace(/\/$/, "");
+  const apiBase = resolveApiBase();
   const email = process.env.E2E_TENANT_EMAIL || "tenant-admin@demo-msp.example.com";
   const password = process.env.E2E_TENANT_PASSWORD || "ChangeMe123!";
 

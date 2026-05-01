@@ -18,6 +18,13 @@ _PLACEHOLDER_PATTERNS = (
 
 _FENCE_RE = re.compile(r"^```(?:json|markdown)?\s*", re.IGNORECASE)
 
+# Customer-facing artefacts: flag if model parrots internal ops / tooling language.
+_CUSTOMER_INTERNAL_LEAK_RE = re.compile(
+    r"(mapping review|resolve mapping|run xero|\bxero sync\b|canonical finance|\bcanonical\b\s+finance|mspintel|"
+    r"connector lab|\bdata import\b|billing account linked|finance linkage|unresolved mapping|integration sync)",
+    re.IGNORECASE,
+)
+
 
 def strip_code_fences(text: str) -> str:
     t = (text or "").strip()
@@ -53,6 +60,8 @@ def detect_output_warnings(text: str, *, customer_safe: bool) -> list[str]:
             break
     if customer_safe and re.search(r"Connector Lab", text, flags=re.IGNORECASE):
         warnings.append("Connector Lab reference in customer-facing copy — rephrase for production.")
+    if customer_safe and _CUSTOMER_INTERNAL_LEAK_RE.search(text):
+        warnings.append("Possible internal tooling or data-import wording — rewrite before sending to the customer.")
     if "```" in text:
         warnings.append("Code-fence markers present — output may need cleanup.")
     return warnings
@@ -103,7 +112,7 @@ def collect_review_output_warnings(
             if re.search(pat, bundle, flags=re.IGNORECASE):
                 bad = True
                 break
-        if bad or "```" in bundle:
+        if bad or "```" in bundle or _CUSTOMER_INTERNAL_LEAK_RE.search(bundle):
             flags["needs_customer_review"] = True
             if not any("Needs review" in w for w in warnings):
                 warnings.append(

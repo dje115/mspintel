@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.entities import AuditEvent, ConnectorMappingReview, Customer, SourceEntityMapping, SourceSystemConnection, Tenant
+from app.services.connectors.onboarding import ConnectorOnboardingService
 from app.services.connectors.providers.autotask import AutotaskConnectorAdapter
 from tests.helpers import auth_headers, create_user_with_membership
 
@@ -91,6 +92,8 @@ def test_connector_catalog_exposes_manifest_metadata(client, db_session: Session
     itquoter = next(r for r in rows if r["system_type"] == "itquoter")
     assert itquoter["implemented"] is False
     assert itquoter["maturity"] in ("stub", "planned")
+    veeam = next(r for r in rows if r["system_type"] == "veeam")
+    assert veeam["implemented"] is True
 
 
 def test_create_connection_rejects_unsupported_auth_mode(client, db_session: Session):
@@ -696,3 +699,89 @@ def test_xero_connection_test_missing_tenant_header_failure(monkeypatch, client,
     assert tested.status_code == 200
     assert tested.json()["test_status"] == "failed"
     assert "xero-tenant-id" in (tested.json()["test_message"] or "").lower()
+
+
+def test_mapping_upsert_preserves_accepted_status(db_session: Session):
+    tenant = _make_tenant(db_session, slug="map-upsert", name="Map Upsert MSP")
+    conn = SourceSystemConnection(
+        tenant_id=tenant.id,
+        system_type="autotask",
+        display_name="AT",
+        auth_mode="api_key",
+    )
+    db_session.add(conn)
+    db_session.commit()
+    cust = Customer(tenant_id=tenant.id, name="Acme Corp", status="active")
+    db_session.add(cust)
+    db_session.commit()
+    svc = ConnectorOnboardingService(db_session)
+    row = svc.upsert_mapping_review_candidate(
+        tenant_id=tenant.id,
+        source_connection_id=conn.id,
+        entity_type="customer",
+        source_external_id="ext-1",
+        source_display_name="Acme Corp",
+    )
+    row.status = "accepted"
+    row.mapped_customer_id = cust.id
+    db_session.commit()
+    svc.upsert_mapping_review_candidate(
+        tenant_id=tenant.id,
+        source_connection_id=conn.id,
+        entity_type="customer",
+        source_external_id="ext-1",
+        source_display_name="Acme Corporation Ltd",
+    )
+    db_session.refresh(row)
+    assert row.status == "accepted"
+
+
+def test_mapping_api_duplicate_suggestion_conflict_hints(client, db_session: Session):
+    tenant = _make_tenant(db_session, slug="conflict", name="Conflict MSP")
+    admin = create_user_with_membership(db_session, "admin-conflict@example.com", "tenant_admin", tenant)
+    create = client.post(
+        "/api/v1/integrations/connections",
+        headers=auth_headers(admin, str(tenant.id)),
+        json={
+            "system_type": "microsoft_365",
+            "display_name": "M365",
+            "auth_mode": "sandbox",
+            "sync_cadence_minutes": 60,
+            "config": {"demo_mode": True},
+        },
+    )
+    assert create.status_code == 201, create.text
+    cid = uuid.UUID(create.json()["id"])
+    target = Customer(tenant_id=tenant.id, name="Shared Target", status="active")
+    db_session.add(target)
+    db_session.flush()
+    db_session.add_all(
+        [
+            ConnectorMappingReview(
+                tenant_id=tenant.id,
+                source_connection_id=cid,
+                entity_type="customer",
+                source_external_id="src-a",
+                source_display_name="Alpha",
+                suggested_customer_id=target.id,
+                suggested_confidence="medium",
+                status="pending",
+            ),
+            ConnectorMappingReview(
+                tenant_id=tenant.id,
+                source_connection_id=cid,
+                entity_type="customer",
+                source_external_id="src-b",
+                source_display_name="Beta",
+                suggested_customer_id=target.id,
+                suggested_confidence="medium",
+                status="pending",
+            ),
+        ]
+    )
+    db_session.commit()
+    res = client.get("/api/v1/integrations/mappings", headers=auth_headers(admin, str(tenant.id)))
+    assert res.status_code == 200, res.text
+    rows = res.json()
+    assert len(rows) == 2
+    assert all("multiple_sources_same_suggested_account" in (r.get("conflict_hints") or []) for r in rows)

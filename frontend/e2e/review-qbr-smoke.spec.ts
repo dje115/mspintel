@@ -37,7 +37,8 @@ test.describe("MSPIntel demo journey — Review/QBR smoke", () => {
   test("integrations mappings and customers list", async ({ page }) => {
     await page.goto("/app/integrations/mappings");
     await expect(page.getByRole("heading", { name: "Integration mappings review" })).toBeVisible();
-    await expect(page.getByText(/Needs review:/)).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Needs review" }).first()).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Needs attention" }).first()).toBeVisible();
 
     await page.goto("/app/customers");
     await expect(page.getByRole("heading", { name: /Accounts & customers/ })).toBeVisible();
@@ -95,6 +96,8 @@ test.describe("MSPIntel demo journey — Review/QBR smoke", () => {
       await expect(page.getByRole("button", { name: "Copy full" })).toBeVisible();
       await expect(body).not.toContainText("[Customer Name]");
       await expect(body).not.toContainText("{{");
+      await expect(body).not.toContainText("```");
+      await expect(body).not.toContainText("this is a json");
 
       await page.getByRole("button", { name: "Customer report" }).click();
       await page.getByRole("button", { name: "Generate / refresh report" }).click();

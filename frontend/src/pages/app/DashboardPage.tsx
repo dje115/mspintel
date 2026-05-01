@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { api } from "../../api/client";
-import type { ExecutiveDashboardResponse, RiskQueueRow } from "../../api/types";
+import type { ExecutiveDashboardResponse, IntegrationCoverageResponse, RiskQueueRow } from "../../api/types";
 import { useSession } from "../../state/session";
 
 export function DashboardPage() {
@@ -10,6 +10,7 @@ export function DashboardPage() {
   const [exec, setExec] = useState<ExecutiveDashboardResponse | null>(null);
   const [atRisk, setAtRisk] = useState<RiskQueueRow[]>([]);
   const [watch, setWatch] = useState<RiskQueueRow[]>([]);
+  const [coverage, setCoverage] = useState<IntegrationCoverageResponse | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -28,6 +29,14 @@ export function DashboardPage() {
       .catch((err: unknown) => {
         setLoadError(err instanceof Error ? err.message : "Unable to load dashboard");
       });
+  }, [accessToken, currentTenantId]);
+
+  useEffect(() => {
+    if (!accessToken || !currentTenantId) return;
+    void api
+      .integrationCoverage(accessToken, currentTenantId)
+      .then(setCoverage)
+      .catch(() => setCoverage(null));
   }, [accessToken, currentTenantId]);
 
   if (loadError) {
@@ -78,6 +87,41 @@ export function DashboardPage() {
         </Link>
       </section>
 
+      {coverage ? (
+        <section className="tenant-panel" style={{ marginBottom: "1rem" }}>
+          <div className="tenant-panel-head">
+            <h2 className="tenant-panel-title">Integration &amp; mapping health</h2>
+            <Link className="tenant-panel-link" to="/app/data-quality">
+              Full data quality →
+            </Link>
+          </div>
+          <div className="tenant-panel-body tenant-op-grid" style={{ padding: "1rem 1.1rem" }}>
+            <div>
+              <div className="tenant-kpi-label">Connected sources</div>
+              <div className="tenant-kpi-value tenant-kpi-value--inline">{coverage.connected_systems}</div>
+            </div>
+            <div>
+              <div className="tenant-kpi-label">Unresolved mappings</div>
+              <div className="tenant-kpi-value tenant-kpi-value--inline">{coverage.unresolved_mappings}</div>
+            </div>
+            <div>
+              <div className="tenant-kpi-label">Weak mapping signals</div>
+              <div className="tenant-kpi-value tenant-kpi-value--inline">{coverage.weak_mappings}</div>
+            </div>
+          </div>
+          <div className="tenant-panel-body" style={{ paddingTop: 0 }}>
+            <p className="muted" style={{ margin: 0, fontSize: "0.88rem" }}>
+              Clear mapping backlog to keep customer names, finance, and service views trustworthy.
+            </p>
+            <p style={{ marginTop: "0.75rem", marginBottom: 0 }}>
+              <Link className="tenant-btn-inline tenant-btn-inline--ghost" to="/app/integrations/mappings">
+                Open mapping review
+              </Link>
+            </p>
+          </div>
+        </section>
+      ) : null}
+
       <div className="tenant-two-col">
         <section className="tenant-panel tenant-panel--accent">
           <div className="tenant-panel-head">
@@ -89,7 +133,7 @@ export function DashboardPage() {
           <div className="tenant-panel-body" style={{ padding: "1rem 1.1rem" }}>
             <p className="muted" style={{ marginTop: 0 }}>
               Pick an account to assemble health, commercial, relationship, and data-confidence context before customer
-              reviews. Customer 360 links here with <code className="tenant-code-inline">?customer_id=</code>.
+              reviews. Use <strong>Review prep</strong> from Customer 360 to continue with the same account selected.
             </p>
             <Link className="tenant-btn-inline" to="/app/reviews">
               Start review prep
@@ -105,8 +149,8 @@ export function DashboardPage() {
           </div>
           <div className="tenant-panel-body" style={{ padding: "1rem 1.1rem" }}>
             <p className="muted" style={{ marginTop: 0 }}>
-              Segments, event themes, and customer→campaign matching shells — ready for connector-backed ranking and
-              prompt-driven drafts.
+              Commercial segments and event planning — lost-quote counts and customer links already reflect synced data;
+              AI-assisted matching arrives as prompts and rules expand.
             </p>
             <Link className="tenant-btn-inline" to="/app/marketing">
               Plan campaigns
@@ -212,8 +256,8 @@ export function DashboardPage() {
           <div className="tenant-empty" style={{ textAlign: "left", maxWidth: "40rem", margin: "0 auto" }}>
             <p className="tenant-empty-title">Structured risk workspace</p>
             <p>
-              Open the service risk area for backup placeholders and live delivery metrics (tickets, at-risk context).
-              Integrations will deepen this panel over time.
+              Service delivery metrics are live from tickets and scores; backup panels reflect registered backup
+              integrations and future job sync.
             </p>
           </div>
         </div>

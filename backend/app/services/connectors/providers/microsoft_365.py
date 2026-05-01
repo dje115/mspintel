@@ -378,8 +378,8 @@ class Microsoft365ConnectorAdapter(ConnectorAdapter):
                     "source_user_count": len(users_by_tenant_domain.get(primary_domain or "", [])),
                     "subscribed_sku_count": len(sku_by_tenant.get(tenant_ref, [])),
                     "coverage_notes": [
-                        "Materialised from Connector Lab M365 Graph-inspired endpoints; treat as mock vendor telemetry.",
-                        "Customer mapping confidence is governed by connector mapping review state.",
+                        "Figures come from your connected Microsoft practice dataset — treat as directional until live telemetry is enabled.",
+                        "Customer linkage follows your integration mapping decisions.",
                     ],
                     "confidence_level": self._confidence_from_hygiene(len(findings)),
                 }

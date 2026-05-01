@@ -28,6 +28,12 @@ class RecommendationListResponse(BaseModel):
     total: int
 
 
+class RecommendationSyncResponse(BaseModel):
+    created: int
+    updated: int
+    completed: int
+
+
 class RecommendationPatch(BaseModel):
     status: Literal["open", "accepted", "rejected", "completed"]
 

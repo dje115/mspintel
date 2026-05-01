@@ -7,10 +7,14 @@ services:
     env_file:
       - .env
     environment:
-      VITE_APP_VERSION: ${MSPINTEL_APP_VERSION:-2.10.0}
+      VITE_APP_VERSION: ${MSPINTEL_APP_VERSION:-2.10.2}
       # Same-origin API via Vite proxy (avoids browser CORS). Overrides host .env for Compose.
       VITE_API_BASE_URL: ""
       API_PROXY_TARGET: http://backend:8000
+      # Playwright global-setup runs in Node inside this container; reach API via Compose DNS (not host 8001).
+      E2E_API_BASE_URL: http://backend:8000
+      # Match frontend Dockerfile so exec'd Playwright finds Chromium outside bind-mounted /src.
+      PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
       # Vite + bind-mounted ./frontend: polling avoids stale UI when the host FS does not propagate inotify (common on Windows Docker).
       CHOKIDAR_USEPOLLING: "true"
     ports:
@@ -29,7 +33,7 @@ services:
     env_file:
       - .env
     environment:
-      MSPINTEL_APP_VERSION: ${MSPINTEL_APP_VERSION:-2.10.0}
+      MSPINTEL_APP_VERSION: ${MSPINTEL_APP_VERSION:-2.10.2}
       # Reliable local UI access when .env is wrong or missing (browser Origin is localhost:5173).
       ENVIRONMENT: development
       BACKEND_CORS_ORIGINS: '["http://localhost:5173","http://127.0.0.1:5173"]'
@@ -50,7 +54,7 @@ services:
     env_file:
       - .env
     environment:
-      MSPINTEL_APP_VERSION: ${MSPINTEL_APP_VERSION:-2.10.0}
+      MSPINTEL_APP_VERSION: ${MSPINTEL_APP_VERSION:-2.10.2}
     volumes:
       - ./worker:/app
     depends_on:

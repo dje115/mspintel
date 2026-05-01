@@ -107,7 +107,8 @@ export function IntegrationMappingsPage() {
     const confirmed = rows.filter((r) => r.status === "accepted" || r.status === "remapped").length;
     const rejected = rows.filter((r) => r.status === "rejected").length;
     const unlinked = rows.filter((r) => r.status === "unlinked").length;
-    return { all, pending, confirmed, rejected, unlinked };
+    const conflicts = rows.filter((r) => (r.conflict_hints?.length ?? 0) > 0).length;
+    return { all, pending, confirmed, rejected, unlinked, conflicts };
   }, [rows]);
 
   const selectedEligibleCount = rows.filter((r) => selectedRows[r.id] && r.eligible_for_customer_create).length;
@@ -137,18 +138,52 @@ export function IntegrationMappingsPage() {
     return "Unlinked";
   };
 
+  const reasonText = (row: MappingReviewRow) => {
+    const labels = row.suggested_reason_labels?.filter(Boolean);
+    if (labels && labels.length) return labels.join(" · ");
+    return (row.suggested_reasons || []).join(" · ") || "—";
+  };
+
   return (
     <div>
       <header className="tenant-page-head">
         <h1 className="tenant-page-title">Integration mappings review</h1>
-        <p className="tenant-page-sub">Review suggested matches, override manually, and keep cross-system identity clean.</p>
+        <p className="tenant-page-sub">
+          Match each connector&apos;s customer identities to accounts in MSPIntel. Conflicts stay visible until you confirm or
+          remap.
+        </p>
       </header>
       {err ? <p className="tenant-error">{err}</p> : null}
       <section className="tenant-panel">
         <div className="tenant-panel-body">
+          <div
+            className="tenant-metric-grid"
+            style={{ marginBottom: "1rem", gridTemplateColumns: "repeat(auto-fit, minmax(9rem, 1fr))" }}
+          >
+            <article className="tenant-metric-card">
+              <h3>Needs review</h3>
+              <p className="tenant-metric-big">{counts.pending}</p>
+            </article>
+            <article className="tenant-metric-card">
+              <h3>Confirmed</h3>
+              <p className="tenant-metric-big">{counts.confirmed}</p>
+            </article>
+            <article className="tenant-metric-card">
+              <h3>Unlinked</h3>
+              <p className="tenant-metric-big">{counts.unlinked}</p>
+            </article>
+            <article className="tenant-metric-card">
+              <h3>Rejected</h3>
+              <p className="tenant-metric-big">{counts.rejected}</p>
+            </article>
+            <article className="tenant-metric-card">
+              <h3>Needs attention</h3>
+              <p className="tenant-metric-big">{counts.conflicts}</p>
+              <p className="tenant-metric-note">Rows with overlap or link warnings.</p>
+            </article>
+          </div>
           <p className="muted" style={{ marginTop: 0 }}>
-            Connected systems: {connections.length} · Needs review: {counts.pending} · Confirmed: {counts.confirmed} ·
-            Rejected: {counts.rejected} · Unlinked: {counts.unlinked}
+            Connected systems: {connections.length} · Total rows: {counts.all}
           </p>
           {showFirstRunGuidance ? (
             <div className="tenant-inline-note" style={{ marginBottom: "0.75rem" }}>
@@ -274,8 +309,22 @@ export function IntegrationMappingsPage() {
                       <span className={toneForStatus(r.status)}>{confidenceLabel(r)}</span>{" "}
                       {r.suggested_customer_name ?? "No suggestion"}
                       <div className="muted" style={{ fontSize: "0.8rem" }}>
-                        {(r.suggested_reasons || []).join(", ") || "insufficient signals"}
+                        {reasonText(r)}
                       </div>
+                      {(r.conflict_hint_labels?.length ?? 0) > 0 ? (
+                        <div style={{ fontSize: "0.78rem", marginTop: "0.25rem", color: "#b45309" }}>
+                          {(r.conflict_hint_labels ?? []).map((h) => (
+                            <div key={h}>⚠ {h}</div>
+                          ))}
+                        </div>
+                      ) : null}
+                      {!r.eligible_for_customer_create &&
+                      (r.create_customer_blocker_labels?.length ?? 0) > 0 &&
+                      (r.status === "pending" || r.status === "unlinked") ? (
+                        <div className="muted" style={{ fontSize: "0.78rem", marginTop: "0.25rem" }}>
+                          Create blocked: {(r.create_customer_blocker_labels ?? r.create_customer_blockers).join(" · ")}
+                        </div>
+                      ) : null}
                     </td>
                     <td>
                       <span className={toneForStatus(r.status)}>{r.status_label ?? r.status}</span>
@@ -299,16 +348,18 @@ export function IntegrationMappingsPage() {
                       </select>
                     </td>
                     <td>
-                      {r.suggested_customer_id ? (
+                      {r.status === "pending" && r.suggested_customer_id ? (
                         <button
                           type="button"
                           className="tenant-btn-ghost"
                           onClick={() => void act(r.id, "accept", r.suggested_customer_id ?? undefined)}
                         >
-                          Accept
+                          Accept match
                         </button>
                       ) : null}{" "}
-                      {!r.suggested_customer_id && r.eligible_for_customer_create ? (
+                      {(r.status === "pending" || r.status === "unlinked") &&
+                      !r.suggested_customer_id &&
+                      r.eligible_for_customer_create ? (
                         <button
                           type="button"
                           className="tenant-btn-ghost"
@@ -322,15 +373,20 @@ export function IntegrationMappingsPage() {
                         className="tenant-btn-ghost"
                         onClick={() => void act(r.id, "remap", selectedCustomer[r.id])}
                         disabled={!selectedCustomer[r.id]}
+                        title={!selectedCustomer[r.id] ? "Pick a customer above to remap" : undefined}
                       >
                         Remap
                       </button>{" "}
-                      <button type="button" className="tenant-btn-ghost" onClick={() => void act(r.id, "reject")}>
-                        Reject
-                      </button>{" "}
-                      <button type="button" className="tenant-btn-ghost" onClick={() => void act(r.id, "unlink")}>
-                        Unlink
-                      </button>
+                      {r.status === "pending" ? (
+                        <button type="button" className="tenant-btn-ghost" onClick={() => void act(r.id, "reject")}>
+                          Reject
+                        </button>
+                      ) : null}{" "}
+                      {r.status === "accepted" || r.status === "remapped" ? (
+                        <button type="button" className="tenant-btn-ghost" onClick={() => void act(r.id, "unlink")}>
+                          Unlink
+                        </button>
+                      ) : null}
                     </td>
                   </tr>
                 ))}
